@@ -1,0 +1,1 @@
+ALTER TABLE "transaction" ALTER COLUMN "transaction_receipt" DROP NOT NULL;

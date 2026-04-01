@@ -1,0 +1,2 @@
+CREATE TYPE "public"."connection_status" AS ENUM('accepted', 'rejected', 'pending');--> statement-breakpoint
+ALTER TABLE "connection" ADD COLUMN "connection_status" "connection_status" DEFAULT 'pending' NOT NULL;

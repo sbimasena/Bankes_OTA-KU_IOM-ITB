@@ -1,0 +1,1 @@
+ALTER TABLE "account_ota_detail" ALTER COLUMN "is_detail_visible" DROP DEFAULT;

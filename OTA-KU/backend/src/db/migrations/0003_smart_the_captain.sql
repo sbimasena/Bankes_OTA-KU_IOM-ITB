@@ -1,0 +1,1 @@
+ALTER TABLE "account" ALTER COLUMN "phoneNumber" DROP NOT NULL;

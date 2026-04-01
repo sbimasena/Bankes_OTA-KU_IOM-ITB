@@ -1,0 +1,72 @@
+.backend-base:
+  image: node:22-alpine
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-backend
+    paths:
+      - backend/node_modules/
+    policy: pull-push
+
+backend-build-job:
+  extends: .backend-base
+  stage: build
+  script:
+    - echo "Building backend with Hono..."
+    - cd backend
+    - cp "$BACKEND_ENV_FILE" .env
+    - |
+      if [ ! -d "node_modules" ] || [ "$(find package.json -newer node_modules 2>/dev/null)" ]; then
+        echo "Installing dependencies..."
+        npm ci --prefer-offline
+      else
+        echo "Using cached node_modules"
+      fi
+    - npm run build
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - backend/.env
+      - backend/dist/
+
+backend-test-job:
+  extends: .backend-base
+  stage: test
+  needs:
+    - backend-build-job
+  image: node:22-alpine
+  services:
+    - name: postgres:16-alpine
+      alias: db
+      variables:
+        POSTGRES_USER: dbuser
+        POSTGRES_PASSWORD: dbpassword
+        POSTGRES_DB: maindb
+        POSTGRES_HOST: db
+        POSTGRES_PORT: 5432
+  before_script:
+    - apk add --no-cache postgresql-client
+  script:
+    - echo "Testing backend..."
+    - cd backend
+    - cp "$BACKEND_LOCAL_ENV_FILE" .env
+    - export $(grep -v '^#' .env | xargs)
+    - echo "Waiting for PostgreSQL to be ready..."
+    - until pg_isready -h db -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do sleep 1; done
+    - echo "Database is ready!"
+    - npm ci --prefer-offline
+    - npm run drizzle-kit:migrate
+    - npm run test
+  cache:
+    policy: pull
+
+backend-deploy-job:
+  extends: .backend-base
+  stage: deploy
+  needs:
+    - backend-test-job
+  script:
+    - echo "Deploying backend..."
+    # Add backend deployment commands here
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  cache:
+    policy: pull

@@ -1,0 +1,92 @@
+.frontend-base:
+  image: node:22-alpine
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-frontend
+    paths:
+      - frontend/node_modules/
+    policy: pull-push
+
+frontend-build-job:
+  extends: .frontend-base
+  stage: build
+  script:
+    - echo "Building frontend with Vite and React..."
+    - cd frontend
+    - apk add --no-cache python3 make g++
+    - |
+      if [ ! -d "node_modules" ] || [ "$(find package.json -newer node_modules 2>/dev/null)" ]; then
+        npm ci --prefer-offline --force
+      else
+        echo "Using cached node_modules"
+      fi
+    - npm run build
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - frontend/dist/
+      - frontend/package.json
+      - frontend/package-lock.json
+
+.frontend-cypress-base:
+  image: node:22-bookworm
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-cypress
+    paths:
+      - frontend/node_modules/
+      - /root/.cache/Cypress/
+    policy: pull-push
+  before_script:
+    - cd frontend
+    - echo "Installing Cypress dependencies..."
+    - apt-get update && apt-get install -y --no-install-recommends libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libnss3 libxss1 libasound2 libxtst6 xauth xvfb
+    - npm ci --prefer-offline --force
+    - echo "Installing Cypress binary..."
+    - npm install cypress --save-dev --prefer-offline --force
+    - npx cypress verify
+
+frontend-component-test-job:
+  extends: .frontend-cypress-base
+  stage: test
+  needs:
+    - frontend-build-job
+  script:
+    - echo "Running component tests..."
+    - npx cypress run --component
+  artifacts:
+    when: on_failure
+    expire_in: 1 week
+    paths:
+      - frontend/cypress/screenshots/
+
+frontend-e2e-test-job:
+  extends: .frontend-cypress-base
+  stage: test
+  needs:
+    - frontend-build-job
+  script:
+    - echo "Starting dev server..."
+    - npm install wait-on --save-dev --prefer-offline --force
+    - npm run dev &
+    - sleep 5
+    - echo "Running E2E tests..."
+    - npx cypress run
+  artifacts:
+    when: on_failure
+    expire_in: 1 week
+    paths:
+      - frontend/cypress/screenshots/
+      - frontend/cypress/videos/
+
+frontend-deploy-job:
+  extends: .frontend-base
+  stage: deploy
+  needs:
+    - frontend-e2e-test-job
+    - frontend-component-test-job
+  script:
+    - echo "Deploying frontend..."
+    # Add frontend deployment commands here
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  cache:
+    policy: pull

@@ -1,0 +1,5 @@
+User-Agent: *
+Allow: /
+Disallow: 
+// TODO: Change to the correct url, also add sitemap
+Sitemap: https://bota.iom-itb.com/sitemap.xml

@@ -1,0 +1,1 @@
+ALTER TABLE "transaction" ADD COLUMN "paid_for" integer DEFAULT 0 NOT NULL;

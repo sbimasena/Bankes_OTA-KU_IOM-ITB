@@ -1,0 +1,1 @@
+ALTER TABLE "connection" ALTER COLUMN "request_terminate_mahasiswa" DROP NOT NULL;

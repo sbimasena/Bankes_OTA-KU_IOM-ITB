@@ -1,0 +1,1 @@
+ALTER TABLE "connection" ADD COLUMN "request_termination_note" text NOT NULL;

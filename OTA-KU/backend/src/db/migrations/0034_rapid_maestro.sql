@@ -1,0 +1,1 @@
+ALTER TABLE "connection" ADD COLUMN "paid_for" integer NOT NULL;

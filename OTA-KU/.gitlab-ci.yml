@@ -1,0 +1,52 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  GIT_STRATEGY: "fetch"
+  CYPRESS_CACHE_FOLDER: "/root/.cache/Cypress"
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+
+# Global cache definition
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .npm/
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# Mock job for root-level changes
+root-mock-job:
+  stage: build
+  image: alpine:latest
+  script:
+    - echo "Root level changes detected - running mock job"
+    - echo "Pipeline started successfully"
+    - echo "Files changed outside backend/frontend folders"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "!backend/**/*"
+        - "!frontend/**/*"
+        - "**/*"
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "!backend/**/*"
+        - "!frontend/**/*"
+        - "**/*"
+
+include:
+  - local: "backend/.gitlab-ci.yml"
+    rules:
+      - changes:
+          - "backend/**/*"
+          - ".gitlab-ci.yml"
+  - local: "frontend/.gitlab-ci.yml"
+    rules:
+      - changes:
+          - "frontend/**/*"
+          - ".gitlab-ci.yml"

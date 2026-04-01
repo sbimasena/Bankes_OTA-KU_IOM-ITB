@@ -1,0 +1,1 @@
+ALTER TABLE "temporary_password" ALTER COLUMN "password" SET DATA TYPE varchar(255);

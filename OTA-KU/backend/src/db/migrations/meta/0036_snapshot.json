@@ -1,0 +1,1046 @@
+{
+  "id": "46593d60-4cbc-4bdd-99c9-9fca92745586",
+  "prevId": "31f0b3b5-e706-4b33-abf8-855d745e189a",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.account_mahasiswa_detail": {
+      "name": "account_mahasiswa_detail",
+      "schema": "",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nim": {
+          "name": "nim",
+          "type": "varchar(8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "major": {
+          "name": "major",
+          "type": "jurusan",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "faculty": {
+          "name": "faculty",
+          "type": "fakultas",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cityOfOrigin": {
+          "name": "cityOfOrigin",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "highschoolAlumni": {
+          "name": "highschoolAlumni",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "religion": {
+          "name": "religion",
+          "type": "religion",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gender": {
+          "name": "gender",
+          "type": "gender",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gpa": {
+          "name": "gpa",
+          "type": "numeric(3, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "file": {
+          "name": "file",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kk": {
+          "name": "kk",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ktm": {
+          "name": "ktm",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wali_recommendation_letter": {
+          "name": "wali_recommendation_letter",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transcript": {
+          "name": "transcript",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "salary_report": {
+          "name": "salary_report",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pbb": {
+          "name": "pbb",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "electricity_bill": {
+          "name": "electricity_bill",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ditmawa_recommendation_letter": {
+          "name": "ditmawa_recommendation_letter",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "admin_only_notes": {
+          "name": "admin_only_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mahasiswa_status": {
+          "name": "mahasiswa_status",
+          "type": "mahasiswa_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'inactive'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "due_next_update_at": {
+          "name": "due_next_update_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "account_mahasiswa_detail_account_id_account_id_fk": {
+          "name": "account_mahasiswa_detail_account_id_account_id_fk",
+          "tableFrom": "account_mahasiswa_detail",
+          "tableTo": "account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "account_mahasiswa_detail_nim_unique": {
+          "name": "account_mahasiswa_detail_nim_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "nim"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.account_ota_detail": {
+      "name": "account_ota_detail",
+      "schema": "",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job": {
+          "name": "job",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "linkage": {
+          "name": "linkage",
+          "type": "linkage",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "funds": {
+          "name": "funds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "max_capacity": {
+          "name": "max_capacity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "max_semester": {
+          "name": "max_semester",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "transfer_date": {
+          "name": "transfer_date",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criteria": {
+          "name": "criteria",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_detail_visible": {
+          "name": "is_detail_visible",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "allow_admin_selection": {
+          "name": "allow_admin_selection",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "account_ota_detail_account_id_account_id_fk": {
+          "name": "account_ota_detail_account_id_account_id_fk",
+          "tableFrom": "account_ota_detail",
+          "tableTo": "account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.account": {
+      "name": "account",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phoneNumber": {
+          "name": "phoneNumber",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password": {
+          "name": "password",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "account_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "provider",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'credentials'"
+        },
+        "status": {
+          "name": "status",
+          "type": "verification_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'unverified'"
+        },
+        "application_status": {
+          "name": "application_status",
+          "type": "account_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'unregistered'"
+        },
+        "oid": {
+          "name": "oid",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "account_id_unique": {
+          "name": "account_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "account_email_unique": {
+          "name": "account_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        },
+        "account_phoneNumber_unique": {
+          "name": "account_phoneNumber_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "phoneNumber"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.connection": {
+      "name": "connection",
+      "schema": "",
+      "columns": {
+        "mahasiswa_id": {
+          "name": "mahasiswa_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ota_id": {
+          "name": "ota_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "connection_status": {
+          "name": "connection_status",
+          "type": "connection_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "request_terminate_ota": {
+          "name": "request_terminate_ota",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "request_terminate_mahasiswa": {
+          "name": "request_terminate_mahasiswa",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "request_termination_note": {
+          "name": "request_termination_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "paid_for": {
+          "name": "paid_for",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "connection_mahasiswa_id_account_mahasiswa_detail_account_id_fk": {
+          "name": "connection_mahasiswa_id_account_mahasiswa_detail_account_id_fk",
+          "tableFrom": "connection",
+          "tableTo": "account_mahasiswa_detail",
+          "columnsFrom": [
+            "mahasiswa_id"
+          ],
+          "columnsTo": [
+            "account_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "connection_ota_id_account_ota_detail_account_id_fk": {
+          "name": "connection_ota_id_account_ota_detail_account_id_fk",
+          "tableFrom": "connection",
+          "tableTo": "account_ota_detail",
+          "columnsFrom": [
+            "ota_id"
+          ],
+          "columnsTo": [
+            "account_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "connection_mahasiswa_id_ota_id_pk": {
+          "name": "connection_mahasiswa_id_ota_id_pk",
+          "columns": [
+            "mahasiswa_id",
+            "ota_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.otp": {
+      "name": "otp",
+      "schema": "",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(6)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expired_at": {
+          "name": "expired_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "otp_account_id_account_id_fk": {
+          "name": "otp_account_id_account_id_fk",
+          "tableFrom": "otp",
+          "tableTo": "account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "otp_account_id_code_pk": {
+          "name": "otp_account_id_code_pk",
+          "columns": [
+            "account_id",
+            "code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.push_subscription": {
+      "name": "push_subscription",
+      "schema": "",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "endpoint": {
+          "name": "endpoint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "keys": {
+          "name": "keys",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "push_subscription_account_id_account_id_fk": {
+          "name": "push_subscription_account_id_account_id_fk",
+          "tableFrom": "push_subscription",
+          "tableTo": "account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "push_subscription_account_id_endpoint_pk": {
+          "name": "push_subscription_account_id_endpoint_pk",
+          "columns": [
+            "account_id",
+            "endpoint"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.temporary_password": {
+      "name": "temporary_password",
+      "schema": "",
+      "columns": {
+        "account_id": {
+          "name": "account_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password": {
+          "name": "password",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expired_at": {
+          "name": "expired_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used": {
+          "name": "used",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "temporary_password_account_id_account_id_fk": {
+          "name": "temporary_password_account_id_account_id_fk",
+          "tableFrom": "temporary_password",
+          "tableTo": "account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "temporary_password_account_id_password_pk": {
+          "name": "temporary_password_account_id_password_pk",
+          "columns": [
+            "account_id",
+            "password"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.transaction": {
+      "name": "transaction",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "mahasiswa_id": {
+          "name": "mahasiswa_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ota_id": {
+          "name": "ota_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bill": {
+          "name": "bill",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_paid": {
+          "name": "amount_paid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paid_at": {
+          "name": "paid_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "due_date": {
+          "name": "due_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "transaction_status": {
+          "name": "transaction_status",
+          "type": "transaction_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'unpaid'"
+        },
+        "transfer_status": {
+          "name": "transfer_status",
+          "type": "transfer_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'unpaid'"
+        },
+        "transaction_receipt": {
+          "name": "transaction_receipt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "verif_note": {
+          "name": "verif_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "transaction_mahasiswa_id_account_mahasiswa_detail_account_id_fk": {
+          "name": "transaction_mahasiswa_id_account_mahasiswa_detail_account_id_fk",
+          "tableFrom": "transaction",
+          "tableTo": "account_mahasiswa_detail",
+          "columnsFrom": [
+            "mahasiswa_id"
+          ],
+          "columnsTo": [
+            "account_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "transaction_ota_id_account_ota_detail_account_id_fk": {
+          "name": "transaction_ota_id_account_ota_detail_account_id_fk",
+          "tableFrom": "transaction",
+          "tableTo": "account_ota_detail",
+          "columnsFrom": [
+            "ota_id"
+          ],
+          "columnsTo": [
+            "account_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.account_type": {
+      "name": "account_type",
+      "schema": "public",
+      "values": [
+        "mahasiswa",
+        "ota",
+        "admin"
+      ]
+    },
+    "public.account_status": {
+      "name": "account_status",
+      "schema": "public",
+      "values": [
+        "accepted",
+        "rejected",
+        "pending",
+        "unregistered",
+        "reapply",
+        "outdated"
+      ]
+    },
+    "public.connection_status": {
+      "name": "connection_status",
+      "schema": "public",
+      "values": [
+        "accepted",
+        "rejected",
+        "pending"
+      ]
+    },
+    "public.fakultas": {
+      "name": "fakultas",
+      "schema": "public",
+      "values": [
+        "FMIPA",
+        "SITH-S",
+        "SF",
+        "FITB",
+        "FTTM",
+        "STEI-R",
+        "FTSL",
+        "FTI",
+        "FSRD",
+        "FTMD",
+        "STEI-K",
+        "SBM",
+        "SITH-R",
+        "SAPPK"
+      ]
+    },
+    "public.gender": {
+      "name": "gender",
+      "schema": "public",
+      "values": [
+        "M",
+        "F"
+      ]
+    },
+    "public.jurusan": {
+      "name": "jurusan",
+      "schema": "public",
+      "values": [
+        "Matematika",
+        "Fisika",
+        "Astronomi",
+        "Mikrobiologi",
+        "Kimia",
+        "Biologi",
+        "Sains dan Teknologi Farmasi",
+        "Aktuaria",
+        "Rekayasa Hayati",
+        "Rekayasa Pertanian",
+        "Rekayasa Kehutanan",
+        "Farmasi Klinik dan Komunitas",
+        "Teknologi Pasca Panen",
+        "Teknik Geologi",
+        "Teknik Pertambangan",
+        "Teknik Perminyakan",
+        "Teknik Geofisika",
+        "Teknik Metalurgi",
+        "Meteorologi",
+        "Oseanografi",
+        "Teknik Kimia",
+        "Teknik Mesin",
+        "Teknik Elektro",
+        "Teknik Fisika",
+        "Teknik Industri",
+        "Teknik Informatika",
+        "Aeronotika dan Astronotika",
+        "Teknik Material",
+        "Teknik Pangan",
+        "Manajemen Rekayasa Industri",
+        "Teknik Bioenergi dan Kemurgi",
+        "Teknik Sipil",
+        "Teknik Geodesi dan Geomatika",
+        "Arsitektur",
+        "Teknik Lingkungan",
+        "Perencanaan Wilayah dan Kota",
+        "Teknik Kelautan",
+        "Rekayasa Infrastruktur Lingkungan",
+        "Teknik dan Pengelolaan Sumber Daya Air",
+        "Seni Rupa",
+        "Desain",
+        "Kriya",
+        "Desain Interior",
+        "Desain Komunikasi Visual",
+        "Desain Produk",
+        "Teknik Tenaga Listrik",
+        "Teknik Telekomunikasi",
+        "Sistem Teknologi dan Informasi",
+        "Teknik Biomedis",
+        "Manajemen",
+        "Kewirausahaan",
+        "TPB"
+      ]
+    },
+    "public.linkage": {
+      "name": "linkage",
+      "schema": "public",
+      "values": [
+        "otm",
+        "dosen",
+        "alumni",
+        "lainnya",
+        "none"
+      ]
+    },
+    "public.mahasiswa_status": {
+      "name": "mahasiswa_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "inactive"
+      ]
+    },
+    "public.provider": {
+      "name": "provider",
+      "schema": "public",
+      "values": [
+        "credentials",
+        "azure"
+      ]
+    },
+    "public.religion": {
+      "name": "religion",
+      "schema": "public",
+      "values": [
+        "Islam",
+        "Kristen Protestan",
+        "Katolik",
+        "Hindu",
+        "Buddha",
+        "Konghucu"
+      ]
+    },
+    "public.transaction_status": {
+      "name": "transaction_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "paid",
+        "unpaid"
+      ]
+    },
+    "public.transfer_status": {
+      "name": "transfer_status",
+      "schema": "public",
+      "values": [
+        "paid",
+        "unpaid"
+      ]
+    },
+    "public.verification_status": {
+      "name": "verification_status",
+      "schema": "public",
+      "values": [
+        "verified",
+        "unverified"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

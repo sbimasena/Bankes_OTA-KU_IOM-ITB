@@ -1,0 +1,1 @@
+ALTER TABLE "account_mahasiswa_detail" ALTER COLUMN "gpa" SET DATA TYPE numeric(3, 2);

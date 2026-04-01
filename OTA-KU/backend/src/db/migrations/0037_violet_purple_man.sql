@@ -1,0 +1,1 @@
+ALTER TABLE "account_mahasiswa_detail" ADD COLUMN "bill" integer;

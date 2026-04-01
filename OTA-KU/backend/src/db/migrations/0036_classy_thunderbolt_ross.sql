@@ -1,0 +1,2 @@
+ALTER TABLE "transaction" DROP CONSTRAINT "transaction_mahasiswa_id_ota_id_created_at_pk";--> statement-breakpoint
+ALTER TABLE "transaction" ADD COLUMN "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL;

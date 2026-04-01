@@ -1,0 +1,1 @@
+ALTER TABLE "account_ota_detail" ADD COLUMN "is_detail_visible" boolean DEFAULT false NOT NULL;
