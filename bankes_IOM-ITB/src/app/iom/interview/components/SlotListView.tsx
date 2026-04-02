@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 // Types
 interface InterviewParticipant {
   id: number;
-  user_id: number;
+  userId: string;
   User: {
     name: string;
   };
@@ -28,12 +28,12 @@ interface InterviewSlot {
   id: number;
   title: string | null;
   description: string | null;
-  start_time: string;
-  end_time: string;
-  user_id: number;
-  period_id: number;
-  student_id: number | null;
-  User: {
+  startTime: string;
+  endTime: string;
+  createdById: string;
+  periodId: number;
+  studentId: string | null;
+  CreatedBy: {
     name: string;
     email: string;
   };
@@ -265,8 +265,8 @@ export default function SlotListView() {
   };
 
   const handleEditSlot = (slot: InterviewSlot) => {
-    const startDateTime = new Date(slot.start_time);
-    const endDateTime = new Date(slot.end_time);
+    const startDateTime = new Date(slot.startTime);
+    const endDateTime = new Date(slot.endTime);
     
     setFormData({
       title: slot.title || "",
@@ -303,22 +303,22 @@ export default function SlotListView() {
     if (!session?.user?.id) return false;
     
     // Check if user is the owner
-    if (slot.user_id === Number(session.user.id)) return true;
+    if (slot.createdById === session.user.id) return true;
     
     // Check if user is a participant
-    return slot.Participants.some(p => p.user_id === Number(session.user.id));
+    return slot.Participants.some(p => p.userId === session.user.id);
   };
 
   const isUserParticipantInSlot = (slot: InterviewSlot) => {
     if (!session?.user?.id) return false;
     
     // Check if there's a participant record with this user's ID
-    return slot.Participants.some(p => p.user_id === Number(session.user.id));
+    return slot.Participants.some(p => p.userId === session.user.id);
   };
 
   // Filter slots
   const filteredSlots = slots.filter(slot => {
-    const slotDate = new Date(slot.start_time);
+    const slotDate = new Date(slot.startTime);
     const today = new Date();
     
     if (filter === "upcoming") {
@@ -370,10 +370,10 @@ export default function SlotListView() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredSlots.map((slot) => {
-            const isOwner = slot.user_id === Number(session?.user?.id);
-            const isParticipant = slot.Participants.some(p => p.user_id === Number(session?.user?.id));
-            const isBooked = slot.student_id !== null;
-            const isMyBooking = slot.student_id === Number(session?.user?.id);
+            const isOwner = slot.createdById === session?.user?.id;
+            const isParticipant = slot.Participants.some(p => p.userId === session?.user?.id);
+            const isBooked = slot.studentId !== null;
+            const isMyBooking = slot.studentId === session?.user?.id;
             
             return (
                 <Card key={slot.id} className="p-4 w-full shadow-sm hover:shadow-md transition-shadow duration-200" style={{ backgroundColor: isBooked ? 'rgba(156, 163, 175, 0.8)' : 'rgba(255, 255, 255, 0.9)' }}>
@@ -394,15 +394,15 @@ export default function SlotListView() {
                     <div className="mt-2 space-y-1">
                       <p className="text-sm flex items-center">
                         <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                        {format(new Date(slot.start_time), "EEEE, d MMMM yyyy", { locale: id })}
+                        {format(new Date(slot.startTime), "EEEE, d MMMM yyyy", { locale: id })}
                       </p>
                       <p className="text-sm flex items-center">
                         <Clock className="h-4 w-4 mr-2 text-gray-500" />
-                        {format(new Date(slot.start_time), "HH:mm")} - {format(new Date(slot.end_time), "HH:mm")}
+                        {format(new Date(slot.startTime), "HH:mm")} - {format(new Date(slot.endTime), "HH:mm")}
                       </p>
                       <p className="text-sm flex items-center">
                         <User className="h-4 w-4 mr-2 text-gray-500" />
-                        {slot.User.name}
+                        {slot.CreatedBy.name}
                       </p>
                       {slot.description && (
                         <p className="text-sm mt-2 text-gray-600">{slot.description}</p>
@@ -425,7 +425,7 @@ export default function SlotListView() {
                   )}
                   
                   {/* Student who booked the slot */}
-                  {slot.student_id && (
+                  {slot.studentId && (
                     <div className="text-xs text-gray-600">
                       <span className="font-medium">Booked by: </span>
                       {slot.Student?.User.name || "Student"}

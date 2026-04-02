@@ -33,7 +33,7 @@ export default function AccountPage() {
       const data: User[] = result.data;
       setUsers(data);
       const defaults: Record<string, string> = {};
-      data.forEach(u => { defaults[u.user_id.toString()] = u.role; });
+      data.forEach(u => { defaults[u.id] = u.role; });
       setRoleMap(defaults);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -75,7 +75,7 @@ export default function AccountPage() {
       const selectedRole = roleMap[userId];
       
       // Find the user to check their current role
-      const user = users.find(u => u.user_id.toString() === userId);
+      const user = users.find(u => u.id === userId);
       
       // Prevent updates to Mahasiswa role
       if (user && user.role === "Mahasiswa") {
@@ -201,15 +201,15 @@ export default function AccountPage() {
               </thead>
               <tbody>
                 {paginated.map(user => (
-                  <tr key={user.user_id} className="border-b">
+                  <tr key={user.id} className="border-b">
                     <td className="px-4 py-2 text-left">{user.name}</td>
                     <td className="px-4 py-2 text-left">{user.email}</td>
                     <td className="px-4 py-2 text-center">
                       {user.role === "Mahasiswa"
                         ? <span>{user.role}</span>
                         : <select
-                            value={roleMap[user.user_id.toString()]}
-                            onChange={e => handleRoleChange(user.user_id.toString(), e.target.value)}
+                            value={roleMap[user.id.toString()]}
+                            onChange={e => handleRoleChange(user.id.toString(), e.target.value)}
                             className="border rounded px-2 py-1 cursor-pointer"
                           >
                             <option value="Pengurus_IOM">Pengurus IOM</option>
@@ -220,13 +220,13 @@ export default function AccountPage() {
                     <td className="px-4 py-2 text-center space-x-2">
                       <button
                         className="bg-red-500 text-white px-3 py-1 rounded cursor-pointer hover:opacity-90"
-                        onClick={() => confirmAction("delete", user.user_id.toString(), user.name)}
+                        onClick={() => confirmAction("delete", user.id.toString(), user.name)}
                       >Hapus</button>
                       {/* Only show Update button when role is changed */}
-                      {user.role !== "Mahasiswa" && roleMap[user.user_id.toString()] !== user.role && (
+                      {user.role !== "Mahasiswa" && roleMap[user.id.toString()] !== user.role && (
                         <button
                           className="bg-green-500 text-white px-3 py-1 rounded cursor-pointer hover:opacity-90"
-                          onClick={() => confirmAction("update", user.user_id.toString(), user.name)}
+                          onClick={() => confirmAction("update", user.id.toString(), user.name)}
                         >Update</button>
                       )}
                     </td>

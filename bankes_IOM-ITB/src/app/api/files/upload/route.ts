@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Client } from "minio";
-import { FileType, PrismaClient } from "@prisma/client";
+import { StudentFileType, PrismaClient } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/authOptions";
 import { join } from "path";
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const studentId = Number(session.user.id);
+    const studentId = session.user.id;
     const formData = await request.formData();
     const files = formData.getAll("files") as File[];
     const documentTypes = formData.getAll("documentTypes") as string[];
@@ -148,15 +148,15 @@ export async function POST(request: NextRequest) {
       const publicPort = process.env.MINIO_PUBLIC_PORT || "9000";
       const fileUrl = `http://${publicHost}:${publicPort}/${bucketName}/${newFileName}`;
 
-      const existingFile = await prisma.file.findFirst({
+      const existingFile = await prisma.studentFile.findFirst({
         where: {
-          student_id: studentId,
-          type: documentType as FileType,
+          userId: studentId,
+          type: documentType as StudentFileType,
         },
       });
 
       if (existingFile) {
-        const existingFileName = existingFile.file_name;
+        const existingFileName = existingFile.fileName;
 
         try {
           await minioClient.removeObject(bucketName, existingFileName);
@@ -165,21 +165,21 @@ export async function POST(request: NextRequest) {
           console.error("Error removing file from MinIO:", error);
           throw new Error("Failed to remove existing file from MinIO");
         }
-    
-        await prisma.file.update({
-          where: { file_id: existingFile.file_id },
+
+        await prisma.studentFile.update({
+          where: { id: existingFile.id },
           data: {
-            file_url: fileUrl,
-            file_name: newFileName,
+            fileUrl: fileUrl,
+            fileName: newFileName,
           },
         });
       } else {
-        await prisma.file.create({
+        await prisma.studentFile.create({
           data: {
-            file_url: fileUrl,
-            file_name: newFileName,
-            type: documentType as FileType,
-            student_id: studentId,
+            fileUrl: fileUrl,
+            fileName: newFileName,
+            type: documentType as StudentFileType,
+            userId: studentId,
           },
         });
       }

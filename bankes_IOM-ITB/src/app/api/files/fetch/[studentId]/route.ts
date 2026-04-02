@@ -63,11 +63,6 @@ export async function GET(_: NextRequest, context: { params: { studentId: string
   try {
     const session = await getServerSession(authOptions);
     const { studentId } = await context.params;
-    const id = parseInt(studentId, 10);
-
-    if (isNaN(id)) {
-      return NextResponse.json({ error: "Invalid student ID" }, { status: 400 });
-    }
 
     const userId = session?.user?.id;
     const userRole = session?.user?.role;
@@ -76,15 +71,15 @@ export async function GET(_: NextRequest, context: { params: { studentId: string
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    if (userRole === "Mahasiswa" && userId != studentId) {
+    if (userRole === "Mahasiswa" && userId !== studentId) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     if (userRole === "Pewawancara") {
       const interviewExists = await prisma.interviewSlot.findFirst({
         where: {
-          user_id: parseInt(userId),
-          student_id: id,
+          createdById: userId,
+          studentId: studentId,
         },
       });
 
@@ -94,11 +89,11 @@ export async function GET(_: NextRequest, context: { params: { studentId: string
     }
 
     // Admins like "Pengurus_IOM" bypass the check
-    const files = await prisma.file.findMany({
-      where: { student_id: id },
+    const files = await prisma.studentFile.findMany({
+      where: { userId: studentId },
       select: {
-        file_url: true,
-        file_name: true,
+        fileUrl: true,
+        fileName: true,
         type: true,
       },
     });

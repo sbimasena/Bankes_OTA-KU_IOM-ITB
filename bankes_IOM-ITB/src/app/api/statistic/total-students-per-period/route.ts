@@ -100,12 +100,12 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const data = await prisma.student.groupBy({
+    const data = await prisma.mahasiswaProfile.groupBy({
       by: ['faculty'],
       where: {
-        Statuses: {
+        BankesStatuses: {
           some: {
-            period_id: Number(selectedPeriod),
+            periodId: Number(selectedPeriod),
           },
         },
       },

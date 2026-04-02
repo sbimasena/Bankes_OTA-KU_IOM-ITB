@@ -68,8 +68,8 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    const data = await prisma.status.groupBy({
-      by: ['period_id'],
+    const data = await prisma.bankesStatus.groupBy({
+      by: ['periodId'],
       where: {
         passIOM: true,
         passDitmawa: true,
@@ -78,29 +78,29 @@ export async function GET() {
         },
       },
       _count: {
-        student_id: true,
+        userId: true,
       },
     });
 
-    const periodIds = data.map((d) => d.period_id);
+    const periodIds = data.map((d) => d.periodId);
 
     const periods = await prisma.period.findMany({
       where: {
-        period_id: {
+        id: {
           in: periodIds,
         },
       },
       select: {
-        period_id: true,
+        id: true,
         period: true,
       },
     });
 
-    const periodMap = new Map(periods.map((p) => [p.period_id, p.period]));
+    const periodMap = new Map(periods.map((p) => [p.id, p.period]));
 
     const result = data.map((item) => ({
-      period: periodMap.get(item.period_id) ?? 'Unknown',
-      student_count: item._count.student_id,
+      period: periodMap.get(item.periodId) ?? 'Unknown',
+      student_count: item._count.userId,
     }));
 
     return NextResponse.json({ success: true, data: result });

@@ -222,7 +222,7 @@ export async function GET(
       where: { id: slotId },
       include: {
         Participants: true,
-        User: {
+        CreatedBy: {
           select: {
             name: true,
             email: true,
@@ -307,7 +307,7 @@ export async function PUT(
       );
     }
 
-    if (existingSlot.user_id !== Number(session.user.id)) {
+    if (existingSlot.createdById !== session.user.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 403 }
@@ -320,8 +320,8 @@ export async function PUT(
       data: {
         title,
         description,
-        start_time: new Date(start_time),
-        end_time: new Date(end_time),
+        startTime: new Date(start_time),
+        endTime: new Date(end_time),
       },
     });
 
@@ -375,7 +375,7 @@ export async function DELETE(
       );
     }
 
-    if (existingSlot.user_id !== Number(session.user.id)) {
+    if (existingSlot.createdById !== session.user.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 403 }

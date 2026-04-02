@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@iom-itb/db": ["../generated/prisma"]
+    }
+  },
+  "include": ["seed/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

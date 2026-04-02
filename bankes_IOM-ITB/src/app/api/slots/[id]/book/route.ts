@@ -105,46 +105,46 @@ export async function POST(
         );
       }
   
-      if (slot.student_id) {
+      if (slot.studentId) {
         return NextResponse.json(
           { success: false, error: "Slot already booked" },
           { status: 400 }
         );
       }
-  
+
       // Check if student has already booked another slot in the same period
       const existingBooking = await prisma.interviewSlot.findFirst({
         where: {
-          period_id: slot.period_id,
-          student_id: Number(session.user.id),
+          periodId: slot.periodId,
+          studentId: session.user.id,
         },
       });
-  
+
       if (existingBooking) {
         return NextResponse.json(
-          { 
-            success: false, 
+          {
+            success: false,
             error: "You already have a booking for this period",
             existingSlotId: existingBooking.id
           },
           { status: 400 }
         );
       }
-  
+
       // Book the slot
       const updatedSlot = await prisma.interviewSlot.update({
         where: { id: slotId },
         data: {
-          student_id: Number(session.user.id),
-          booked_at: new Date(),
+          studentId: session.user.id,
+          bookedAt: new Date(),
         },
       });
 
       // Create notes for the interview
-      await prisma.notes.create({
+      await prisma.interviewNote.create({
         data: {
-          slot_id: slotId,
-          user_id: Number(session.user.id),
+          slotId: slotId,
+          userId: session.user.id,
           text: JSON.stringify({
             namaPewawancara:"", 
             noHpPewawancara:"",

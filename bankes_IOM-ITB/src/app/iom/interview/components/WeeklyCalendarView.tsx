@@ -17,14 +17,14 @@ import { Badge } from "@/components/ui/badge";
 
 // Types
 interface IOMStaff {
-  user_id: number;
+  id: string;
   name: string;
   email: string;
 }
 
 interface InterviewParticipant {
   id: number;
-  user_id: number;
+  userId: string;
   User: {
     name: string;
   };
@@ -34,12 +34,12 @@ interface InterviewSlot {
   id: number;
   title: string | null;
   description: string | null;
-  start_time: string;
-  end_time: string;
-  user_id: number;
-  period_id: number;
-  student_id: number | null;
-  User: {
+  startTime: string;
+  endTime: string;
+  createdById: string;
+  periodId: number;
+  studentId: string | null;
+  CreatedBy: {
     name: string;
     email: string;
   };
@@ -324,12 +324,12 @@ export default function WeeklyCalendarView() {
     if (!session?.user?.id) return false;
     
     // Check if there's a participant record with this user's ID
-    return slot.Participants.some(p => p.user_id === Number(session.user.id));
+    return slot.Participants.some(p => p.userId === session.user.id);
   };
 
   const handleEditSlot = (slot: InterviewSlot) => {
-    const startDateTime = new Date(slot.start_time);
-    const endDateTime = new Date(slot.end_time);
+    const startDateTime = new Date(slot.startTime);
+    const endDateTime = new Date(slot.endTime);
     
     setFormData({
       title: slot.title || "",
@@ -377,7 +377,7 @@ export default function WeeklyCalendarView() {
   // Filter slots by selected staff and current week
   const filteredSlots = useMemo(() => {
     return slots.filter(slot => {
-      const slotStart = new Date(slot.start_time);
+      const slotStart = new Date(slot.startTime);
       
       // Check if slot is within the current week
       const isInCurrentWeek = isWithinInterval(slotStart, {
@@ -387,8 +387,8 @@ export default function WeeklyCalendarView() {
       
       // Filter by selected staff (owner or participant)
       if (selectedStaffId) {
-        const isOwnedBySelectedStaff = slot.user_id === parseInt(selectedStaffId);
-        const isParticipant = slot.Participants.some(p => p.user_id === parseInt(selectedStaffId));
+        const isOwnedBySelectedStaff = slot.createdById === selectedStaffId;
+        const isParticipant = slot.Participants.some(p => p.userId === selectedStaffId);
         
         return isInCurrentWeek && (isOwnedBySelectedStaff || isParticipant);
       }
@@ -402,10 +402,10 @@ export default function WeeklyCalendarView() {
     if (!session?.user?.id) return false;
     
     // Check if user is the owner
-    if (slot.user_id === Number(session.user.id)) return true;
+    if (slot.createdById === session.user.id) return true;
     
     // Check if user is a participant
-    return slot.Participants.some(p => p.user_id === Number(session.user.id));
+    return slot.Participants.some(p => p.userId === session.user.id);
   };
 
   // Organize all slots by day and time
@@ -430,7 +430,7 @@ export default function WeeklyCalendarView() {
     
     // Place slots in appropriate day and time slot
     filteredSlots.forEach(slot => {
-      const slotStartTime = new Date(slot.start_time);
+      const slotStartTime = new Date(slot.startTime);
       const dayStr = format(slotStartTime, 'yyyy-MM-dd');
       
       // Get exact position based on hour and minutes
@@ -445,7 +445,7 @@ export default function WeeklyCalendarView() {
       
       if (result.has(dayStr) && result.get(dayStr)?.has(slotHour)) {
         // Add slot with duration and position info
-        const slotEndTime = new Date(slot.end_time);
+        const slotEndTime = new Date(slot.endTime);
         const enhancedSlot = {
           ...slot,
           duration: Math.ceil((slotEndTime.getTime() - slotStartTime.getTime()) / (60 * 60 * 1000)), // Duration in hours
@@ -494,9 +494,9 @@ export default function WeeklyCalendarView() {
                   <SelectItem value={session.user.id as string}>Anda</SelectItem>
                 )}
                 {iomStaff
-                  .filter(staff => staff.user_id !== parseInt(session?.user?.id as string))
+                  .filter(staff => staff.id !== session?.user?.id)
                   .map((staff) => (
-                    <SelectItem key={staff.user_id} value={staff.user_id.toString()}>
+                    <SelectItem key={staff.id} value={staff.id}>
                       {staff.name}
                     </SelectItem>
                   ))}
@@ -566,11 +566,11 @@ export default function WeeklyCalendarView() {
                       }`}
                     >
                       {slots.map((slot: any) => {
-                        const slotStartTime = new Date(slot.start_time);
-                        const slotEndTime = new Date(slot.end_time);
-                        const isOwner = slot.user_id === Number(session?.user?.id);
-                        const isParticipant = slot.Participants.some((p: { user_id: number; }) => p.user_id === Number(session?.user?.id));
-                        const hasStudent = !!slot.student_id;
+                        const slotStartTime = new Date(slot.startTime);
+                        const slotEndTime = new Date(slot.endTime);
+                        const isOwner = slot.createdById === session?.user?.id;
+                        const isParticipant = slot.Participants.some((p: { userId: string; }) => p.userId === session?.user?.id);
+                        const hasStudent = !!slot.studentId;
                         
                         // Calculate exact duration in minutes
                         const durationMinutes = (slotEndTime.getTime() - slotStartTime.getTime()) / (60 * 1000);
@@ -751,12 +751,12 @@ export default function WeeklyCalendarView() {
                 <div className="space-y-2">
                   <p className="font-medium">{selectedSlot.title || "Slot Wawancara"}</p>
                   <p className="text-sm">
-                    {format(new Date(selectedSlot.start_time), "EEEE, d MMMM yyyy", { locale: id })}
+                    {format(new Date(selectedSlot.startTime), "EEEE, d MMMM yyyy", { locale: id })}
                   </p>
                   <p className="text-sm">
-                    {format(new Date(selectedSlot.start_time), "HH:mm")} - {format(new Date(selectedSlot.end_time), "HH:mm")}
+                    {format(new Date(selectedSlot.startTime), "HH:mm")} - {format(new Date(selectedSlot.endTime), "HH:mm")}
                   </p>
-                  {selectedSlot.student_id ? (
+                  {selectedSlot.studentId ? (
                     <div className="flex items-center">
                       <User className="h-4 w-4 mr-2 text-blue-500" />
                       <span>Booked by: {selectedSlot.Student?.User?.name || "Student"}</span>
@@ -765,9 +765,9 @@ export default function WeeklyCalendarView() {
                     <p className="text-sm text-gray-500">Slot available</p>
                   )}
                 </div>
-                
+
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Slot Owner: {selectedSlot.User.name}</p>
+                  <p className="text-sm font-medium">Slot Owner: {selectedSlot.CreatedBy.name}</p>
                   {selectedSlot.Participants.length > 0 && (
                     <div className="flex flex-col gap-1">
                       <p className="text-sm">Participants:</p>
@@ -781,7 +781,7 @@ export default function WeeklyCalendarView() {
                 </div>
                 
                 {isUserInvolvedInSlot(selectedSlot) ? (
-                  selectedSlot.user_id !== Number(session?.user?.id) && (
+                  selectedSlot.createdById !== session?.user?.id && (
                     <Button
                       variant="outline" 
                       className="text-red-500"
@@ -802,7 +802,7 @@ export default function WeeklyCalendarView() {
                   </Button>
                 )}
                 
-                {isUserInvolvedInSlot(selectedSlot) && selectedSlot.student_id && (
+                {isUserInvolvedInSlot(selectedSlot) && selectedSlot.studentId && (
                   <Button
                     variant="outline" 
                     className="text-red-500"
@@ -816,7 +816,7 @@ export default function WeeklyCalendarView() {
                   </Button>
                 )}
 
-                {selectedSlot.user_id === Number(session?.user?.id) && (
+                {selectedSlot.createdById === session?.user?.id && (
                   <div className="space-y-2 mt-4">
                     <p className="text-sm font-medium">Slot Management:</p>
                     <div className="flex gap-2">

@@ -25,7 +25,7 @@ const prisma = new PrismaClient();
 export async function GET() {
   try {
     const currentPeriod = await prisma.period.findFirst({
-      where: { is_current: true },
+      where: { isCurrent: true },
     });
     return NextResponse.json(currentPeriod || null);
   } catch (error) {

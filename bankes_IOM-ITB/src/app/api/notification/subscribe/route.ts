@@ -79,11 +79,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const studentId = Number(session.user.id)
+    const userId = session.user.id;
 
-    await prisma.notificationEndpoint.create({
+    await prisma.pushSubscription.create({
       data: {
-        user_id: studentId,
+        userId,
         endpoint: subscription.endpoint,
         keys: subscription.keys,
       },

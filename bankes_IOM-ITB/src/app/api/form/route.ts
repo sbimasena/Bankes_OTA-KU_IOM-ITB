@@ -115,20 +115,20 @@ export async function POST(request: Request) {
 
     // Build the base filter for this slot
     const whereClause: any = {
-      slot: { id: slotId },
+      Slot: { id: slotId },
     };
 
     // If the user is a Pewawancara, restrict to notes on their own slots
     if (session.user.role === "Pewawancara") {
-      whereClause.slot.user_id = parseInt(session.user.id, 10);
+      whereClause.Slot.createdById = session.user.id;
     }
 
     // Apply the whereClause here
-    const notes = await prisma.notes.findMany({
+    const notes = await prisma.interviewNote.findMany({
       where: whereClause,
       select: {
         text: true,
-        student: {
+        Student: {
           select: {
             nim: true,
             User: { select: { name: true } },
@@ -139,8 +139,8 @@ export async function POST(request: Request) {
 
     const formatted = notes.map((note) => ({
       text: note.text,
-      nim: note.student.nim,
-      userName: note.student.User.name,
+      nim: note.Student.nim,
+      userName: note.Student.User.name,
     }));
     return NextResponse.json({ success: true, data: formatted });
   } catch (error) {

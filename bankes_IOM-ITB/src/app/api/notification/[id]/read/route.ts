@@ -68,21 +68,21 @@ export async function PATCH(
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params
-  const notificationId = Number(id);
+  const notificationId = Number(id); // notification PK is still Int
 
   if (isNaN(notificationId)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
-  const studentId = Number(session.user.id);
+  const userId = session.user.id;
 
   // Perform update only if the user owns the notification
   const updatedNotification = await prisma.notification.updateMany({
     where: {
-      notification_id: notificationId,
-      user_id: studentId,
+      id: notificationId,
+      userId,
     },
-    data: { has_read: true },
+    data: { hasRead: true },
   });
 
   if (updatedNotification.count === 0) {

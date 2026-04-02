@@ -86,15 +86,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const studentId = Number(session.user.id);
+    const studentId = session.user.id;
     const { fileType } = await request.json();
 
     if (!fileType) {
       return NextResponse.json({ error: "Missing file type" }, { status: 400 });
     }
 
-    const fileRecord = await prisma.file.findFirst({
-      where: { student_id: studentId, type: fileType }
+    const fileRecord = await prisma.studentFile.findFirst({
+      where: { userId: studentId, type: fileType }
     });
 
     if (!fileRecord) {
@@ -103,11 +103,11 @@ export async function DELETE(request: NextRequest) {
 
     const bucketName = process.env.MINIO_BUCKET_NAME || "iom-itb";
 
-    await minioClient.removeObject(bucketName, fileRecord.file_name);
+    await minioClient.removeObject(bucketName, fileRecord.fileName);
 
-    await prisma.file.delete({
-      where: { 
-        file_id: fileRecord.file_id,
+    await prisma.studentFile.delete({
+      where: {
+        id: fileRecord.id,
       }
     });
 

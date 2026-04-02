@@ -32,7 +32,7 @@ export async function GET() {
         },
       },
       select: {
-        user_id: true,
+        id: true,
         name: true,
         email: true,
         role: true,

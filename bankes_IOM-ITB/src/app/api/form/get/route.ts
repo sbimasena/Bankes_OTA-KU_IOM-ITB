@@ -28,14 +28,14 @@ export async function POST(request: NextRequest) {
 
     const slotid = await prisma.interviewSlot.findFirst({
       where: {
-        period_id: period_id,
-        student_id: user_id,
+        periodId: period_id,
+        studentId: user_id,
       },
       select: {
         id: true,
       }
     })
-    
+
     if (!slotid) {
       return NextResponse.json(
         { success: false, error: "Slot ID Not found" },
@@ -43,10 +43,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const form = await prisma.notes.findFirst({
+    const form = await prisma.interviewNote.findFirst({
       where: {
-        slot_id: slotid.id,
-        user_id: user_id
+        slotId: slotid.id,
+        userId: user_id
       },
       select: {
         text: true,

@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const studentId = Number(session.user.id);
+    const userId = session.user.id;
     const body = await request.json();
     const { period_id } = body;
 
@@ -101,10 +101,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const existingRecord = await prisma.status.findFirst({
+    const existingRecord = await prisma.bankesStatus.findFirst({
       where: {
-        student_id: studentId,
-        period_id: Number(period_id),
+        userId,
+        periodId: Number(period_id),
       },
     });
 

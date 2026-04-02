@@ -16,7 +16,7 @@ import { Toaster, toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface Question {
-  question_id: number;
+  id: number;
   question: string;
 }
 
@@ -29,8 +29,8 @@ export default function ScoringQuestionDialog() {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [questionToDelete, setQuestionToDelete] = useState<number | null>(null);
 
-  const handleDeleteQuestion = (question_id: number) => {
-    setQuestionToDelete(question_id);
+  const handleDeleteQuestion = (id: number) => {
+    setQuestionToDelete(id);
     setShowDeleteAlert(true);
   };
 
@@ -131,7 +131,7 @@ export default function ScoringQuestionDialog() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {questions.map((question, index) => (
-                <tr key={question.question_id}>
+                <tr key={question.id}>
                   <td className="whitespace-nowrap text-sm text-gray-900 py-3 px-2">{index + 1}</td>
                   <td className="whitespace-nowrap text-sm text-gray-900 py-3 px-2">{question.question}</td>
                   <td className="whitespace-nowrap text-sm text-gray-900 py-3 px-2">
@@ -139,7 +139,7 @@ export default function ScoringQuestionDialog() {
                       type="button"
                       variant="default"
                       className="bg-red-500 text-white hover:bg-red-600"
-                      onClick={() => handleDeleteQuestion(question.question_id)}
+                      onClick={() => handleDeleteQuestion(question.id)}
                       disabled={isLoading}
                     >
                       Hapus
@@ -181,7 +181,7 @@ export default function ScoringQuestionDialog() {
 
                     if (!res.ok) throw new Error("Failed to delete question");
 
-                    setQuestions(questions.filter((q) => q.question_id !== questionToDelete));
+                    setQuestions(questions.filter((q) => q.id !== questionToDelete));
                     toast.success("Pertanyaan berhasil dihapus.");
                   } catch (error) {
                     console.error("Error deleting question:", error);

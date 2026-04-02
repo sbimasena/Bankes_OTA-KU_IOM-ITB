@@ -1,13 +1,17 @@
 // =============================================================================
 // Unified Prisma Schema — Bankes IOM-ITB + OTA-KU
-// NOTE: This file is a copy of /prisma/schema.prisma with the output directive
-// removed so that `prisma generate` in the Dockerfile outputs to the default
-// node_modules location (accessible via `import { PrismaClient } from "@prisma/client"`).
-// Keep this file in sync with the root /prisma/schema.prisma.
+// =============================================================================
+// Satu PostgreSQL database yang dipakai bersama kedua aplikasi.
+//
+// Legend:
+//   [SHARED]  — dibaca/ditulis oleh kedua aplikasi
+//   [BANKES]  — hanya dipakai Bankes (IOM-ITB)
+//   [OTA]     — hanya dipakai OTA-KU
 // =============================================================================
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -19,21 +23,26 @@ datasource db {
 // ENUMS
 // =============================================================================
 
+// [SHARED] Unified role — merge dari Bankes `Role` enum + OTA `account_type` enum.
+// @map mempertahankan nilai string di DB agar tidak perlu ALTER DATA pada data OTA existing.
 enum Role {
   Admin        @map("admin")
   Mahasiswa    @map("mahasiswa")
   Guest        @map("guest")
-  Pengurus_IOM @map("pengurus")
-  Pewawancara  @map("pewawancara")
-  OrangTuaAsuh @map("ota")
-  Bankes       @map("bankes")
+  Pengurus_IOM @map("pengurus")  // OTA: "pengurus"
+  Pewawancara  @map("pewawancara") // Bankes only
+  OrangTuaAsuh @map("ota")        // OTA: "ota"
+  Bankes       @map("bankes")      // OTA: "bankes" (koordinator Bankes di sistem OTA)
 }
 
+// [OTA → SHARED] Status verifikasi email akun.
 enum VerificationStatus {
   verified
   unverified
 }
 
+// [OTA → SHARED] Status aplikasi mahasiswa dalam proses OTA matching.
+// Berbeda dari BankesStatus (per-periode seleksi IOM).
 enum ApplicationStatus {
   accepted
   rejected
@@ -43,11 +52,15 @@ enum ApplicationStatus {
   outdated
 }
 
+// [SHARED] Auth provider — credentials (email+password) atau Azure AD SSO.
 enum Provider {
   credentials
   azure
 }
 
+// [OTA → SHARED] Exhaustive list of ITB majors (50 jurusan).
+// Bankes sebelumnya menyimpan ini sebagai String; sekarang distandarisasi ke enum ini.
+// TPB = mahasiswa tahun pertama yang belum memilih jurusan.
 enum Jurusan {
   Matematika
   Fisika
@@ -103,6 +116,8 @@ enum Jurusan {
   TPB
 }
 
+// [OTA → SHARED] Kode fakultas ITB (14 fakultas).
+// @map untuk mempertahankan format dengan tanda hubung di DB.
 enum Fakultas {
   FMIPA
   SITH_S @map("SITH-S")
@@ -120,13 +135,18 @@ enum Fakultas {
   SAPPK
 }
 
+// [SHARED] Tipe dokumen mahasiswa.
+// Gabungan dari Bankes FileType (KTP, CV, Transkrip_Nilai, Essay, STNK, SIM)
+// + 9 kolom inline file OTA (kk, ktm, waliRecommendationLetter, dst.)
 enum StudentFileType {
+  // Bankes originals
   KTP
   CV
   Transkrip_Nilai
   Essay
   STNK
   SIM
+  // OTA originals (sebelumnya kolom text di account_mahasiswa_detail)
   KK
   KTM
   Wali_Recommendation_Letter
@@ -138,6 +158,7 @@ enum StudentFileType {
   Profile_Photo
 }
 
+// [OTA] Hubungan OTA donor dengan ITB.
 enum Linkage {
   otm
   dosen
@@ -146,28 +167,33 @@ enum Linkage {
   none
 }
 
+// [OTA] Status aktif mahasiswa dalam program OTA.
 enum MahasiswaStatus {
   active
   inactive
 }
 
+// [OTA] Status koneksi antara mahasiswa dan OTA donor.
 enum ConnectionStatus {
   accepted
   rejected
   pending
 }
 
+// [OTA] Status pembayaran transaksi.
 enum TransactionStatus {
   pending
   paid
   unpaid
 }
 
+// [OTA] Status transfer dana dari IOM ke OTA.
 enum TransferStatus {
   paid
   unpaid
 }
 
+// [BANKES] Kategori nilai wawancara.
 enum ScoreCategory {
   KURANG
   CUKUP
@@ -178,35 +204,45 @@ enum ScoreCategory {
 // SHARED MODELS
 // =============================================================================
 
+// [SHARED] Akun pengguna terpusat.
+// Menggabungkan: Bankes `User` (Int PK) + OTA `account` (UUID PK).
+// PK sekarang UUID — Bankes code yang menggunakan Number(session.user.id) perlu diupdate.
+// `name` disimpan di sini sebagai denormalized field untuk JWT (tanpa join ke profile).
 model User {
   id                 String             @id @default(uuid()) @db.Uuid
   email              String             @unique @db.VarChar(255)
-  phoneNumber        String?            @unique @db.VarChar(32)
-  password           String?            @db.VarChar(255)
-  name               String?
+  phoneNumber        String?            @unique @db.VarChar(32) // OTA feature; null untuk user Bankes lama
+  password           String?            @db.VarChar(255) // nullable untuk Azure-only users
+  name               String?            // denormalized untuk JWT; sumber kebenaran di MahasiswaProfile.name
   role               Role
   provider           Provider           @default(credentials)
   verificationStatus VerificationStatus @default(unverified)
-  applicationStatus  ApplicationStatus  @default(unregistered)
-  oid                String?            @db.VarChar(255)
+  applicationStatus  ApplicationStatus  @default(unregistered) // OTA lifecycle; Bankes ignore untuk non-Mahasiswa
+  oid                String?            @db.VarChar(255) // Azure Object ID (untuk SSO)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
+  // Profile relations (1:1, optional berdasarkan role)
   MahasiswaProfile MahasiswaProfile?
   OtaProfile       OtaProfile?
   AdminProfile     AdminProfile?
 
+  // Bankes relations
   Notifications          Notification[]
   PushSubscriptions      PushSubscription[]
   ParticipatedInterviews InterviewParticipant[]
   InterviewSlots         InterviewSlot[]
 
+  // OTA auth extras (OTP & forgot password — fitur baru untuk Bankes)
   OTPs               OTP[]
   TemporaryPasswords TemporaryPassword[]
 
   @@map("users")
 }
 
+// [SHARED] Profil lengkap mahasiswa.
+// Menggabungkan: Bankes `Student` (nim, faculty, major) + OTA `account_mahasiswa_detail` (semua field).
+// userId = UUID FK ke User (1:1).
 model MahasiswaProfile {
   userId  String    @id @db.Uuid
   nim     String    @unique @db.VarChar(8)
@@ -214,42 +250,50 @@ model MahasiswaProfile {
   faculty Fakultas?
   major   Jurusan?
 
+  // Extended profile — field dari OTA, baru untuk Bankes
   cityOfOrigin     String?  @db.VarChar(255)
   highschoolAlumni String?  @db.VarChar(255)
-  religion         String?  @db.VarChar(50)
-  gender           String?  @db.VarChar(1)
+  religion         String?  @db.VarChar(50) // tidak pakai enum agar fleksibel
+  gender           String?  @db.VarChar(1)  // "M" atau "F"
   gpa              Decimal? @db.Decimal(3, 2)
   description      String?
 
-  bill            Int             @default(0)
-  notes           String?
-  adminOnlyNotes  String?
+  // OTA program fields
+  bill            Int             @default(0) // tagihan bulanan dalam IDR
+  notes           String?         // catatan admin yang terlihat mahasiswa
+  adminOnlyNotes  String?         // catatan internal admin saja
   mahasiswaStatus MahasiswaStatus @default(inactive)
-  dueNextUpdateAt DateTime        @default(now())
+  dueNextUpdateAt DateTime        @default(now()) // deadline update profil (untuk cron OTA)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   User User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // File storage — menggantikan Bankes File[] + 9 kolom inline OTA
   StudentFiles StudentFile[]
 
+  // Bankes relations
   BankesStatuses BankesStatus[]
   InterviewSlots InterviewSlot[]
   InterviewNotes InterviewNote[]
   ScoreMatrices  ScoreMatrix[]
 
+  // OTA relations
   Connections  Connection[]  @relation("MahasiswaConnections")
   Transactions Transaction[] @relation("MahasiswaTransactions")
 
   @@map("mahasiswa_profile")
 }
 
+// [SHARED] Dokumen/file mahasiswa yang tersimpan di MinIO.
+// Menggantikan: Bankes `File` table + 9 kolom text inline di OTA.
+// OTA sebelumnya pakai Cloudinary; setelah migrasi semua ke MinIO.
 model StudentFile {
   id         String          @id @default(uuid()) @db.Uuid
   userId     String          @db.Uuid
-  fileUrl    String
-  fileName   String
+  fileUrl    String          // MinIO URL: http://{host}:{port}/{bucket}/{filename}
+  fileName   String          // object name di MinIO bucket
   type       StudentFileType
   bucketName String          @default("documents-bucket")
   createdAt  DateTime        @default(now())
@@ -257,14 +301,17 @@ model StudentFile {
 
   MahasiswaProfile MahasiswaProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
-  @@unique([userId, type])
+  @@unique([userId, type]) // satu file per tipe per mahasiswa (match logika upsert Bankes)
   @@map("student_file")
 }
 
+// [SHARED] Web Push notification subscription.
+// Menggabungkan: Bankes `NotificationEndpoint` + OTA `push_subscription`.
+// Struktur identik; OTA punya updatedAt yang sebelumnya tidak ada di Bankes.
 model PushSubscription {
   userId    String   @db.Uuid
   endpoint  String
-  keys      Json
+  keys      Json     // { p256dh: string, auth: string }
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -278,18 +325,20 @@ model PushSubscription {
 // OTA-SPECIFIC MODELS
 // =============================================================================
 
+// [OTA] Profil OTA donor (Orang Tua Asuh).
+// Dari: OTA `account_ota_detail`.
 model OtaProfile {
   userId              String   @id @db.Uuid
   name                String   @db.VarChar(255)
   job                 String   @db.VarChar(255)
   address             String   @db.VarChar(255)
   linkage             Linkage
-  funds               Int
-  maxCapacity         Int
+  funds               Int      // kontribusi bulanan dalam IDR
+  maxCapacity         Int      // maksimum mahasiswa yang bisa disponsori
   startDate           DateTime
   maxSemester         Int
-  transferDate        Int
-  criteria            String
+  transferDate        Int      // tanggal transfer per bulan (1-31)
+  criteria            String   // kriteria mahasiswa yang dicari
   isDetailVisible     Boolean  @default(false)
   allowAdminSelection Boolean  @default(false)
   createdAt           DateTime @default(now())
@@ -302,6 +351,8 @@ model OtaProfile {
   @@map("ota_profile")
 }
 
+// [OTA + BANKES admin] Profil admin.
+// Dari: OTA `account_admin_detail`. Bankes admin sebelumnya menyimpan name di User.
 model AdminProfile {
   userId String @id @db.Uuid
   name   String @db.VarChar(255)
@@ -311,6 +362,8 @@ model AdminProfile {
   @@map("admin_profile")
 }
 
+// [OTA] Koneksi (matching) antara mahasiswa dan OTA donor.
+// Composite PK: mahasiswaId + otaId.
 model Connection {
   mahasiswaId               String           @db.Uuid
   otaId                     String           @db.Uuid
@@ -319,7 +372,7 @@ model Connection {
   requestTerminateMahasiswa Boolean          @default(false)
   requestTerminationNoteOta String?
   requestTerminationNoteMa  String?
-  paidFor                   Int
+  paidFor                   Int              // jumlah bulan yang sudah dibayarkan
   createdAt                 DateTime         @default(now())
   updatedAt                 DateTime         @updatedAt
 
@@ -331,19 +384,20 @@ model Connection {
   @@map("connection")
 }
 
+// [OTA] Transaksi pembayaran bulanan OTA → mahasiswa.
 model Transaction {
   id                 String            @id @default(uuid()) @db.Uuid
   mahasiswaId        String            @db.Uuid
   otaId              String            @db.Uuid
-  bill               Int
+  bill               Int               // jumlah tagihan bulan ini
   amountPaid         Int               @default(0)
   paidAt             DateTime?
   dueDate            DateTime
   transactionStatus  TransactionStatus @default(unpaid)
   transferStatus     TransferStatus    @default(unpaid)
-  transactionReceipt String?
-  paidFor            Int               @default(0)
-  rejectionNote      String?
+  transactionReceipt String?           // URL bukti transfer (Cloudinary atau MinIO)
+  paidFor            Int               @default(0) // bulan ke berapa pembayaran ini
+  rejectionNote      String?           // catatan penolakan verifikasi
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -354,6 +408,7 @@ model Transaction {
   @@map("transaction")
 }
 
+// [OTA] One-time password untuk verifikasi email saat registrasi.
 model OTP {
   userId    String   @db.Uuid
   code      String   @db.VarChar(6)
@@ -365,6 +420,7 @@ model OTP {
   @@map("otp")
 }
 
+// [OTA] Temporary password untuk alur forgot-password.
 model TemporaryPassword {
   userId    String   @db.Uuid
   password  String   @db.VarChar(255)
@@ -381,13 +437,15 @@ model TemporaryPassword {
 // BANKES-SPECIFIC MODELS
 // =============================================================================
 
+// [BANKES] Periode seleksi IOM (siklus penerimaan anggota).
+// Int PK dipertahankan karena tidak ada kebutuhan UUID di sini.
 model Period {
   id        Int      @id @default(autoincrement())
-  period    String
+  period    String   // nama periode, misal "Periode 2025/1"
   startDate DateTime
   endDate   DateTime
   isCurrent Boolean
-  isOpen    Boolean
+  isOpen    Boolean  // apakah pendaftaran sedang dibuka
 
   BankesStatuses BankesStatus[]
   InterviewSlots InterviewSlot[]
@@ -396,13 +454,16 @@ model Period {
   @@map("period")
 }
 
+// [BANKES] Status seleksi mahasiswa per periode IOM.
+// Renamed dari `Status` → `BankesStatus` untuk kejelasan.
+// Track tiga tahap: Ditmawa → IOM → Wawancara.
 model BankesStatus {
   userId        String  @db.Uuid
   periodId      Int
   passDitmawa   Boolean
   passIOM       Boolean
   passInterview Boolean
-  amount        Int?
+  amount        Int?    // nominal beasiswa (jika lolos)
 
   MahasiswaProfile MahasiswaProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
   Period           Period           @relation(fields: [periodId], references: [id], onDelete: Cascade)
@@ -411,6 +472,8 @@ model BankesStatus {
   @@map("bankes_status")
 }
 
+// [BANKES] Bank soal wawancara.
+// Renamed dari `Questions` → `Question`.
 model Question {
   id       Int    @id @default(autoincrement())
   question String
@@ -420,6 +483,7 @@ model Question {
   @@map("question")
 }
 
+// [BANKES] Matriks penilaian wawancara per mahasiswa per periode per soal.
 model ScoreMatrix {
   userId        String        @db.Uuid
   periodId      Int
@@ -435,15 +499,16 @@ model ScoreMatrix {
   @@map("score_matrix")
 }
 
+// [BANKES] Slot waktu wawancara yang dibuat oleh pewawancara.
 model InterviewSlot {
   id          Int       @id @default(autoincrement())
   title       String?
   description String?
-  createdById String    @db.Uuid
+  createdById String    @db.Uuid    // FK ke User (role: Pewawancara)
   periodId    Int
   startTime   DateTime
   endTime     DateTime
-  studentId   String?   @db.Uuid
+  studentId   String?   @db.Uuid    // FK ke MahasiswaProfile; null jika belum ada booking
   bookedAt    DateTime?
 
   CreatedBy    User                   @relation(fields: [createdById], references: [id], onDelete: Cascade)
@@ -455,6 +520,7 @@ model InterviewSlot {
   @@map("interview_slot")
 }
 
+// [BANKES] Pewawancara yang ikut dalam satu slot wawancara (bisa lebih dari satu).
 model InterviewParticipant {
   id       Int      @id @default(autoincrement())
   slotId   Int
@@ -468,9 +534,11 @@ model InterviewParticipant {
   @@map("interview_participant")
 }
 
+// [BANKES] Catatan pewawancara untuk mahasiswa pada slot wawancara tertentu.
+// Renamed dari `Notes` → `InterviewNote`.
 model InterviewNote {
   slotId Int
-  userId String @db.Uuid
+  userId String @db.Uuid // mahasiswa yang diwawancara
 
   text String
 
@@ -481,6 +549,7 @@ model InterviewNote {
   @@map("interview_note")
 }
 
+// [BANKES] Inbox notifikasi in-app untuk user Bankes.
 model Notification {
   id        Int      @id @default(autoincrement())
   userId    String   @db.Uuid

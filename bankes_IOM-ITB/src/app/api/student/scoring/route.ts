@@ -19,32 +19,31 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const period_id = parseInt(searchParams.get("period_id") || "", 10);
-  
-  const pid = Number(period_id);
-  if (!pid || isNaN(pid)) {
+  const periodId = parseInt(searchParams.get("periodId") || "", 10);
+
+  if (!periodId || isNaN(periodId)) {
     return NextResponse.json(
-      { success: false, error: "Invalid or missing period_id" },
+      { success: false, error: "Invalid or missing periodId" },
       { status: 400 }
     );
   }
 
   try {
     
-    const studentData = await prisma.status.findMany({
+    const studentData = await prisma.bankesStatus.findMany({
       where: {
-        period_id: pid,
+        periodId,
         passIOM: true,
       },
       select: {
-        student_id: true,
-        period_id: true,
-        Student: {
+        userId: true,
+        periodId: true,
+        MahasiswaProfile: {
           select: {
             nim: true,
             User: {
               select: {
-                user_id: true,
+                id: true,
                 name: true,
               },
             },

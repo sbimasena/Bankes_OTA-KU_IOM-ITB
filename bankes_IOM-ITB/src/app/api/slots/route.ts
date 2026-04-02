@@ -191,7 +191,7 @@ export async function GET() {
       // IOM staff can see all slots
       const slots = await prisma.interviewSlot.findMany({
         include: {
-          User: {
+          CreatedBy: {
             select: {
               name: true,
               email: true,
@@ -222,7 +222,7 @@ export async function GET() {
     } else if (userRole === "Mahasiswa") {
       // Students only see available slots and their own bookings
       const currentPeriod = await prisma.period.findFirst({
-        where: { is_current: true },
+        where: { isCurrent: true },
       });
 
       if (!currentPeriod) {
@@ -235,10 +235,10 @@ export async function GET() {
       // Get all slots in the current period
       const slots = await prisma.interviewSlot.findMany({
         where: {
-          period_id: currentPeriod.period_id,
+          periodId: currentPeriod.id,
         },
         include: {
-          User: {
+          CreatedBy: {
             select: {
               name: true,
             },
@@ -331,7 +331,7 @@ export async function POST(request: Request) {
 
     // Get the current period
     const currentPeriod = await prisma.period.findFirst({
-      where: { is_current: true },
+      where: { isCurrent: true },
     });
 
     if (!currentPeriod) {
@@ -346,10 +346,10 @@ export async function POST(request: Request) {
       data: {
         title,
         description,
-        start_time: new Date(start_time),
-        end_time: new Date(end_time),
-        user_id: Number(session.user.id),
-        period_id: currentPeriod.period_id,
+        startTime: new Date(start_time),
+        endTime: new Date(end_time),
+        createdById: session.user.id,
+        periodId: currentPeriod.id,
       },
     });
 

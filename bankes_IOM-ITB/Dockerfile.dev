@@ -40,4 +40,4 @@ COPY . .
 # 8) Dev server
 EXPOSE 3031
 
-CMD ["bash", "-c", "npx prisma migrate deploy && npm run dev"]
+CMD ["npm", "run", "dev"]

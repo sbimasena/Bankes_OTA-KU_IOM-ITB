@@ -157,7 +157,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const studentId = Number(session.user.id);
+    const userId = session.user.id;
 
     const body = await request.json();
     const { period_id } = body;
@@ -169,10 +169,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const newStatus = await prisma.status.create({
+    const newStatus = await prisma.bankesStatus.create({
       data: {
-        student_id: studentId,
-        period_id: Number(period_id),
+        userId,
+        periodId: Number(period_id),
         passDitmawa: false,
         passIOM: false,
         passInterview: false,

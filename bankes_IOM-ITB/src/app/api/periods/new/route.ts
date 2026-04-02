@@ -72,10 +72,10 @@ export async function POST(request: Request) {
     const newPeriod = await prisma.period.create({
       data: {
         period,
-        start_date: new Date(start_date),
-        end_date: new Date(end_date),
-        is_current: false,
-        is_open: false,
+        startDate: new Date(start_date),
+        endDate: new Date(end_date),
+        isCurrent: false,
+        isOpen: false,
       },
     });
 

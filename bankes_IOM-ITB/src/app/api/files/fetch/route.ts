@@ -173,7 +173,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const user_id = parseInt(session.user.id);
+  const user_id = session.user.id;
 
   const { period_id } = await request.json();
   const pid = Number(period_id);
@@ -185,46 +185,46 @@ export async function POST(request: Request) {
   }
 
   try {
-    const baseWhere = { period_id: pid };
+    const baseWhere = { periodId: pid };
 
     const whereClause =
       session.user.role === "Pewawancara"
         ? {
             ...baseWhere,
-            Student: {
+            MahasiswaProfile: {
               InterviewSlots: {
                 some: {
-                  period_id: pid,
-                  user_id: user_id,
-                  student_id: { not: null },
+                  periodId: pid,
+                  createdById: user_id,
+                  studentId: { not: null },
                 },
               },
             },
           }
         : baseWhere;
 
-    const studentData = await prisma.status.findMany({
+    const studentData = await prisma.bankesStatus.findMany({
       where: whereClause,
       select: {
-        student_id: true,
-        period_id: true,
+        userId: true,
+        periodId: true,
         passDitmawa: true,
         passIOM: true,
-        Student: {
+        MahasiswaProfile: {
           select: {
             nim: true,
             User: {
               select: {
-                user_id: true,
+                id: true,
                 name: true,
               },
             },
-            Files: {
+            StudentFiles: {
               select: {
-                file_id: true,
-                student_id: true,
-                file_url: true,
-                file_name: true,
+                id: true,
+                userId: true,
+                fileUrl: true,
+                fileName: true,
                 type: true,
               },
             },

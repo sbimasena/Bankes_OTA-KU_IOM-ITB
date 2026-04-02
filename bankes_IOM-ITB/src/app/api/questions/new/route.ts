@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newQuestion = await prisma.questions.create({
+    const newQuestion = await prisma.question.create({
       data: {
         question: question.trim(),
       },

@@ -1,0 +1,193 @@
+# =============================================================================
+# Integrated docker-compose untuk Bankes IOM-ITB + OTA-KU
+# Mengelola: shared PostgreSQL, MinIO, Prisma migration, dan kedua aplikasi
+#
+# Cara pakai (development):
+#   docker compose up          → start semua service
+#   docker compose up migrate  → hanya run migration + seed
+#   docker compose logs -f     → lihat semua log
+# =============================================================================
+
+services:
+
+  # ── Shared PostgreSQL ────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: iom-ota-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: iom_ota_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d iom_ota_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - iom-ota-network
+
+  # ── Shared MinIO (object storage untuk semua file) ───────────────────────────
+  minio:
+    image: minio/minio
+    container_name: iom-ota-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"   # MinIO Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - iom-ota-network
+
+  # ── MinIO bucket initialization ──────────────────────────────────────────────
+  minio-init:
+    image: minio/mc
+    container_name: iom-ota-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - iom-ota-network
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      mc mb --ignore-existing myminio/documents-bucket;
+      mc anonymous set public myminio/documents-bucket;
+      echo '✅ MinIO bucket initialized';
+      "
+    restart: "no"
+
+  # ── Prisma Migration + Seed ──────────────────────────────────────────────────
+  # Service ini berjalan sekali: migrate deploy → seed → exit
+  # Kedua aplikasi menunggu service ini selesai sebelum start
+  migrate:
+    image: node:22-alpine
+    container_name: iom-ota-migrate
+    working_dir: /workspace
+    volumes:
+      # Mount seluruh repo root agar output generated/prisma dapat diakses app lain
+      - .:/workspace
+      # Cache node_modules migrate agar tidak install ulang setiap kali
+      - migrate-node-modules:/workspace/prisma/node_modules
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/iom_ota_db
+    command: >
+      sh -c "
+      cd /workspace/prisma &&
+      npm install --quiet &&
+      echo '📦 Dependencies installed' &&
+      npx prisma generate &&
+      echo '⚙️  Prisma client generated' &&
+      npx prisma db push &&
+      echo '🗄️  Schema pushed' &&
+      npx prisma db seed &&
+      echo '🌱 Seed completed'
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - iom-ota-network
+    restart: "no"
+
+  # ── Bankes IOM-ITB App ───────────────────────────────────────────────────────
+  # Note: command TIDAK lagi menjalankan prisma migrate (ditangani service migrate)
+  bankes:
+    build:
+      context: ./bankes_IOM-ITB
+      dockerfile: Dockerfile.dev
+    container_name: iom-bankes-app
+    ports:
+      - "3031:3031"
+    volumes:
+      - ./bankes_IOM-ITB:/app:delegated
+      - bankes-node-modules:/app/node_modules
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/iom_ota_db
+      NEXTAUTH_SECRET: random-dev-secret
+      NEXTAUTH_URL: http://localhost:3031
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET_NAME: documents-bucket
+      # Azure AD (isi sesuai .env kalau perlu login SSO)
+      AZURE_AD_CLIENT_ID: ${AZURE_AD_CLIENT_ID:-}
+      AZURE_AD_CLIENT_SECRET: ${AZURE_AD_CLIENT_SECRET:-}
+      AZURE_AD_TENANT_ID: ${AZURE_AD_TENANT_ID:-}
+    # Regenerate Prisma client at startup so the node_modules volume never has a stale client.
+    # Migration is handled by the separate `migrate` service.
+    command: sh -c "npx prisma generate && npm run dev -- -p 3031"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+    networks:
+      - iom-ota-network
+    restart: unless-stopped
+
+  # ── OTA-KU Backend ──────────────────────────────────────────────────────────
+  # Note: OTA masih menggunakan Drizzle ORM sementara menunggu migrasi kode ke Prisma.
+  # OTA-KU BELUM kompatibel dengan schema baru (tabel `account` vs `user`).
+  # Service ini dinonaktifkan (profile: ota) sampai migrasi kode OTA selesai.
+  # Untuk menjalankan OTA terpisah: cd OTA-KU && docker compose up
+  ota-backend:
+    profiles: ["ota"]  # Aktifkan dengan: docker compose --profile ota up
+    build:
+      context: ./OTA-KU/backend
+      dockerfile: Dockerfile
+    container_name: iom-ota-backend
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/iom_ota_db
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - iom-ota-network
+    restart: unless-stopped
+
+  ota-frontend:
+    profiles: ["ota"]
+    build:
+      context: ./OTA-KU/frontend
+      dockerfile: Dockerfile
+    container_name: iom-ota-frontend
+    ports:
+      - "5173:3000"
+    depends_on:
+      - ota-backend
+    networks:
+      - iom-ota-network
+    restart: unless-stopped
+
+# ── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  postgres-data:
+  minio-data:
+  migrate-node-modules:
+  bankes-node-modules:
+
+# ── Networks ─────────────────────────────────────────────────────────────────
+networks:
+  iom-ota-network:
+    driver: bridge

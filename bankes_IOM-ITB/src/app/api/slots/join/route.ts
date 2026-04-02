@@ -157,8 +157,8 @@ export async function POST(request: NextRequest) {
     // Check if the user is already a participant for this slot
     const existingParticipant = await prisma.interviewParticipant.findFirst({
       where: {
-        slot_id: slotId,
-        user_id: Number(session.user.id),
+        slotId: slotId,
+        userId: session.user.id,
       },
     });
 
@@ -172,8 +172,8 @@ export async function POST(request: NextRequest) {
     // Add the user as a participant for this slot
     const participant = await prisma.interviewParticipant.create({
       data: {
-        slot_id: slotId,
-        user_id: Number(session.user.id),
+        slotId: slotId,
+        userId: session.user.id,
       },
     });
 
@@ -215,8 +215,8 @@ export async function DELETE(request: NextRequest) {
     // Delete the participation record for this slot
     await prisma.interviewParticipant.deleteMany({
       where: {
-        slot_id: slotId,
-        user_id: Number(session.user.id),
+        slotId: slotId,
+        userId: session.user.id,
       },
     });
 

@@ -64,8 +64,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const existingQuestion = await prisma.questions.findUnique({
-      where: { question_id },
+    const existingQuestion = await prisma.question.findUnique({
+      where: { id: question_id },
     });
 
     if (!existingQuestion) {
@@ -75,8 +75,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await prisma.questions.delete({
-      where: { question_id },
+    await prisma.question.delete({
+      where: { id: question_id },
     });
 
     return NextResponse.json(

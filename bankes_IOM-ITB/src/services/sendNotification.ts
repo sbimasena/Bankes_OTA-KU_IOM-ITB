@@ -10,7 +10,7 @@ webPush.setVapidDetails(
 );
 
 export async function sendPushNotification(
-  userId: number,
+  userId: string,
   title: string,
   body: string,
   url?: string // <- optional
@@ -22,20 +22,20 @@ export async function sendPushNotification(
   // Store in DB first
   const createdNotification = await prisma.notification.create({
     data: {
-      user_id: userId,
+      userId,
       header: title,
       body,
       url,
-      has_read : false,
+      hasRead: false,
     },
   });
 
   // Get subscriptions
-  const subscriptions = await prisma.notificationEndpoint.findMany({
-    where: { user_id: userId },
+  const subscriptions = await prisma.pushSubscription.findMany({
+    where: { userId },
   });
 
-  const payload = JSON.stringify({ title, body, url, notificationId: createdNotification.notification_id, });
+  const payload = JSON.stringify({ title, body, url, notificationId: createdNotification.id });
 
   const notifications = subscriptions.map((sub) => {
     if (!sub.keys || typeof sub.keys !== "object") {

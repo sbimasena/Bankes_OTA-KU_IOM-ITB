@@ -105,11 +105,11 @@ export async function POST(
       // 1. Student cancelling their own booking
       // 2. IOM staff who created the slot
       const userRole = session.user.role;
-      const userId = Number(session.user.id);
+      const userId = session.user.id;
 
       if (userRole === "Mahasiswa") {
         // Student can only cancel if they booked it
-        if (slot.student_id !== userId) {
+        if (slot.studentId !== userId) {
           return NextResponse.json(
             { success: false, error: "Unauthorized to cancel this booking" },
             { status: 403 }
@@ -117,7 +117,7 @@ export async function POST(
         }
       } else if (userRole === "Pengurus_IOM") {
         // IOM staff can only cancel if they created the slot
-        if (slot.user_id !== userId) {
+        if (slot.createdById !== userId) {
           return NextResponse.json(
             { success: false, error: "Unauthorized to cancel this booking" },
             { status: 403 }
@@ -129,21 +129,21 @@ export async function POST(
           { status: 403 }
         );
       }
-  
+
       // Cancel the booking
       const updatedSlot = await prisma.interviewSlot.update({
         where: { id: slotId },
         data: {
-          student_id: null,
-          booked_at: null,
+          studentId: null,
+          bookedAt: null,
         },
       });
 
       // Delete the associated notes
-      await prisma.notes.deleteMany({
-        where: { 
-          slot_id: slotId,
-          student_id: slot.student_id as number
+      await prisma.interviewNote.deleteMany({
+        where: {
+          slotId: slotId,
+          userId: slot.studentId as string
         },
       });
   

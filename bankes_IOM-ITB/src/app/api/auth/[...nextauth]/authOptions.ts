@@ -133,7 +133,7 @@ export const authOptions: NextAuthOptions = {
         }
         // Return the user object (this will be stored in the session)
         return {
-          id: user.user_id.toString(),
+          id: user.id,
           role: user.role,
           email: user.email, // Include email for consistency
         };
@@ -158,12 +158,12 @@ export const authOptions: NextAuthOptions = {
             },
           });
           const { fakultas, prodi } = getFakultasProdi(newUser.email);
-          await prisma.student.create({
+          await prisma.mahasiswaProfile.create({
             data: {
               nim: newUser.email.substring(0, 8),
               faculty: fakultas,
               major: prodi,
-              student_id: newUser.user_id, // Link the Student to the User
+              userId: newUser.id, // Link the MahasiswaProfile to the User
             },
           });
         }
@@ -178,23 +178,23 @@ export const authOptions: NextAuthOptions = {
       if (profile) {
         const user = await prisma.user.findFirst({
           where: { email: profile.email },
-          select: { user_id: true, role: true },
+          select: { id: true, role: true },
         });
-    
-        if (user && user.user_id != null) {
-          token.id = user.user_id.toString();
+
+        if (user && user.id != null) {
+          token.id = user.id;
           token.role = user.role;
         }
       }
-    
+
       if (!profile && token.email) {
         const user = await prisma.user.findFirst({
           where: { email: token.email },
-          select: { user_id: true, role: true },
+          select: { id: true, role: true },
         });
-    
+
         if (user) {
-          token.id = user.user_id.toString();
+          token.id = user.id;
           token.role = user.role;
         }
       }

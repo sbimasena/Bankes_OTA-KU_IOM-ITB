@@ -67,7 +67,7 @@ export default function StudentInterviewPage() {
   useEffect(() => {
     if (!slots || !session?.user?.id) return;
     const bookings = slots.filter(
-      (slot: InterviewSlot) => slot.student_id === Number(session.user.id)
+      (slot: InterviewSlot) => slot.studentId === session.user.id
     );
     setMyBookings(bookings);
   }, [slots, session]);
@@ -85,9 +85,9 @@ export default function StudentInterviewPage() {
         throw new Error("Failed to fetch current period");
       }
       const periodData = await periodRes.json();
-      const currentPeriodId = periodData.period_id;
+      const currentPeriodId = periodData.id;
 
-      const statusRes = await fetch(`/api/status/${user.user_id}/${currentPeriodId}`);
+      const statusRes = await fetch(`/api/status/${user.id}/${currentPeriodId}`);
       if (!statusRes.ok) throw new Error("Failed to fetch status");
       const statusData = await statusRes.json();
       
@@ -113,7 +113,7 @@ export default function StudentInterviewPage() {
       if (session?.user?.id) {
         const bookings = data.data.filter(
           (slot: InterviewSlot) =>
-            slot.student_id === Number(session.user.id)
+            slot.studentId === session.user.id
         );
         setMyBookings(bookings);
       }
@@ -250,8 +250,8 @@ export default function StudentInterviewPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredSlots.map((slot) => {
-                    const isMyBooking = slot.student_id === Number(session?.user?.id);
-                    const isBooked = slot.student_id !== null;
+                    const isMyBooking = slot.studentId === session?.user?.id;
+                    const isBooked = slot.studentId !== null;
                     
                     return (
                       <Card key={slot.id} className={`p-4 w-full rounded-md border ${

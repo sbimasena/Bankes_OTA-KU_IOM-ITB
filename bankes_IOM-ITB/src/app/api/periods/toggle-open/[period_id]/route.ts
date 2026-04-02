@@ -83,12 +83,12 @@ export async function PUT(
     }
 
     await prisma.period.updateMany({
-      data: { is_open: false },
+      data: { isOpen: false },
     });
 
     const updatedPeriod = await prisma.period.update({
-      where: { period_id: periodId },
-      data: { is_open: true },
+      where: { id: periodId },
+      data: { isOpen: true },
     });
 
     return NextResponse.json(updatedPeriod);
