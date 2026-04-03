@@ -10,11 +10,9 @@ services:
       #      - "3031:3031"
       - "13031:3031"
     volumes:
-      # Mount your source code for hot reload
       - ./:/app:delegated
 
-      # Keep container’s node_modules persistent (avoid overwriting by bind mount)
-      - ./node_modules:/app/node_modules
+      - /app/node_modules
 
     environment:
       NEXT_TELEMETRY_DISABLED: 1
@@ -24,14 +22,16 @@ services:
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
+      MINIO_PUBLIC_HOST: localhost
+      MINIO_PUBLIC_PORT: 9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
-      MINIO_BUCKET_NAME: iom-itb
-      AZURE_AD_CLIENT_ID: 399d7b9a-36a0-42ac-883b-b72485a32d79
-      AZURE_AD_CLIENT_SECRET: mkE8Q~ACq6pSwVy3j4dHncFIijwEbzD_KyAHJaLC
-      AZURE_AD_TENANT_ID: db6e1183-4c65-405c-82ce-7cd53fa6e9dc
+      MINIO_BUCKET_NAME: new-bucket
+      # AZURE_AD_CLIENT_ID: 399d7b9a-36a0-42ac-883b-b72485a32d79
+      # AZURE_AD_CLIENT_SECRET: mkE8Q~ACq6pSwVy3j4dHncFIijwEbzD_KyAHJaLC
+      # AZURE_AD_TENANT_ID: db6e1183-4c65-405c-82ce-7cd53fa6e9dc
       NEXTAUTH_SECRET: random
-      NEXTAUTH_URL: http://localhost:3031
+      NEXTAUTH_URL: http://localhost:13031
 
     depends_on:
       postgres:
@@ -40,7 +40,8 @@ services:
         condition: service_healthy
 
     command: >
-      bash -c "npx prisma migrate deploy &&
+      bash -c "npx prisma generate &&
+               npx prisma migrate deploy &&
                npm run dev -- -p 3031"
 
     restart: unless-stopped
@@ -68,8 +69,8 @@ services:
     image: minio/minio
     container_name: iom-minio
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"   
+      - "9001:19001"      
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -89,7 +90,11 @@ services:
     depends_on:
       minio:
         condition: service_healthy
-    entrypoint: ["/bin/sh", "-c", "chmod +x /app/minio-init.sh && /app/minio-init.sh"]
+    entrypoint: ["/bin/sh", "-c", "cat /app/minio-init.sh | tr -d '\r' | /bin/sh"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_BUCKET_NAME: new-bucket
     volumes:
       - ./minio-init.sh:/app/minio-init.sh:ro
     restart: "no"

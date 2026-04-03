@@ -1,5 +1,5 @@
 import { NextAuthOptions, Account, Profile } from "next-auth";
-import AzureADProvider from "next-auth/providers/azure-ad";
+// import AzureADProvider from "next-auth/providers/azure-ad";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -96,16 +96,16 @@ function getFakultasProdi(email: string) {
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    AzureADProvider({
-      clientId: process.env.AZURE_AD_CLIENT_ID!,
-      clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-      tenantId: process.env.AZURE_AD_TENANT_ID!,
-      authorization: {
-        params: {
-          scope: "openid profile email",
-        },
-      },
-    }),
+    // AzureADProvider({
+    //   clientId: process.env.AZURE_AD_CLIENT_ID!,
+    //   clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
+    //   tenantId: process.env.AZURE_AD_TENANT_ID!,
+    //   authorization: {
+    //     params: {
+    //       scope: "openid profile email",
+    //     },
+    //   },
+    // }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -141,39 +141,39 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async signIn({ account, profile }: { account: Account | null; profile?: Profile }) {
-      if (profile?.email?.endsWith("@mahasiswa.itb.ac.id")) {
-        const isUserExists = await prisma.user.findFirst({
-          where: {
-            email: profile.email,
-          },
-        });
-        if (!isUserExists && profile.name) {
-          const newUser = await prisma.user.create({
-            data: {
-              name: profile.name,
-              email: profile.email,
-              password: null,
-              role: "Mahasiswa",
-            },
-          });
-          const { fakultas, prodi } = getFakultasProdi(newUser.email);
-          await prisma.student.create({
-            data: {
-              nim: newUser.email.substring(0, 8),
-              faculty: fakultas,
-              major: prodi,
-              student_id: newUser.user_id, // Link the Student to the User
-            },
-          });
-        }
-        return true;
-      }
-      if (account?.provider === "credentials") {
-        return true;
-      }
-      return false;
-    },
+    // async signIn({ account, profile }: { account: Account | null; profile?: Profile }) {
+    //   if (profile?.email?.endsWith("@mahasiswa.itb.ac.id")) {
+    //     const isUserExists = await prisma.user.findFirst({
+    //       where: {
+    //         email: profile.email,
+    //       },
+    //     });
+    //     if (!isUserExists && profile.name) {
+    //       const newUser = await prisma.user.create({
+    //         data: {
+    //           name: profile.name,
+    //           email: profile.email,
+    //           password: null,
+    //           role: "Mahasiswa",
+    //         },
+    //       });
+    //       const { fakultas, prodi } = getFakultasProdi(newUser.email);
+    //       await prisma.student.create({
+    //         data: {
+    //           nim: newUser.email.substring(0, 8),
+    //           faculty: fakultas,
+    //           major: prodi,
+    //           student_id: newUser.user_id, // Link the Student to the User
+    //         },
+    //       });
+    //     }
+    //     return true;
+    //   }
+    //   if (account?.provider === "credentials") {
+    //     return true;
+    //   }
+    //   return false;
+    // },
     async jwt({ token, profile }: { token: JWT; profile?: Profile }) {
       if (profile) {
         const user = await prisma.user.findFirst({
