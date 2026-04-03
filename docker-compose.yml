@@ -130,9 +130,8 @@ services:
     restart: unless-stopped
 
   # ── OTA-KU Backend ──────────────────────────────────────────────────────────
-  # Migrasi ke Prisma + MinIO selesai. Aktifkan dengan: docker compose --profile ota up
+  # Migrasi ke Prisma + MinIO selesai.
   ota-backend:
-    profiles: [ "ota" ]
     build:
       context: ./OTA-KU/backend
       dockerfile: Dockerfile.dev
@@ -176,7 +175,6 @@ services:
     restart: unless-stopped
 
   ota-frontend:
-    profiles: [ "ota" ]
     build:
       context: ./OTA-KU/frontend
       dockerfile: Dockerfile

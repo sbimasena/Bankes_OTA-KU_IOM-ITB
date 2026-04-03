@@ -21,7 +21,7 @@ export async function seedUsers(prisma: PrismaClient) {
   console.log("Seeding users...");
 
   const defaultPassword = await bcrypt.hash("Password123!", 10);
-  const adminPassword = await bcrypt.hash("admin123", 10);
+  const adminPassword = await bcrypt.hash("Admin123!", 10);
 
   // ── Admin ──────────────────────────────────────────────────────────────────
   await prisma.user.upsert({
