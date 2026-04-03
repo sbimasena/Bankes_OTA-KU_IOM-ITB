@@ -21,7 +21,7 @@ const facultyMajorMap = {
 
 async function main() {
   // Admin
-  const adminPassword = await hashPassword('admin123');
+  const adminPassword = await hashPassword('Password123!');
   const admin = await prisma.user.create({
     data: {
       name: 'Admin',

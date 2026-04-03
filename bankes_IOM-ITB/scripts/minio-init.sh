@@ -11,16 +11,18 @@ done
 
 echo "MinIO is ready"
 
+BUCKET_NAME="${MINIO_BUCKET_NAME:-new-bucket}"
+
 # Create bucket if it doesn't exist
-if ! mc ls "minio/${MINIO_BUCKET_NAME}" > /dev/null 2>&1; then
-  echo "Creating bucket: ${MINIO_BUCKET_NAME}"
-  mc mb "minio/${MINIO_BUCKET_NAME}"
+if ! mc ls "minio/${BUCKET_NAME}" > /dev/null 2>&1; then
+  echo "Creating bucket: ${BUCKET_NAME}"
+  mc mb "minio/${BUCKET_NAME}"
 else
-  echo "Bucket ${MINIO_BUCKET_NAME} already exists"
+  echo "Bucket ${BUCKET_NAME} already exists"
 fi
 
 # Set public read policy for the bucket
-echo "Setting public read policy for bucket: ${MINIO_BUCKET_NAME}"
-mc anonymous set public "minio/${MINIO_BUCKET_NAME}"
+echo "Setting public read policy for bucket: ${BUCKET_NAME}"
+mc anonymous set public "minio/${BUCKET_NAME}"
 
 echo "MinIO configuration completed!"
