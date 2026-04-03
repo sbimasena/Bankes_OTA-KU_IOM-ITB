@@ -21,16 +21,16 @@ export default function LoginPage() {
   const [showTerms, setShowTerms] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
 
-  const handleSignInClick = () => {
-    setShowTerms(true)
-  }
+  // const handleSignInClick = () => {
+  //   setShowTerms(true)
+  // }
 
-  const handleAgreeAndSignIn = () => {
-    if (agreedToTerms) {
-      setShowTerms(false)
-      signIn("azure-ad", { callbackUrl: "/student/profile" })
-    }
-  }
+  // const handleAgreeAndSignIn = () => {
+  //   if (agreedToTerms) {
+  //     setShowTerms(false)
+  //     signIn("azure-ad", { callbackUrl: "/student/profile" })
+  //   }
+  // }
 
   const handleCancel = () => {
     setShowTerms(false)
@@ -75,9 +75,9 @@ export default function LoginPage() {
             <Button variant="outline" onClick={handleCancel}>
               Batal
             </Button>
-            <Button className="bg-var" onClick={handleAgreeAndSignIn} disabled={!agreedToTerms}>
+            {/* <Button className="bg-var" onClick={handleAgreeAndSignIn} disabled={!agreedToTerms}>
               Setuju dan Masuk
-            </Button>
+            </Button> */}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -88,13 +88,13 @@ export default function LoginPage() {
             Selamat Datang di <span className="text-main">IOM</span>
           </h2>
           <p className="text-sm">
-            Silahkan masuk dengan akun <span className="font-bold">microsoft untuk mahasiswa</span> dan akun{" "}
-            <span className="font-bold">google untuk IOM</span>.
+            Silahkan masuk dengan akun{" "}
+            <span className="font-bold">google</span>.
           </p>
         </div>
 
         <div className="space-y-3">
-          <Button
+          {/* <Button
             variant="outline"
             className="w-full justify-start h-12 text-left cursor-pointer"
             onClick={handleSignInClick}
@@ -108,7 +108,7 @@ export default function LoginPage() {
               </svg>
               <span>Masuk dengan Microsoft | @mahasiswa.itb.ac.id</span>
             </div>
-          </Button>
+          </Button> */}
 
           <Button
             variant="outline"

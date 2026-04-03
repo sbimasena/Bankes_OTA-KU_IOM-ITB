@@ -1,13 +1,11 @@
 "use client";
 
-// Removed: import { Card } from "@/components/ui/card"; // No longer using the generic Card
 import SidebarMahasiswa from "@/app/components/layout/sidebarmahasiswa";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Toaster, toast } from "sonner";
 import { useSession } from "next-auth/react";
 
-const bucketName: string = process.env.MINIO_BUCKET_NAME || "iom-itb";
 
 interface UploadResponse {
   success: boolean;
@@ -28,7 +26,7 @@ export default function Upload() {
   const [selectedFiles, setSelectedFiles] = useState<{ key: string; file: File }[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<FileData[]>([]);
   const [fileTypes, setFileTypes] = useState<{ title: string; key: string }[]>([]);
-  const [loadingFileTypes, setLoadingFileTypes] = useState(true); // Added for initial file types load
+  const [loadingFileTypes, setLoadingFileTypes] = useState(true); 
 
   useEffect(() => {
     const fetchFiles = async () => {
@@ -38,7 +36,6 @@ export default function Upload() {
           setUploadedFiles(response.data);
         } catch (error) {
           console.error("Error fetching files:", error);
-          // toast.error("Gagal memuat daftar berkas yang sudah diunggah."); // Optional: more specific error
         }
       }
     };
@@ -102,16 +99,11 @@ export default function Upload() {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-        params: {
-          bucket: bucketName,
-        },
       });
 
       if (response.data.success) {
         toast.success("Semua berkas berhasil diunggah!", { id: toastId });
         setSelectedFiles([]);
-        // Refreshing the page to show updated files as per original logic
-        // Ideally, update state `uploadedFiles` directly from response if API returns new file list
         location.reload(); 
       } else {
         toast.error(response.data.error || "Gagal mengunggah sebagian atau semua berkas.", { id: toastId });
@@ -132,7 +124,7 @@ export default function Upload() {
     const toastId = toast.loading(`Menghapus ${fileToDelete.file_name}...`);
     try {
       const response = await axios.delete("/api/files/delete", {
-        data: { fileType: fileTypeKey }, // Ensure API expects fileType (key)
+        data: { fileType: fileTypeKey }, 
       });
 
       if (response.data.success) {

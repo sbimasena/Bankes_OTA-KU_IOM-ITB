@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Client } from 'minio';
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/authOptions';
+import { BUCKET_NAME, minioClient } from '@/lib/storage';
 
 const prisma = new PrismaClient();
-
-const minioClient = new Client({
-  endPoint: process.env.MINIO_ENDPOINT || "localhost",
-  port: 9000,
-  useSSL: process.env.MINIO_USE_SSL === "true",
-  accessKey: process.env.MINIO_ACCESS_KEY || "",
-  secretKey: process.env.MINIO_SECRET_KEY || "",
-});
 
 /**
  * @swagger
@@ -28,7 +20,7 @@ const minioClient = new Client({
  *     delete:
  *       tags:
  *         - Files
- *       summary: Delete a student's uploaded file by type
+ *       summary: Penghapusan berkas berdasarkan tipe
  *       security:
  *         - CookieAuth: []
  *       requestBody:
@@ -40,10 +32,10 @@ const minioClient = new Client({
  *               properties:
  *                 fileType:
  *                   type: string
- *                   description: The type of file to delete (e.g., TRANSKRIP, CV)
+ *                   description: Tipe file untuk dihapus (e.g., TRANSKRIP, CV)
  *       responses:
  *         '200':
- *           description: File deleted successfully
+ *           description: File berhasil dihapus
  *           content:
  *             application/json:
  *               schema:
@@ -54,7 +46,7 @@ const minioClient = new Client({
  *                   message:
  *                     type: string
  *         '400':
- *           description: Missing or invalid file type
+ *           description: Tipe file invalid
  *           content:
  *             application/json:
  *               schema:
@@ -101,9 +93,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    const bucketName = process.env.MINIO_BUCKET_NAME || "iom-itb";
-
-    await minioClient.removeObject(bucketName, fileRecord.fileName);
+    await minioClient.removeObject(BUCKET_NAME, fileRecord.file_name);
 
     await prisma.studentFile.delete({
       where: {
