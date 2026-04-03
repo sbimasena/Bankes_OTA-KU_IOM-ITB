@@ -1,19 +1,10 @@
 import { addMonths, setDate } from "date-fns";
-import { and, count, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import nodemailer from "nodemailer";
 
 import { env } from "../config/env.config.js";
-import { db } from "../db/drizzle.js";
-import {
-  accountMahasiswaDetailTable,
-  accountOtaDetailTable,
-  accountTable,
-  connectionTable,
-  pushSubscriptionTable,
-  transactionTable,
-} from "../db/schema.js";
+import { prisma } from "../db/prisma.js";
 import { transferMahasiswaEmail } from "../lib/email/transfer-mahasiswa.js";
-import { uploadFileToCloudinary } from "../lib/file-upload.js";
+import { uploadFileToMinio } from "../lib/file-upload-minio.js";
 import { sendNotification } from "../lib/web-push.js";
 import {
   acceptTransferStatusRoute,
@@ -62,89 +53,64 @@ transactionProtectedRouter.openapi(listTransactionOTARoute, async (c) => {
   }
 
   try {
-    const conditions = [eq(transactionTable.otaId, user.id)];
+    // Build filtered where clause
+    const where: any = { otaId: user.id };
 
-    if (year) {
-      conditions.push(
-        sql`EXTRACT(YEAR FROM ${transactionTable.dueDate}) = ${year}`,
-      );
+    if (year && !month) {
+      where.dueDate = {
+        gte: new Date(year, 0, 1),
+        lt: new Date(year + 1, 0, 1),
+      };
     }
 
     if (month) {
-      conditions.push(
-        sql`EXTRACT(MONTH FROM ${transactionTable.dueDate}) = ${month}`,
-      );
+      where.dueDate = {
+        gte: new Date(year ?? 2000, month - 1, 1),
+        lt: new Date(year ?? 2000, month, 1),
+      };
     }
 
-    const yearsQuery = db
-      .selectDistinct({
-        year: sql<number>`EXTRACT(YEAR FROM ${transactionTable.dueDate})`,
-      })
-      .from(transactionTable)
-      .orderBy(sql`EXTRACT(YEAR FROM ${transactionTable.dueDate}) DESC`);
-
-    const transactionOTAListQuery = db
-      .select({
-        id: transactionTable.id,
-        mahasiswa_id: transactionTable.mahasiswaId,
-        mahasiswa_name: accountMahasiswaDetailTable.name,
-        mahasiswa_nim: accountMahasiswaDetailTable.nim,
-        bill: transactionTable.bill,
-        amount_paid: transactionTable.amountPaid,
-        paid_at: transactionTable.paidAt,
-        created_at: transactionTable.createdAt,
-        due_date: transactionTable.dueDate,
-        status: transactionTable.transactionStatus,
-        receipt: transactionTable.transactionReceipt,
-        rejection_note: transactionTable.rejectionNote,
-        paid_for: transactionTable.paidFor,
-      })
-      .from(transactionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(transactionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .where(and(...conditions));
-
-    const totalBillQuery = db
-      .select({
-        total: sql<number>`COALESCE(SUM(${transactionTable.bill}), 0)`,
-      })
-      .from(transactionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(transactionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .where(and(...conditions));
-
-    const [transactionOTAList, years, totalBillValue] = await Promise.all([
-      transactionOTAListQuery,
-      yearsQuery,
-      totalBillQuery,
+    // Fetch all transactions for this OTA (no date filter) to extract distinct years
+    const [transactions, allTransactions] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        include: { MahasiswaProfile: true },
+      }),
+      prisma.transaction.findMany({
+        where: { otaId: user.id },
+        select: { dueDate: true },
+      }),
     ]);
+
+    // Extract distinct years from all transactions
+    const years = [
+      ...new Set(allTransactions.map((t) => t.dueDate.getFullYear())),
+    ].sort((a, b) => b - a);
+
+    const totalBill = transactions.reduce((sum, t) => sum + t.bill, 0);
 
     return c.json(
       {
         success: true,
         message: "Daftar transaction untuk OTA berhasil diambil",
         body: {
-          data: transactionOTAList.map((transaction) => ({
-            id: transaction.mahasiswa_id,
-            mahasiswa_id: transaction.mahasiswa_id,
-            name: transaction.mahasiswa_name ?? "",
-            nim: transaction.mahasiswa_nim,
+          data: transactions.map((transaction) => ({
+            id: transaction.mahasiswaId,
+            mahasiswa_id: transaction.mahasiswaId,
+            name: transaction.MahasiswaProfile?.name ?? "",
+            nim: transaction.MahasiswaProfile?.nim,
             bill: transaction.bill,
-            amount_paid: transaction.amount_paid,
-            paid_at: transaction.paid_at ?? "",
-            created_at: transaction.created_at,
-            due_date: transaction.due_date,
-            status: transaction.status,
-            receipt: transaction.receipt ?? "",
-            rejection_note: transaction.rejection_note ?? "",
-            paid_for: transaction.paid_for ?? 0,
+            amount_paid: transaction.amountPaid,
+            paid_at: transaction.paidAt ?? "",
+            created_at: transaction.createdAt,
+            due_date: transaction.dueDate,
+            status: transaction.transactionStatus,
+            receipt: transaction.transactionReceipt ?? "",
+            rejection_note: transaction.rejectionNote ?? "",
+            paid_for: transaction.paidFor ?? 0,
           })),
-          years: years.map((year) => year.year),
-          totalBill: totalBillValue[0]?.total ?? 0,
+          years,
+          totalBill,
         },
       },
       200,
@@ -195,91 +161,70 @@ transactionProtectedRouter.openapi(listTransactionAdminRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const conditions = [];
+    // Build where clause — month filtering done in JS since Prisma has no
+    // built-in month extraction that works portably across all DBs without raw SQL
+    const where: any = {};
 
     if (status) {
-      conditions.push(eq(transactionTable.transactionStatus, status));
-    }
-
-    if (month) {
-      conditions.push(
-        sql`TRIM(TO_CHAR(${transactionTable.dueDate}, 'Month')) ILIKE ${month}`,
-      );
+      where.transactionStatus = status;
     }
 
     if (year) {
-      conditions.push(
-        sql`EXTRACT(YEAR FROM ${transactionTable.dueDate}) = ${year}`,
-      );
+      where.dueDate = {
+        ...(where.dueDate ?? {}),
+        gte: new Date(year, 0, 1),
+        lt: new Date(year + 1, 0, 1),
+      };
     }
 
-    const countsQuery = db
-      .select({ count: count() })
-      .from(transactionTable)
-      .where(and(...conditions));
+    const allRows = await prisma.transaction.findMany({
+      where,
+      include: {
+        MahasiswaProfile: true,
+        OtaProfile: { include: { User: true } },
+      },
+    });
 
-    const transactionAdminListQuery = db
-      .select({
-        id: transactionTable.id,
-        mahasiswa_id: transactionTable.mahasiswaId,
-        ota_id: transactionTable.otaId,
-        mahasiswa_name: accountMahasiswaDetailTable.name,
-        mahasiswa_nim: accountMahasiswaDetailTable.nim,
-        ota_name: accountOtaDetailTable.name,
-        ota_number: accountTable.phoneNumber,
-        bill: transactionTable.bill,
-        amount_paid: transactionTable.amountPaid,
-        paid_at: transactionTable.paidAt,
-        due_date: transactionTable.dueDate,
-        status: transactionTable.transactionStatus,
-        transferStatus: transactionTable.transferStatus,
-        receipt: transactionTable.transactionReceipt,
-        createdAt: transactionTable.createdAt,
-        paid_for: transactionTable.paidFor,
-      })
-      .from(transactionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(transactionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(transactionTable.otaId, accountOtaDetailTable.accountId),
-      )
-      .innerJoin(accountTable, eq(transactionTable.otaId, accountTable.id))
-      .where(and(...conditions))
-      .limit(LIST_PAGE_SIZE)
-      .offset(offset);
+    // Filter by month name in JS (mirrors ILIKE 'Month' logic from Drizzle)
+    const monthNames = [
+      "january", "february", "march", "april", "may", "june",
+      "july", "august", "september", "october", "november", "december",
+    ];
 
-    const [transactionAdminList, counts] = await Promise.all([
-      transactionAdminListQuery,
-      countsQuery,
-    ]);
+    const filtered = month
+      ? allRows.filter((t) => {
+          const monthName = monthNames[t.dueDate.getMonth()];
+          return monthName.includes(month.toLowerCase());
+        })
+      : allRows;
+
+    const totalData = filtered.length;
+    const paginated = filtered.slice(offset, offset + LIST_PAGE_SIZE);
 
     return c.json(
       {
         success: true,
         message: "Daftar transaction untuk Admin berhasil diambil",
         body: {
-          data: transactionAdminList.map((transaction) => ({
+          data: paginated.map((transaction) => ({
             id: transaction.id,
-            mahasiswa_id: transaction.mahasiswa_id,
-            ota_id: transaction.ota_id,
-            name_ma: transaction.mahasiswa_name ?? "",
-            nim_ma: transaction.mahasiswa_nim,
-            name_ota: transaction.ota_name,
-            number_ota: transaction.ota_number ?? "",
+            mahasiswa_id: transaction.mahasiswaId,
+            ota_id: transaction.otaId,
+            name_ma: transaction.MahasiswaProfile?.name ?? "",
+            nim_ma: transaction.MahasiswaProfile?.nim,
+            name_ota: transaction.OtaProfile?.name,
+            number_ota: transaction.OtaProfile?.User?.phoneNumber ?? "",
             bill: transaction.bill,
-            amount_paid: transaction.amount_paid,
-            paid_at: transaction.paid_at ?? "",
-            due_date: transaction.due_date,
-            status: transaction.status,
+            amount_paid: transaction.amountPaid,
+            paid_at: transaction.paidAt ?? "",
+            due_date: transaction.dueDate,
+            status: transaction.transactionStatus,
             transferStatus: transaction.transferStatus,
-            receipt: transaction.receipt ?? "",
+            receipt: transaction.transactionReceipt ?? "",
             createdAt: transaction.createdAt,
-            paid_for: transaction.paid_for ?? 0,
+            paid_for: transaction.paidFor ?? 0,
           })),
-          totalData: counts[0].count,
+          totalData,
         },
       },
       200,
@@ -334,78 +279,58 @@ transactionProtectedRouter.openapi(
     try {
       const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-      const conditions = [];
-
-      if (q) {
-        conditions.push(ilike(accountOtaDetailTable.name, `%${q}%`));
-      }
+      // Build base where clause for date filters
+      const where: any = {};
 
       if (year) {
-        conditions.push(
-          sql`EXTRACT(YEAR FROM ${transactionTable.dueDate}) = ${year}`,
-        );
+        where.dueDate = {
+          ...(where.dueDate ?? {}),
+          gte: new Date(year, 0, 1),
+          lt: new Date(year + 1, 0, 1),
+        };
       }
 
-      if (month) {
-        conditions.push(
-          sql`EXTRACT(MONTH FROM ${transactionTable.dueDate}) = ${month}`,
-        );
-      }
-
-      const yearsQuery = db
-        .selectDistinct({
-          year: sql<number>`EXTRACT(YEAR FROM ${transactionTable.dueDate})`,
-        })
-        .from(transactionTable)
-        .orderBy(sql`EXTRACT(YEAR FROM ${transactionTable.dueDate}) DESC`);
-
-      // Get all transactions with OTA and mahasiswa details
-      const allTransactionsQuery = db
-        .select({
-          id: transactionTable.id,
-          ota_id: transactionTable.otaId,
-          name_ota: accountOtaDetailTable.name,
-          number_ota: accountTable.phoneNumber,
-          mahasiswa_id: transactionTable.mahasiswaId,
-          name_ma: accountMahasiswaDetailTable.name,
-          nim_ma: accountMahasiswaDetailTable.nim,
-          paidAt: transactionTable.paidAt,
-          dueDate: transactionTable.dueDate,
-          bill: transactionTable.bill,
-          receipt: transactionTable.transactionReceipt,
-          rejectionNote: transactionTable.rejectionNote,
-          transactionStatus: transactionTable.transactionStatus,
-        })
-        .from(transactionTable)
-        .innerJoin(
-          accountOtaDetailTable,
-          eq(transactionTable.otaId, accountOtaDetailTable.accountId),
-        )
-        .innerJoin(
-          accountMahasiswaDetailTable,
-          eq(
-            transactionTable.mahasiswaId,
-            accountMahasiswaDetailTable.accountId,
-          ),
-        )
-        .innerJoin(accountTable, eq(transactionTable.otaId, accountTable.id))
-        .where(and(...conditions));
-
-      const [allTransactions, years] = await Promise.all([
-        allTransactionsQuery,
-        yearsQuery,
+      // Fetch all transactions with OTA and mahasiswa details
+      const [allTransactions, allForYears] = await Promise.all([
+        prisma.transaction.findMany({
+          where,
+          include: {
+            OtaProfile: { include: { User: true } },
+            MahasiswaProfile: true,
+          },
+        }),
+        prisma.transaction.findMany({
+          select: { dueDate: true },
+        }),
       ]);
 
+      // Extract distinct years
+      const years = [
+        ...new Set(allForYears.map((t) => t.dueDate.getFullYear())),
+      ].sort((a, b) => b - a);
+
+      // Filter by month (JS, mirrors EXTRACT(MONTH) = month logic)
+      const monthFiltered = month
+        ? allTransactions.filter((t) => t.dueDate.getMonth() + 1 === month)
+        : allTransactions;
+
+      // Filter by OTA name (mirrors ILIKE %q%)
+      const qFiltered = q
+        ? monthFiltered.filter((t) =>
+            t.OtaProfile?.name?.toLowerCase().includes(q.toLowerCase()),
+          )
+        : monthFiltered;
+
       // Group transactions by OTA
-      const groupedByOta = allTransactions.reduce(
+      const groupedByOta = qFiltered.reduce(
         (acc: { [key: string]: any }, transaction) => {
-          const otaId = transaction.ota_id;
+          const otaId = transaction.otaId;
 
           if (!acc[otaId]) {
             acc[otaId] = {
               ota_id: otaId,
-              name_ota: transaction.name_ota,
-              number_ota: transaction.number_ota ?? "",
+              name_ota: transaction.OtaProfile?.name,
+              number_ota: transaction.OtaProfile?.User?.phoneNumber ?? "",
               totalBill: 0,
               transactions: [],
             };
@@ -414,13 +339,13 @@ transactionProtectedRouter.openapi(
           acc[otaId].totalBill += transaction.bill;
           acc[otaId].transactions.push({
             id: transaction.id,
-            mahasiswa_id: transaction.mahasiswa_id,
-            name_ma: transaction.name_ma ?? "",
-            nim_ma: transaction.nim_ma,
+            mahasiswa_id: transaction.mahasiswaId,
+            name_ma: transaction.MahasiswaProfile?.name ?? "",
+            nim_ma: transaction.MahasiswaProfile?.nim,
             paidAt: transaction.paidAt?.toISOString() ?? "",
             dueDate: transaction.dueDate.toISOString(),
             bill: transaction.bill,
-            receipt: transaction.receipt ?? "",
+            receipt: transaction.transactionReceipt ?? "",
             rejectionNote: transaction.rejectionNote ?? "",
             transactionStatus: transaction.transactionStatus,
           });
@@ -442,7 +367,7 @@ transactionProtectedRouter.openapi(
           body: {
             data: paginatedData,
             totalData,
-            years: years.map((year) => year.year),
+            years,
           },
         },
         200,
@@ -488,18 +413,12 @@ transactionProtectedRouter.openapi(detailTransactionRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const mahasiswa = await db
-      .select({
-        nama_ma: accountMahasiswaDetailTable.name,
-        nim_ma: accountMahasiswaDetailTable.nim,
-        fakultas: accountMahasiswaDetailTable.faculty,
-        jurusan: accountMahasiswaDetailTable.major,
-      })
-      .from(accountMahasiswaDetailTable)
-      .where(eq(accountMahasiswaDetailTable.accountId, id))
-      .limit(1);
+    const mahasiswa = await prisma.mahasiswaProfile.findFirst({
+      where: { userId: id },
+      select: { name: true, nim: true, faculty: true, major: true },
+    });
 
-    if (mahasiswa.length === 0) {
+    if (!mahasiswa) {
       return c.json(
         {
           success: false,
@@ -510,27 +429,20 @@ transactionProtectedRouter.openapi(detailTransactionRoute, async (c) => {
       );
     }
 
-    const countQuery = db
-      .select({ count: count() })
-      .from(transactionTable)
-      .where(eq(transactionTable.mahasiswaId, id));
-
-    const detailTransactionQuery = await db
-      .select({
-        tagihan: transactionTable.bill,
-        pembayaran: transactionTable.amountPaid,
-        due_date: transactionTable.dueDate,
-        status_bayar: transactionTable.transactionStatus,
-        bukti_bayar: transactionTable.transactionReceipt,
-      })
-      .from(transactionTable)
-      .where(eq(transactionTable.mahasiswaId, id))
-      .limit(LIST_PAGE_SIZE)
-      .offset(offset);
-
-    const [detailTransaction, counts] = await Promise.all([
-      detailTransactionQuery,
-      countQuery,
+    const [detailTransaction, totalData] = await Promise.all([
+      prisma.transaction.findMany({
+        where: { mahasiswaId: id },
+        select: {
+          bill: true,
+          amountPaid: true,
+          dueDate: true,
+          transactionStatus: true,
+          transactionReceipt: true,
+        },
+        skip: offset,
+        take: LIST_PAGE_SIZE,
+      }),
+      prisma.transaction.count({ where: { mahasiswaId: id } }),
     ]);
 
     return c.json(
@@ -538,15 +450,18 @@ transactionProtectedRouter.openapi(detailTransactionRoute, async (c) => {
         success: true,
         message: "Detail transaction berhasil diambil",
         body: {
-          nama_ma: mahasiswa[0].nama_ma ?? "Nama tidak tersedia",
-          nim_ma: mahasiswa[0].nim_ma,
-          fakultas: mahasiswa[0].fakultas ?? "Fakultas tidak tersedia",
-          jurusan: mahasiswa[0].jurusan ?? "Jurusan tidak tersedia",
+          nama_ma: mahasiswa.name ?? "Nama tidak tersedia",
+          nim_ma: mahasiswa.nim,
+          fakultas: mahasiswa.faculty ?? "Fakultas tidak tersedia",
+          jurusan: mahasiswa.major ?? "Jurusan tidak tersedia",
           data: detailTransaction.map((tx) => ({
-            ...tx,
-            bukti_bayar: tx.bukti_bayar ?? "",
+            tagihan: tx.bill,
+            pembayaran: tx.amountPaid,
+            due_date: tx.dueDate,
+            status_bayar: tx.transactionStatus,
+            bukti_bayar: tx.transactionReceipt ?? "",
           })),
-          totalData: counts[0].count,
+          totalData,
         },
       },
       200,
@@ -588,41 +503,36 @@ transactionProtectedRouter.openapi(uploadReceiptRoute, async (c) => {
   }
 
   try {
-    const receiptUrl = await uploadFileToCloudinary(receipt);
+    const receiptResult = await uploadFileToMinio(receipt);
+    const receiptUrl = receiptResult?.secure_url ?? "";
 
-    await db.transaction(async (tx) => {
-      await tx
-        .update(transactionTable)
-        .set({
-          transactionReceipt: receiptUrl.secure_url,
+    await prisma.$transaction(async (tx) => {
+      await tx.transaction.updateMany({
+        where: {
+          mahasiswaId: { in: ids },
+          otaId: user.id,
+        },
+        data: {
+          transactionReceipt: receiptUrl,
           transactionStatus: "pending",
-        })
-        .where(
-          and(
-            inArray(transactionTable.mahasiswaId, ids),
-            eq(transactionTable.otaId, user.id),
-          ),
-        );
+        },
+      });
 
-      await tx
-        .update(connectionTable)
-        .set({ paidFor })
-        .where(
-          and(
-            inArray(connectionTable.mahasiswaId, ids),
-            eq(connectionTable.otaId, user.id),
-          ),
-        );
+      await tx.connection.updateMany({
+        where: {
+          mahasiswaId: { in: ids },
+          otaId: user.id,
+        },
+        data: { paidFor },
+      });
 
-      await tx
-        .update(transactionTable)
-        .set({ paidFor })
-        .where(
-          and(
-            inArray(transactionTable.mahasiswaId, ids),
-            eq(transactionTable.otaId, user.id),
-          ),
-        );
+      await tx.transaction.updateMany({
+        where: {
+          mahasiswaId: { in: ids },
+          otaId: user.id,
+        },
+        data: { paidFor },
+      });
     });
 
     return c.json(
@@ -630,7 +540,7 @@ transactionProtectedRouter.openapi(uploadReceiptRoute, async (c) => {
         success: true,
         message: "Berhasil melakukan upload bukti pembayaran dari OTA.",
         body: {
-          bukti_bayar: receiptUrl.secure_url,
+          bukti_bayar: receiptUrl,
         },
       },
       200,
@@ -671,48 +581,53 @@ transactionProtectedRouter.openapi(verifyTransactionAccRoute, async (c) => {
   }
 
   try {
-    const result = await db.transaction(async (tx) => {
-      // Get the updated bill (amount paid)
-      const updatedRows = await tx
-        .select()
-        .from(transactionTable)
-        .where(inArray(transactionTable.id, ids));
+    const result = await prisma.$transaction(async (tx) => {
+      // Get the transactions to be accepted
+      const updatedRows = await tx.transaction.findMany({
+        where: { id: { in: ids } },
+      });
 
       const currentDate = new Date();
 
+      // Update each transaction individually (amountPaid = bill per row)
       await Promise.all(
-        updatedRows.map(async (updatedRow) => {
-          return tx
-            .update(transactionTable)
-            .set({
+        updatedRows.map((updatedRow) =>
+          tx.transaction.update({
+            where: { id: updatedRow.id },
+            data: {
               transactionStatus: "paid",
               transactionReceipt: "",
               amountPaid: updatedRow.bill,
               paidAt: currentDate,
-            })
-            .where(eq(transactionTable.id, updatedRow.id));
-        }),
+            },
+          }),
+        ),
       );
 
       const mahasiswaIds = updatedRows.map((row) => row.mahasiswaId);
 
-      const connectionRows = await tx
-        .update(connectionTable)
-        .set({ paidFor: sql`${connectionTable.paidFor} - 1` })
-        .where(
-          and(
-            inArray(connectionTable.mahasiswaId, mahasiswaIds),
-            eq(connectionTable.otaId, otaId),
-          ),
-        )
-        .returning();
+      // Decrement paidFor on connections and collect updated values
+      const connectionRows = await tx.connection.findMany({
+        where: {
+          mahasiswaId: { in: mahasiswaIds },
+          otaId,
+        },
+      });
 
-      // Process all connection rows and create batch insert data
-      const allTransactionsToInsert = [];
+      const updatedConnectionRows = await Promise.all(
+        connectionRows.map((row) =>
+          tx.connection.update({
+            where: { mahasiswaId_otaId: { mahasiswaId: row.mahasiswaId, otaId: row.otaId } },
+            data: { paidFor: { decrement: 1 } },
+          }),
+        ),
+      );
 
-      for (const row of connectionRows) {
+      // Build new transactions for remaining paidFor months
+      const allTransactionsToInsert: any[] = [];
+
+      for (const row of updatedConnectionRows) {
         if (row.paidFor >= 1) {
-          // Find the corresponding updated transaction for this mahasiswa and ota
           const correspondingTransaction = updatedRows.find(
             (updatedRow) =>
               updatedRow.mahasiswaId === row.mahasiswaId &&
@@ -739,9 +654,9 @@ transactionProtectedRouter.openapi(verifyTransactionAccRoute, async (c) => {
         }
       }
 
-      // Single batch insert for all transactions
+      // Batch insert all new transactions
       if (allTransactionsToInsert.length > 0) {
-        await tx.insert(transactionTable).values(allTransactionsToInsert);
+        await tx.transaction.createMany({ data: allTransactionsToInsert });
       }
 
       return updatedRows.reduce((total, row) => total + (row.bill ?? 0), 0);
@@ -795,44 +710,39 @@ transactionProtectedRouter.openapi(verifyTransactionRejectRoute, async (c) => {
   }
 
   try {
-    await db.transaction(async (tx) => {
-      const existingTransaction = await tx
-        .select()
-        .from(transactionTable)
-        .where(inArray(transactionTable.id, ids));
+    await prisma.$transaction(async (tx) => {
+      const existingTransactions = await tx.transaction.findMany({
+        where: { id: { in: ids } },
+      });
 
       let amountAvailable = amountPaid;
 
-      for (const transaction of existingTransaction) {
-        await tx
-          .update(transactionTable)
-          .set({
+      for (const transaction of existingTransactions) {
+        await tx.transaction.update({
+          where: { id: transaction.id },
+          data: {
             transactionStatus: "unpaid",
             transactionReceipt: "",
             rejectionNote: rejectionNote,
             amountPaid: amountAvailable > 0 ? transaction.bill : 0,
-          })
-          .where(eq(transactionTable.id, transaction.id));
+          },
+        });
 
-        await tx
-          .update(connectionTable)
-          .set({ paidFor: 0 })
-          .where(
-            and(
-              eq(connectionTable.mahasiswaId, transaction.mahasiswaId),
-              eq(connectionTable.otaId, otaId),
-            ),
-          );
+        await tx.connection.updateMany({
+          where: {
+            mahasiswaId: transaction.mahasiswaId,
+            otaId,
+          },
+          data: { paidFor: 0 },
+        });
 
-        await tx
-          .update(transactionTable)
-          .set({ paidFor: 0 })
-          .where(
-            and(
-              eq(transactionTable.mahasiswaId, transaction.mahasiswaId),
-              eq(transactionTable.otaId, otaId),
-            ),
-          );
+        await tx.transaction.updateMany({
+          where: {
+            mahasiswaId: transaction.mahasiswaId,
+            otaId,
+          },
+          data: { paidFor: 0 },
+        });
 
         amountAvailable -= transaction.bill;
       }
@@ -886,38 +796,19 @@ transactionProtectedRouter.openapi(acceptTransferStatusRoute, async (c) => {
     );
   }
 
-  //   Get Data
   try {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(transactionTable)
-        .set({ transferStatus: "paid" })
-        .where(eq(transactionTable.id, id));
+    await prisma.transaction.update({
+      where: { id },
+      data: { transferStatus: "paid" },
     });
 
-    const transferData = await db
-      .select({
-        namaMA: accountMahasiswaDetailTable.name,
-        namaOTA: accountOtaDetailTable.name,
-        nominal: transactionTable.bill,
-        emailMA: accountTable.email,
-        idMA: transactionTable.mahasiswaId,
-      })
-      .from(transactionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(transactionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(transactionTable.otaId, accountOtaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountTable,
-        eq(accountTable.id, transactionTable.mahasiswaId),
-      )
-      .where(eq(transactionTable.id, id))
-      .limit(1);
+    const transferData = await prisma.transaction.findFirst({
+      where: { id },
+      include: {
+        MahasiswaProfile: { include: { User: true } },
+        OtaProfile: true,
+      },
+    });
 
     // Send Mail
     const transporter = nodemailer.createTransport({
@@ -938,16 +829,21 @@ transactionProtectedRouter.openapi(acceptTransferStatusRoute, async (c) => {
       }
     });
 
-    transferData.map(async (data) => {
+    if (transferData) {
+      const namaMA = transferData.MahasiswaProfile?.name ?? "";
+      const namaOTA = transferData.OtaProfile?.name ?? "";
+      const nominal = transferData.bill.toLocaleString("id-ID");
+      const emailMA = transferData.MahasiswaProfile?.User?.email ?? "";
+
       await transporter
         .sendMail({
           from: env.EMAIL,
-          to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : data.emailMA,
+          to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : emailMA,
           subject: "Transfer Bantuan Asuh",
           html: transferMahasiswaEmail(
-            data.namaMA ?? "",
-            data.namaOTA ?? "",
-            data.nominal.toLocaleString("id-ID"),
+            namaMA,
+            namaOTA,
+            nominal,
             new Date()
               .toLocaleString("id-ID", {
                 day: "2-digit",
@@ -963,46 +859,47 @@ transactionProtectedRouter.openapi(acceptTransferStatusRoute, async (c) => {
         .catch((error) => {
           console.error("Error sending email:", error);
         });
-    });
+    }
 
     // Send Push Notif
-    const subscription = await db
-      .select()
-      .from(pushSubscriptionTable)
-      .where(eq(pushSubscriptionTable.accountId, transferData[0].idMA));
-
-    if (subscription.length > 0) {
-      const { endpoint, keys } = subscription[0];
-      const { p256dh, auth } = keys as { p256dh: string; auth: string };
-
-      const validatedData = SubscriptionSchema.parse({
-        endpoint,
-        p256dh,
-        auth,
+    if (transferData?.mahasiswaId) {
+      const subscription = await prisma.pushSubscription.findFirst({
+        where: { userId: transferData.mahasiswaId },
       });
 
-      const pushSubscription = {
-        endpoint: validatedData.endpoint,
-        keys: {
-          p256dh: validatedData.p256dh,
-          auth: validatedData.auth,
-        },
-      };
+      if (subscription) {
+        const { endpoint, keys } = subscription;
+        const { p256dh, auth } = keys as { p256dh: string; auth: string };
 
-      const notificationData = {
-        title: "Transfer Bantuan Asuh",
-        body: `Pemberitahuan transfer bantuan asuh telah dikirim`,
-        icon: "/icon/logo-iom-white.png",
-        actions: [
-          {
-            action: "open_url",
-            title: "Buka Aplikasi",
-            icon: "/icon/logo-iom-white.png",
+        const validatedData = SubscriptionSchema.parse({
+          endpoint,
+          p256dh,
+          auth,
+        });
+
+        const pushSubscription = {
+          endpoint: validatedData.endpoint,
+          keys: {
+            p256dh: validatedData.p256dh,
+            auth: validatedData.auth,
           },
-        ],
-      };
+        };
 
-      await sendNotification(pushSubscription, notificationData);
+        const notificationData = {
+          title: "Transfer Bantuan Asuh",
+          body: `Pemberitahuan transfer bantuan asuh telah dikirim`,
+          icon: "/icon/logo-iom-white.png",
+          actions: [
+            {
+              action: "open_url",
+              title: "Buka Aplikasi",
+              icon: "/icon/logo-iom-white.png",
+            },
+          ],
+        };
+
+        await sendNotification(pushSubscription, notificationData);
+      }
     }
 
     // JSON return

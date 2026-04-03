@@ -1,19 +1,10 @@
 import { compare, hash } from "bcrypt";
-import { and, desc, eq, gte, or } from "drizzle-orm";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { decode, sign } from "hono/jwt";
 import nodemailer from "nodemailer";
 
 import { env } from "../config/env.config.js";
-import { db } from "../db/drizzle.js";
-import {
-  accountAdminDetailTable,
-  accountMahasiswaDetailTable,
-  accountOtaDetailTable,
-  accountTable,
-  otpTable,
-  temporaryPasswordTable,
-} from "../db/schema.js";
+import { prisma } from "../db/prisma.js";
 import { kodeOTPEmail } from "../lib/email/kode-otp.js";
 import { forgotPasswordEmail } from "../lib/email/lupa-password.js";
 import {
@@ -44,6 +35,17 @@ import { createAuthRouter, createRouter } from "./router-factory.js";
 export const authRouter = createRouter();
 export const authProtectedRouter = createAuthRouter();
 
+function roleToJwtType(role: string): "mahasiswa" | "ota" | "admin" | "bankes" | "pengurus" {
+  const map: Record<string, "mahasiswa" | "ota" | "admin" | "bankes" | "pengurus"> = {
+    Mahasiswa: "mahasiswa",
+    OrangTuaAsuh: "ota",
+    Admin: "admin",
+    Bankes: "bankes",
+    Pengurus_IOM: "pengurus",
+  };
+  return map[role] ?? "mahasiswa";
+}
+
 authRouter.openapi(loginRoute, async (c) => {
   const body = await c.req.formData();
   const data = Object.fromEntries(body.entries());
@@ -52,18 +54,16 @@ authRouter.openapi(loginRoute, async (c) => {
   const { identifier, password } = zodParseResult;
 
   try {
-    const account = await db
-      .select()
-      .from(accountTable)
-      .where(
-        or(
-          eq(accountTable.email, identifier),
-          eq(accountTable.phoneNumber, identifier),
-        ),
-      )
-      .limit(1);
+    const foundAccount = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier },
+          { phoneNumber: identifier },
+        ],
+      },
+    });
 
-    if (!account || account.length === 0) {
+    if (!foundAccount) {
       console.error("Invalid email");
       return c.json(
         {
@@ -75,49 +75,37 @@ authRouter.openapi(loginRoute, async (c) => {
       );
     }
 
-    const foundAccount = account[0];
-
     const currentDateTime = new Date(Date.now());
 
-    const temporaryPassword = await db
-      .select()
-      .from(temporaryPasswordTable)
-      .where(
-        and(
-          eq(temporaryPasswordTable.accountId, foundAccount.id),
-          gte(temporaryPasswordTable.expiredAt, currentDateTime),
-          eq(temporaryPasswordTable.used, false),
-        ),
-      )
-      .orderBy(desc(temporaryPasswordTable.expiredAt))
-      .limit(1);
+    const temporaryPassword = await prisma.temporaryPassword.findFirst({
+      where: {
+        userId: foundAccount.id,
+        expiredAt: { gte: currentDateTime },
+        used: false,
+      },
+      orderBy: { expiredAt: "desc" },
+    });
 
     if (
       foundAccount.provider === "credentials" &&
-      temporaryPassword &&
-      temporaryPassword.length > 0
+      temporaryPassword
     ) {
-      const tempPass = temporaryPassword[0].password;
+      const tempPass = temporaryPassword.password;
       const isTempPassValid = await compare(password, tempPass);
 
       if (isTempPassValid) {
         // Mark the temporary password as used
-        await db
-          .update(temporaryPasswordTable)
-          .set({ used: true })
-          .where(
-            and(
-              eq(
-                temporaryPasswordTable.accountId,
-                temporaryPassword[0].accountId,
-              ),
-              eq(temporaryPasswordTable.password, tempPass),
-            ),
-          );
+        await prisma.temporaryPassword.updateMany({
+          where: {
+            userId: temporaryPassword.userId,
+            password: tempPass,
+          },
+          data: { used: true },
+        });
       }
     } else {
       // Check the password hash
-      const isPasswordValid = await compare(password, foundAccount.password);
+      const isPasswordValid = await compare(password, foundAccount.password!);
 
       if (!isPasswordValid) {
         console.error("Invalid password");
@@ -132,54 +120,49 @@ authRouter.openapi(loginRoute, async (c) => {
       }
     }
 
-    const accountId = account[0].id;
+    const accountId = foundAccount.id;
 
     let name = null;
 
-    if (account[0].type === "mahasiswa") {
-      const mahasiswaDetail = await db
-        .select({ name: accountMahasiswaDetailTable.name })
-        .from(accountMahasiswaDetailTable)
-        .where(eq(accountMahasiswaDetailTable.accountId, accountId))
-        .limit(1);
+    if (foundAccount.role === "Mahasiswa") {
+      const mahasiswaDetail = await prisma.mahasiswaProfile.findFirst({
+        where: { userId: accountId },
+        select: { name: true },
+      });
 
-      if (mahasiswaDetail && mahasiswaDetail.length > 0) {
-        name = mahasiswaDetail[0].name;
+      if (mahasiswaDetail) {
+        name = mahasiswaDetail.name;
       }
-    } else if (account[0].type === "ota") {
-      const otaDetail = await db
-        .select({ name: accountOtaDetailTable.name })
-        .from(accountOtaDetailTable)
-        .where(eq(accountOtaDetailTable.accountId, accountId))
-        .limit(1);
+    } else if (foundAccount.role === "OrangTuaAsuh") {
+      const otaDetail = await prisma.otaProfile.findFirst({
+        where: { userId: accountId },
+        select: { name: true },
+      });
 
-      if (otaDetail && otaDetail.length > 0) {
-        name = otaDetail[0].name;
+      if (otaDetail) {
+        name = otaDetail.name;
       }
     } else {
-      const adminDetail = await db
-        .select({
-          name: accountAdminDetailTable.name,
-        })
-        .from(accountAdminDetailTable)
-        .where(eq(accountAdminDetailTable.accountId, accountId))
-        .limit(1);
+      const adminDetail = await prisma.adminProfile.findFirst({
+        where: { userId: accountId },
+        select: { name: true },
+      });
 
-      if (adminDetail && adminDetail.length > 0) {
-        name = adminDetail[0].name;
+      if (adminDetail) {
+        name = adminDetail.name;
       }
     }
 
     const accessToken = await sign(
       {
-        id: account[0].id,
+        id: foundAccount.id,
         name,
-        email: account[0].email,
-        phoneNumber: account[0].phoneNumber,
-        type: account[0].type,
-        provider: account[0].provider,
-        oid: account[0].oid,
-        createdAt: account[0].createdAt,
+        email: foundAccount.email,
+        phoneNumber: foundAccount.phoneNumber,
+        type: roleToJwtType(foundAccount.role),
+        provider: foundAccount.provider,
+        oid: foundAccount.oid,
+        createdAt: foundAccount.createdAt,
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
       },
@@ -224,18 +207,16 @@ authRouter.openapi(regisRoute, async (c) => {
   const zodParseResult = UserRegisRequestSchema.parse(data);
   const { email, phoneNumber, password, type } = zodParseResult;
 
-  const account = await db
-    .select()
-    .from(accountTable)
-    .where(
-      or(
-        eq(accountTable.email, email),
-        eq(accountTable.phoneNumber, phoneNumber),
-      ),
-    )
-    .limit(1);
+  const existingAccount = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email },
+        { phoneNumber },
+      ],
+    },
+  });
 
-  if (account.length > 0) {
+  if (existingAccount) {
     console.error("Invalid email");
     return c.json(
       {
@@ -250,23 +231,24 @@ authRouter.openapi(regisRoute, async (c) => {
   const hashedPassword = await hash(password, 10);
 
   try {
-    const [newUser, code] = await db.transaction(async (tx) => {
-      const newUser = await tx
-        .insert(accountTable)
-        .values({
+    const [newUser, code] = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.user.create({
+        data: {
           email,
           phoneNumber,
           password: hashedPassword,
-          type,
-        })
-        .returning();
+          role: (type === "mahasiswa" ? "Mahasiswa" : "OrangTuaAsuh") as "Mahasiswa" | "OrangTuaAsuh",
+        },
+      });
 
       const code = generateOTP();
 
-      await tx.insert(otpTable).values({
-        accountId: newUser[0].id,
-        code: code,
-        expiredAt: new Date(Date.now() + 1000 * 60 * 15), // 15 minutes
+      await tx.oTP.create({
+        data: {
+          userId: newUser.id,
+          code,
+          expiredAt: new Date(Date.now() + 1000 * 60 * 15), // 15 minutes
+        },
       });
 
       return [newUser, code];
@@ -293,9 +275,9 @@ authRouter.openapi(regisRoute, async (c) => {
     await transporter
       .sendMail({
         from: env.EMAIL_FROM,
-        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : newUser[0].email,
+        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : newUser.email,
         subject: "Token OTP Bantuan Orang Tua Asuh",
-        html: kodeOTPEmail(newUser[0].email, code),
+        html: kodeOTPEmail(newUser.email, code),
       })
       .catch((error) => {
         console.error("Error sending email:", error);
@@ -303,14 +285,14 @@ authRouter.openapi(regisRoute, async (c) => {
 
     const accessToken = await sign(
       {
-        id: newUser[0].id,
+        id: newUser.id,
         name: null,
-        email: newUser[0].email,
-        phoneNumber: newUser[0].phoneNumber,
-        type: newUser[0].type,
-        provider: newUser[0].provider,
-        oid: newUser[0].oid,
-        createdAt: newUser[0].createdAt,
+        email: newUser.email,
+        phoneNumber: newUser.phoneNumber,
+        type: roleToJwtType(newUser.role),
+        provider: newUser.provider,
+        oid: newUser.oid,
+        createdAt: newUser.createdAt,
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
       },
@@ -331,8 +313,8 @@ authRouter.openapi(regisRoute, async (c) => {
         message: "User registered successfully",
         body: {
           token: accessToken,
-          id: newUser[0].id,
-          email: newUser[0].email,
+          id: newUser.id,
+          email: newUser.email,
         },
       },
       200,
@@ -393,58 +375,47 @@ authRouter.openapi(oauthRoute, async (c) => {
   const nim = email.split("@")[0];
 
   try {
-    await db.transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       let accountData;
 
-      const existingAccount = await tx
-        .select()
-        .from(accountTable)
-        .where(eq(accountTable.email, email))
-        .limit(1);
+      const existingAccount = await tx.user.findFirst({
+        where: { email },
+      });
 
       const randomPassword = crypto
         .getRandomValues(new Uint16Array(16))
         .join("");
 
-      if (existingAccount && existingAccount.length > 0) {
+      if (existingAccount) {
         // Account exists, update only if provider is azure
-        if (existingAccount[0].provider === "azure") {
-          accountData = await tx
-            .update(accountTable)
-            .set({
-              updatedAt: new Date(Date.now()),
-            })
-            .where(eq(accountTable.id, existingAccount[0].id))
-            .returning();
-          accountData = accountData[0];
+        if (existingAccount.provider === "azure") {
+          accountData = await tx.user.update({
+            where: { id: existingAccount.id },
+            data: { updatedAt: new Date(Date.now()) },
+          });
         } else {
           // Provider is not azure, don't update password
-          accountData = existingAccount[0];
+          accountData = existingAccount;
         }
       } else {
-        const existingOid = await tx
-          .select()
-          .from(accountTable)
-          .where(eq(accountTable.oid, oid))
-          .limit(1);
+        const existingOid = await tx.user.findFirst({
+          where: { oid },
+        });
 
-        if (existingOid && existingOid.length > 0) {
-          // Update the existing account with the new email and password, nim must be nim jurusan
-          const updatedAccount = await tx
-            .update(accountTable)
-            .set({
+        if (existingOid) {
+          // Update the existing account with the new email, nim must be nim jurusan
+          accountData = await tx.user.update({
+            where: { id: existingOid!.id },
+            data: {
               email,
               updatedAt: new Date(Date.now()),
-            })
-            .where(eq(accountTable.oid, oid))
-            .returning();
-
-          accountData = updatedAccount[0];
+            },
+          });
 
           // Update the mahasiswa details for the existing account
-          await tx
-            .update(accountMahasiswaDetailTable)
-            .set({
+          await tx.mahasiswaProfile.update({
+            where: { userId: accountData.id },
+            data: {
               name,
               nim,
               major: getNimJurusanCodeMap()[nim.slice(0, 3)],
@@ -452,37 +423,36 @@ authRouter.openapi(oauthRoute, async (c) => {
                 getNimFakultasCodeMap()[
                   getNimFakultasFromNimJurusanMap()[nim.slice(0, 3)]
                 ],
-            })
-            .where(eq(accountMahasiswaDetailTable.accountId, accountData.id));
+            },
+          });
           return;
         }
 
         // Account doesn't exist, create new one
-        const newAccount = await tx
-          .insert(accountTable)
-          .values({
+        accountData = await tx.user.create({
+          data: {
             email,
             password: await hash(randomPassword, 10),
-            type: "mahasiswa",
+            role: "Mahasiswa",
             phoneNumber: null,
             provider: "azure",
-            status: "verified",
+            verificationStatus: "verified",
             oid,
-          })
-          .returning();
-
-        accountData = newAccount[0];
+          },
+        });
 
         // Insert the mahasiswa details for new account
-        await tx.insert(accountMahasiswaDetailTable).values({
-          accountId: accountData.id,
-          name,
-          nim,
-          major: getNimJurusanCodeMap()[nim.slice(0, 3)] || "TPB",
-          faculty:
-            getNimFakultasCodeMap()[
-              getNimFakultasFromNimJurusanMap()[nim.slice(0, 3)]
-            ] || getNimFakultasCodeMap()[nim.slice(0, 3)],
+        await tx.mahasiswaProfile.create({
+          data: {
+            userId: accountData.id,
+            name,
+            nim,
+            major: getNimJurusanCodeMap()[nim.slice(0, 3)] || "TPB",
+            faculty:
+              getNimFakultasCodeMap()[
+                getNimFakultasFromNimJurusanMap()[nim.slice(0, 3)]
+              ] || getNimFakultasCodeMap()[nim.slice(0, 3)],
+          },
         });
       }
 
@@ -492,7 +462,7 @@ authRouter.openapi(oauthRoute, async (c) => {
           name,
           email: accountData.email,
           phoneNumber: accountData.phoneNumber || null,
-          type: accountData.type,
+          type: roleToJwtType(accountData.role),
           provider: accountData.provider,
           oid: accountData.oid,
           createdAt: accountData.createdAt,
@@ -566,13 +536,11 @@ authProtectedRouter.openapi(otpRoute, async (c) => {
   const zodParseResult = OTPVerificationRequestSchema.parse(data);
   const { pin } = zodParseResult;
 
-  const userAccount = await db
-    .select()
-    .from(accountTable)
-    .where(eq(accountTable.id, user.id))
-    .limit(1);
+  const userAccount = await prisma.user.findFirst({
+    where: { id: user.id },
+  });
 
-  if (userAccount[0].status === "verified") {
+  if (userAccount?.verificationStatus === "verified") {
     return c.json(
       {
         success: false,
@@ -585,19 +553,15 @@ authProtectedRouter.openapi(otpRoute, async (c) => {
 
   const currentDateTime = new Date(Date.now());
 
-  const otp = await db
-    .select()
-    .from(otpTable)
-    .where(
-      and(
-        eq(otpTable.accountId, user.id),
-        eq(otpTable.code, pin),
-        gte(otpTable.expiredAt, currentDateTime),
-      ),
-    )
-    .limit(1);
+  const otp = await prisma.oTP.findFirst({
+    where: {
+      userId: user.id,
+      code: pin,
+      expiredAt: { gte: currentDateTime },
+    },
+  });
 
-  if (!otp || otp.length === 0) {
+  if (!otp) {
     return c.json(
       {
         success: false,
@@ -609,30 +573,25 @@ authProtectedRouter.openapi(otpRoute, async (c) => {
   }
 
   try {
-    await db.transaction(async (tx) => {
-      const data = await tx
-        .update(accountTable)
-        .set({
-          status: "verified",
-        })
-        .where(eq(accountTable.id, user.id))
-        .returning();
+    await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: user.id },
+        data: { verificationStatus: "verified" },
+      });
 
-      const type = data[0].type;
-
-      if (type === "mahasiswa") {
-        const nim = data[0].email.split("@")[0];
-        await tx
-          .update(accountMahasiswaDetailTable)
-          .set({
-            nim: nim,
+      if (updatedUser.role === "Mahasiswa") {
+        const nim = updatedUser.email.split("@")[0];
+        await tx.mahasiswaProfile.update({
+          where: { userId: user.id },
+          data: {
+            nim,
             major: getNimJurusanCodeMap()[nim.slice(0, 3)],
             faculty:
               getNimFakultasCodeMap()[
                 getNimFakultasFromNimJurusanMap()[nim.slice(0, 3)]
               ],
-          })
-          .where(eq(accountMahasiswaDetailTable.accountId, user.id));
+          },
+        });
       }
     });
 
@@ -691,18 +650,14 @@ authRouter.openapi(forgotPasswordRoute, async (c) => {
   const { email } = zodParseResult;
 
   try {
-    const account = await db
-      .select()
-      .from(accountTable)
-      .where(
-        and(
-          eq(accountTable.email, email),
-          eq(accountTable.provider, "credentials"),
-        ),
-      )
-      .limit(1);
+    const foundAccount = await prisma.user.findFirst({
+      where: {
+        email,
+        provider: "credentials",
+      },
+    });
 
-    if (!account || account.length === 0) {
+    if (!foundAccount) {
       console.error("Invalid email");
       return c.json(
         {
@@ -714,14 +669,14 @@ authRouter.openapi(forgotPasswordRoute, async (c) => {
       );
     }
 
-    const foundAccount = account[0];
-
     const password = generateSecurePassword();
 
-    await db.insert(temporaryPasswordTable).values({
-      accountId: foundAccount.id,
-      password: await hash(password, 10),
-      expiredAt: new Date(Date.now() + 1000 * 60 * 15), // 15 minutes
+    await prisma.temporaryPassword.create({
+      data: {
+        userId: foundAccount.id,
+        password: await hash(password, 10),
+        expiredAt: new Date(Date.now() + 1000 * 60 * 15), // 15 minutes
+      },
     });
 
     const transporter = nodemailer.createTransport({

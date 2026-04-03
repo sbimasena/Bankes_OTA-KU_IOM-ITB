@@ -1,16 +1,9 @@
 import { TZDate } from "@date-fns/tz";
 import { CronJob } from "cron";
-import { and, count, eq, or } from "drizzle-orm";
 import nodemailer from "nodemailer";
 
 import { env } from "../config/env.config.js";
-import { db } from "../db/drizzle.js";
-import {
-  accountAdminDetailTable,
-  accountTable,
-  connectionTable,
-  transactionTable,
-} from "../db/schema.js";
+import { prisma } from "../db/prisma.js";
 import { registrationEmailToBankesAdmin } from "../lib/email/pendaftaran.js";
 import { terminationEmail } from "../lib/email/termination.js";
 import { verifikasiPembayaranOtaEmail } from "../lib/email/verifikasi-pembayaran-ota.js";
@@ -34,52 +27,32 @@ export const everyThreeDaysCron = new CronJob(
       );
 
       // Task 1: [BE] Notif email & web ada pendaftaran MA/OTA yang masuk dan perlu diverifikasi
-      await db.transaction(async (tx) => {
-        const adminEmails = await tx
-          .select({
-            email: accountTable.email,
-            name: accountAdminDetailTable.name,
-          })
-          .from(accountTable)
-          .innerJoin(
-            accountAdminDetailTable,
-            eq(accountTable.id, accountAdminDetailTable.accountId),
-          )
-          .where(
-            or(eq(accountTable.type, "admin"), eq(accountTable.type, "bankes")),
-          );
+      {
+        const adminUsers = await prisma.user.findMany({
+          where: { role: { in: ["Admin", "Bankes"] } },
+          include: { AdminProfile: true },
+        });
+        const adminEmails = adminUsers
+          .filter((u) => u.AdminProfile)
+          .map((u) => ({ email: u.email, name: u.AdminProfile!.name }));
 
-        const pendingApplicationsMAQuery = tx
-          .select({ count: count() })
-          .from(accountTable)
-          .where(
-            and(
-              or(
-                eq(accountTable.applicationStatus, "pending"),
-                eq(accountTable.applicationStatus, "reapply"),
-              ),
-              eq(accountTable.type, "mahasiswa"),
-            ),
-          );
+        const [pendingMACount, pendingOtaCount] = await Promise.all([
+          prisma.user.count({
+            where: {
+              role: "Mahasiswa",
+              applicationStatus: { in: ["pending", "reapply"] },
+            },
+          }),
+          prisma.user.count({
+            where: {
+              role: "OrangTuaAsuh",
+              applicationStatus: { in: ["pending", "reapply"] },
+            },
+          }),
+        ]);
 
-        const pendingApplicationsOtaQuery = tx
-          .select({ count: count() })
-          .from(accountTable)
-          .where(
-            and(
-              or(
-                eq(accountTable.applicationStatus, "pending"),
-                eq(accountTable.applicationStatus, "reapply"),
-              ),
-              eq(accountTable.type, "ota"),
-            ),
-          );
-
-        const [[pendingApplicationsMA], [pendingApplicationsOta]] =
-          await Promise.all([
-            pendingApplicationsMAQuery,
-            pendingApplicationsOtaQuery,
-          ]);
+        const pendingApplicationsMA = { count: pendingMACount };
+        const pendingApplicationsOta = { count: pendingOtaCount };
 
         if (
           pendingApplicationsMA.count > 0 ||
@@ -128,41 +101,25 @@ export const everyThreeDaysCron = new CronJob(
             }),
           );
         }
-      });
+      }
 
       // Task 2: [BE] Notif terdapat req terminasi dari MA/OTA
-      await db.transaction(async (tx) => {
-        const adminEmails = await tx
-          .select({
-            email: accountTable.email,
-            name: accountAdminDetailTable.name,
-          })
-          .from(accountTable)
-          .innerJoin(
-            accountAdminDetailTable,
-            eq(accountTable.id, accountAdminDetailTable.accountId),
-          )
-          .where(
-            or(eq(accountTable.type, "admin"), eq(accountTable.type, "bankes")),
-          );
+      {
+        const adminUsers = await prisma.user.findMany({
+          where: { role: { in: ["Admin", "Bankes"] } },
+          include: { AdminProfile: true },
+        });
+        const adminEmails = adminUsers
+          .filter((u) => u.AdminProfile)
+          .map((u) => ({ email: u.email, name: u.AdminProfile!.name }));
 
-        const pendingTerminationRequestsMAQuery = tx
-          .select({ count: count() })
-          .from(connectionTable)
-          .where(eq(connectionTable.requestTerminateMahasiswa, true));
-
-        const pendingTerminationRequestsOtaQuery = tx
-          .select({ count: count() })
-          .from(connectionTable)
-          .where(eq(connectionTable.requestTerminateOta, true));
-
-        const [
-          [pendingTerminationRequestsMA],
-          [pendingTerminationRequestsOta],
-        ] = await Promise.all([
-          pendingTerminationRequestsMAQuery,
-          pendingTerminationRequestsOtaQuery,
+        const [pendingTermMACount, pendingTermOtaCount] = await Promise.all([
+          prisma.connection.count({ where: { requestTerminateMahasiswa: true } }),
+          prisma.connection.count({ where: { requestTerminateOta: true } }),
         ]);
+
+        const pendingTerminationRequestsMA = { count: pendingTermMACount };
+        const pendingTerminationRequestsOta = { count: pendingTermOtaCount };
 
         if (
           pendingTerminationRequestsMA.count > 0 ||
@@ -207,39 +164,25 @@ export const everyThreeDaysCron = new CronJob(
             }),
           );
         }
-      });
+      }
 
       // Task 3: [BE] Notif reminder untuk verifikasi tagihan
-      await db.transaction(async (tx) => {
-        const adminEmails = await tx
-          .select({
-            email: accountTable.email,
-            name: accountAdminDetailTable.name,
-          })
-          .from(accountTable)
-          .innerJoin(
-            accountAdminDetailTable,
-            eq(accountTable.id, accountAdminDetailTable.accountId),
-          )
-          .where(
-            or(eq(accountTable.type, "admin"), eq(accountTable.type, "bankes")),
-          );
+      {
+        const adminUsers = await prisma.user.findMany({
+          where: { role: { in: ["Admin", "Bankes"] } },
+          include: { AdminProfile: true },
+        });
+        const adminEmails = adminUsers
+          .filter((u) => u.AdminProfile)
+          .map((u) => ({ email: u.email, name: u.AdminProfile!.name }));
 
-        const pendingTransactionOtaQuery = tx
-          .select({ count: count() })
-          .from(transactionTable)
-          .where(eq(transactionTable.transactionStatus, "pending"));
+        const [pendingTransOtaCount, pendingTransMaCount] = await Promise.all([
+          prisma.transaction.count({ where: { transactionStatus: "pending" } }),
+          prisma.transaction.count({ where: { transferStatus: "unpaid" } }),
+        ]);
 
-        const pendingTransactionMaQuery = tx
-          .select({ count: count() })
-          .from(transactionTable)
-          .where(eq(transactionTable.transferStatus, "unpaid"));
-
-        const [[pendingTransactionOta], [pendingTransactionMa]] =
-          await Promise.all([
-            pendingTransactionOtaQuery,
-            pendingTransactionMaQuery,
-          ]);
+        const pendingTransactionOta = { count: pendingTransOtaCount };
+        const pendingTransactionMa = { count: pendingTransMaCount };
 
         if (pendingTransactionOta.count > 0 || pendingTransactionMa.count > 0) {
           const transporter = nodemailer.createTransport({
@@ -282,7 +225,7 @@ export const everyThreeDaysCron = new CronJob(
             }),
           );
         }
-      });
+      }
     }
   },
   null,

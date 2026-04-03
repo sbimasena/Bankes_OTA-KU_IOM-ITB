@@ -1,16 +1,7 @@
-import { and, count, eq, ilike, or } from "drizzle-orm";
 import nodemailer from "nodemailer";
 
 import { env } from "../config/env.config.js";
-import { db } from "../db/drizzle.js";
-import {
-  accountMahasiswaDetailTable,
-  accountOtaDetailTable,
-  accountTable,
-  connectionTable,
-  pushSubscriptionTable,
-  transactionTable,
-} from "../db/schema.js";
+import { prisma } from "../db/prisma.js";
 import { requestTerminasiEmail } from "../lib/email/request-terminasi.js";
 import { terminasiAcceptedMAEmail } from "../lib/email/terminasi-accepted-ma.js";
 import { sendNotification } from "../lib/web-push.js";
@@ -40,12 +31,6 @@ terminateProtectedRouter.openapi(listTerminateForAdminRoute, async (c) => {
   const zodParseResult = listTerminateQuerySchema.parse(c.req.query());
   const { q, page } = zodParseResult;
 
-  const userAccount = await db
-    .select()
-    .from(accountTable)
-    .where(eq(accountTable.id, user.id))
-    .limit(1);
-
   if (
     user.type !== "admin" &&
     user.type !== "bankes" &&
@@ -74,76 +59,47 @@ terminateProtectedRouter.openapi(listTerminateForAdminRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const countsQuery = db
-      .select({ count: count() })
-      .from(connectionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(connectionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(connectionTable.otaId, accountOtaDetailTable.accountId),
-      )
-      .where(
-        and(
-          or(
-            eq(connectionTable.requestTerminateMahasiswa, true),
-            eq(connectionTable.requestTerminateOta, true),
-          ),
-          eq(connectionTable.connectionStatus, "pending"),
-          or(
-            ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-            ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-            ilike(accountOtaDetailTable.name, `%${q || ""}%`),
-          ),
-        ),
-      );
+    const whereClause = {
+      AND: [
+        {
+          OR: [
+            { requestTerminateMahasiswa: true },
+            { requestTerminateOta: true },
+          ],
+        },
+        {
+          OR: [
+            {
+              MahasiswaProfile: {
+                name: { contains: q || "", mode: "insensitive" as const },
+              },
+            },
+            {
+              MahasiswaProfile: {
+                nim: { contains: q || "", mode: "insensitive" as const },
+              },
+            },
+            {
+              OtaProfile: {
+                name: { contains: q || "", mode: "insensitive" as const },
+              },
+            },
+          ],
+        },
+      ],
+    };
 
-    const terminateListQuery = db
-      .select({
-        otaId: connectionTable.otaId,
-        otaName: accountOtaDetailTable.name,
-        otaNumber: accountTable.phoneNumber,
-        mahasiswaId: connectionTable.mahasiswaId,
-        maName: accountMahasiswaDetailTable.name,
-        maNIM: accountMahasiswaDetailTable.nim,
-        createdAt: connectionTable.createdAt,
-        requestTerminateOTA: connectionTable.requestTerminateOta,
-        requestTerminateMA: connectionTable.requestTerminateMahasiswa,
-        requestTerminationNoteOTA: connectionTable.requestTerminationNoteOTA,
-        requestTerminationNoteMA: connectionTable.requestTerminationNoteMA,
-      })
-      .from(connectionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(connectionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(connectionTable.otaId, accountOtaDetailTable.accountId),
-      )
-      .innerJoin(accountTable, eq(connectionTable.otaId, accountTable.id))
-      .where(
-        and(
-          or(
-            eq(connectionTable.requestTerminateMahasiswa, true),
-            eq(connectionTable.requestTerminateOta, true),
-          ),
-          // eq(connectionTable.connectionStatus, "pending"),
-          or(
-            ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-            ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-            ilike(accountOtaDetailTable.name, `%${q || ""}%`),
-          ),
-        ),
-      )
-      .limit(LIST_PAGE_SIZE)
-      .offset(offset);
-
-    const [terminateList, counts] = await Promise.all([
-      terminateListQuery,
-      countsQuery,
+    const [terminateList, totalCount] = await Promise.all([
+      prisma.connection.findMany({
+        where: whereClause,
+        include: {
+          MahasiswaProfile: true,
+          OtaProfile: { include: { User: true } },
+        },
+        skip: offset,
+        take: LIST_PAGE_SIZE,
+      }),
+      prisma.connection.count({ where: whereClause }),
     ]);
 
     return c.json(
@@ -153,18 +109,18 @@ terminateProtectedRouter.openapi(listTerminateForAdminRoute, async (c) => {
         body: {
           data: terminateList.map((terminate) => ({
             otaId: terminate.otaId,
-            otaName: terminate.otaName,
-            otaNumber: terminate.otaNumber ?? "",
+            otaName: terminate.OtaProfile?.name ?? "",
+            otaNumber: terminate.OtaProfile?.User?.phoneNumber ?? "",
             mahasiswaId: terminate.mahasiswaId,
-            maName: terminate.maName ?? "",
-            maNIM: terminate.maNIM,
+            maName: terminate.MahasiswaProfile?.name ?? "",
+            maNIM: terminate.MahasiswaProfile?.nim ?? null,
             createdAt: terminate.createdAt,
-            requestTerminateOTA: terminate.requestTerminateOTA,
-            requestTerminateMA: terminate.requestTerminateMA,
-            requestTerminationNoteOTA: terminate.requestTerminationNoteOTA!,
-            requestTerminationNoteMA: terminate.requestTerminationNoteMA!,
+            requestTerminateOTA: terminate.requestTerminateOta,
+            requestTerminateMA: terminate.requestTerminateMahasiswa,
+            requestTerminationNoteOTA: terminate.requestTerminationNoteOta!,
+            requestTerminationNoteMA: terminate.requestTerminationNoteMa!,
           })),
-          totalData: counts[0].count,
+          totalData: totalCount,
         },
       },
       200,
@@ -201,13 +157,12 @@ terminateProtectedRouter.openapi(listTerminateForOTARoute, async (c) => {
     );
   }
 
-  const userAccount = await db
-    .select()
-    .from(accountTable)
-    .where(eq(accountTable.id, user.id))
-    .limit(1);
+  const userAccount = await prisma.user.findFirst({
+    where: { id: user.id },
+    select: { verificationStatus: true },
+  });
 
-  if (userAccount[0].status === "unverified") {
+  if (userAccount?.verificationStatus === "unverified") {
     return c.json(
       {
         success: false,
@@ -227,56 +182,31 @@ terminateProtectedRouter.openapi(listTerminateForOTARoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const countsQuery = db
-      .select({ count: count() })
-      .from(connectionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(connectionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .where(
-        and(
-          eq(connectionTable.otaId, user.id),
-          eq(connectionTable.connectionStatus, "accepted"),
-          or(
-            ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-            ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-          ),
-        ),
-      );
+    const whereClause = {
+      otaId: user.id,
+      connectionStatus: "accepted" as const,
+      OR: [
+        {
+          MahasiswaProfile: {
+            name: { contains: q || "", mode: "insensitive" as const },
+          },
+        },
+        {
+          MahasiswaProfile: {
+            nim: { contains: q || "", mode: "insensitive" as const },
+          },
+        },
+      ],
+    };
 
-    const terminateListQuery = db
-      .select({
-        mahasiswaId: connectionTable.mahasiswaId,
-        maName: accountMahasiswaDetailTable.name,
-        maNIM: accountMahasiswaDetailTable.nim,
-        requestTerminationNoteOTA: connectionTable.requestTerminationNoteOTA,
-        requestTerminationNoteMA: connectionTable.requestTerminationNoteMA,
-        requestTerminateMa: connectionTable.requestTerminateMahasiswa,
-        requestTerminateOta: connectionTable.requestTerminateOta,
-        createdAt: connectionTable.createdAt,
-      })
-      .from(connectionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(connectionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .where(
-        and(
-          eq(connectionTable.otaId, user.id),
-          eq(connectionTable.connectionStatus, "accepted"),
-          or(
-            ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-            ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-          ),
-        ),
-      )
-      .limit(LIST_PAGE_SIZE)
-      .offset(offset);
-
-    const [terminateList, counts] = await Promise.all([
-      terminateListQuery,
-      countsQuery,
+    const [terminateList, totalCount] = await Promise.all([
+      prisma.connection.findMany({
+        where: whereClause,
+        include: { MahasiswaProfile: true },
+        skip: offset,
+        take: LIST_PAGE_SIZE,
+      }),
+      prisma.connection.count({ where: whereClause }),
     ]);
 
     return c.json(
@@ -286,15 +216,15 @@ terminateProtectedRouter.openapi(listTerminateForOTARoute, async (c) => {
         body: {
           data: terminateList.map((terminate) => ({
             mahasiswaId: terminate.mahasiswaId,
-            maName: terminate.maName ?? "",
-            maNIM: terminate.maNIM,
-            requestTerminationNoteOTA: terminate.requestTerminationNoteOTA!,
-            requestTerminationNoteMA: terminate.requestTerminationNoteMA!,
-            requestTerminateMa: terminate.requestTerminateMa,
+            maName: terminate.MahasiswaProfile?.name ?? "",
+            maNIM: terminate.MahasiswaProfile?.nim ?? null,
+            requestTerminationNoteOTA: terminate.requestTerminationNoteOta!,
+            requestTerminationNoteMA: terminate.requestTerminationNoteMa!,
+            requestTerminateMa: terminate.requestTerminateMahasiswa,
             requestTerminateOta: terminate.requestTerminateOta,
             createdAt: terminate.createdAt,
           })),
-          totalData: counts[0].count,
+          totalData: totalCount,
         },
       },
       200,
@@ -315,12 +245,6 @@ terminateProtectedRouter.openapi(listTerminateForOTARoute, async (c) => {
 terminateProtectedRouter.openapi(terminationStatusMARoute, async (c) => {
   const user = c.var.user;
 
-  const userAccount = await db
-    .select()
-    .from(accountTable)
-    .where(eq(accountTable.id, user.id))
-    .limit(1);
-
   if (user.type !== "mahasiswa") {
     return c.json(
       {
@@ -335,7 +259,12 @@ terminateProtectedRouter.openapi(terminationStatusMARoute, async (c) => {
     );
   }
 
-  if (userAccount[0].status === "unverified") {
+  const userAccount = await prisma.user.findFirst({
+    where: { id: user.id },
+    select: { verificationStatus: true },
+  });
+
+  if (userAccount?.verificationStatus === "unverified") {
     return c.json(
       {
         success: false,
@@ -347,38 +276,23 @@ terminateProtectedRouter.openapi(terminationStatusMARoute, async (c) => {
   }
 
   try {
-    const terminationStatus = await db
-      .select({
-        otaId: connectionTable.otaId,
-        otaName: accountOtaDetailTable.name,
-        connectionStatus: connectionTable.connectionStatus,
-        requestTerminationNoteOTA: connectionTable.requestTerminationNoteOTA,
-        requestTerminationNoteMA: connectionTable.requestTerminationNoteMA,
-        requestTerminateOTA: connectionTable.requestTerminateOta,
-        requestTerminateMA: connectionTable.requestTerminateMahasiswa,
-      })
-      .from(connectionTable)
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(connectionTable.otaId, accountOtaDetailTable.accountId),
-      )
-      .where(eq(connectionTable.mahasiswaId, user.id))
-      .limit(1);
-
-    const status = terminationStatus[0];
+    const status = await prisma.connection.findFirst({
+      where: { mahasiswaId: user.id },
+      include: { OtaProfile: true },
+    });
 
     return c.json(
       {
         success: true,
         message: "Status terminasi untuk MA berhasil diambil",
         body: {
-          otaId: status.otaId,
-          otaName: status.otaName,
-          connectionStatus: status.connectionStatus,
-          requestTerminationNoteOTA: status.requestTerminationNoteOTA!,
-          requestTerminationNoteMA: status.requestTerminationNoteMA!,
-          requestTerminateOTA: status.requestTerminateOTA,
-          requestTerminateMA: status.requestTerminateMA,
+          otaId: status?.otaId ?? "",
+          otaName: status?.OtaProfile?.name ?? "",
+          connectionStatus: status?.connectionStatus ?? "",
+          requestTerminationNoteOTA: status?.requestTerminationNoteOta ?? "",
+          requestTerminationNoteMA: status?.requestTerminationNoteMa ?? "",
+          requestTerminateOTA: status?.requestTerminateOta ?? false,
+          requestTerminateMA: status?.requestTerminateMahasiswa ?? false,
         },
       },
       200,
@@ -404,13 +318,12 @@ terminateProtectedRouter.openapi(requestTerminateFromMARoute, async (c) => {
   const zodParseResult = TerminateRequestSchema.parse(data);
   const { mahasiswaId, otaId, requestTerminationNote } = zodParseResult;
 
-  const userAccount = await db
-    .select()
-    .from(accountTable)
-    .where(eq(accountTable.id, user.id))
-    .limit(1);
+  const userAccount = await prisma.user.findFirst({
+    where: { id: user.id },
+    select: { verificationStatus: true },
+  });
 
-  if (userAccount[0].status === "unverified") {
+  if (userAccount?.verificationStatus === "unverified") {
     return c.json(
       {
         success: false,
@@ -436,34 +349,19 @@ terminateProtectedRouter.openapi(requestTerminateFromMARoute, async (c) => {
   }
 
   try {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(connectionTable)
-        .set({
-          connectionStatus: "accepted",
-          requestTerminateMahasiswa: true,
-          requestTerminationNoteMA: requestTerminationNote,
-        })
-        .where(
-          and(
-            eq(connectionTable.mahasiswaId, mahasiswaId),
-            eq(connectionTable.otaId, otaId),
-          ),
-        );
+    await prisma.connection.update({
+      where: { mahasiswaId_otaId: { mahasiswaId, otaId } },
+      data: {
+        connectionStatus: "accepted",
+        requestTerminateMahasiswa: true,
+        requestTerminationNoteMa: requestTerminationNote,
+      },
     });
 
-    const otaData = await db
-      .select({
-        name: accountOtaDetailTable.name,
-        email: accountTable.email,
-      })
-      .from(accountOtaDetailTable)
-      .innerJoin(
-        accountTable,
-        eq(accountOtaDetailTable.accountId, accountTable.id),
-      )
-      .where(eq(accountOtaDetailTable.accountId, otaId))
-      .limit(1);
+    const otaUser = await prisma.user.findFirst({
+      where: { id: otaId },
+      include: { OtaProfile: true },
+    });
 
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
@@ -486,11 +384,11 @@ terminateProtectedRouter.openapi(requestTerminateFromMARoute, async (c) => {
     await transporter
       .sendMail({
         from: env.EMAIL_FROM,
-        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : otaData[0].email,
+        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : otaUser?.email,
         subject: "Permintaan Pemutusan Bantuan Asuh",
         html: requestTerminasiEmail(
           user.name ?? "",
-          otaData[0].name,
+          otaUser?.OtaProfile?.name ?? "",
           "ma",
           "https://wa.me/6285624654990",
         ),
@@ -499,14 +397,12 @@ terminateProtectedRouter.openapi(requestTerminateFromMARoute, async (c) => {
         console.error("Error sending email:", error);
       });
 
-    const subscription = await db
-      .select()
-      .from(pushSubscriptionTable)
-      .where(eq(pushSubscriptionTable.accountId, user.id))
-      .limit(1);
+    const subscription = await prisma.pushSubscription.findFirst({
+      where: { userId: user.id },
+    });
 
-    if (subscription.length > 0) {
-      const { endpoint, keys } = subscription[0];
+    if (subscription) {
+      const { endpoint, keys } = subscription;
       const { p256dh, auth } = keys as { p256dh: string; auth: string };
 
       const validatedData = SubscriptionSchema.parse({
@@ -572,13 +468,12 @@ terminateProtectedRouter.openapi(requestTerminateFromOTARoute, async (c) => {
   const zodParseResult = TerminateRequestSchema.parse(data);
   const { mahasiswaId, otaId, requestTerminationNote } = zodParseResult;
 
-  const userAccount = await db
-    .select()
-    .from(accountTable)
-    .where(eq(accountTable.id, user.id))
-    .limit(1);
+  const userAccount = await prisma.user.findFirst({
+    where: { id: user.id },
+    select: { verificationStatus: true },
+  });
 
-  if (userAccount[0].status === "unverified") {
+  if (userAccount?.verificationStatus === "unverified") {
     return c.json(
       {
         success: false,
@@ -604,35 +499,19 @@ terminateProtectedRouter.openapi(requestTerminateFromOTARoute, async (c) => {
   }
 
   try {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(connectionTable)
-        .set({
-          connectionStatus: "accepted",
-          requestTerminateOta: true,
-          requestTerminationNoteOTA: requestTerminationNote,
-        })
-        .where(
-          and(
-            eq(connectionTable.mahasiswaId, mahasiswaId),
-            eq(connectionTable.otaId, otaId),
-          ),
-        );
+    await prisma.connection.update({
+      where: { mahasiswaId_otaId: { mahasiswaId, otaId } },
+      data: {
+        connectionStatus: "accepted",
+        requestTerminateOta: true,
+        requestTerminationNoteOta: requestTerminationNote,
+      },
     });
 
-    const maData = await db
-      .select({
-        id: accountMahasiswaDetailTable.accountId,
-        name: accountMahasiswaDetailTable.name,
-        email: accountTable.email,
-      })
-      .from(accountMahasiswaDetailTable)
-      .innerJoin(
-        accountTable,
-        eq(accountMahasiswaDetailTable.accountId, accountTable.id),
-      )
-      .where(eq(accountMahasiswaDetailTable.accountId, mahasiswaId))
-      .limit(1);
+    const maUser = await prisma.user.findFirst({
+      where: { id: mahasiswaId },
+      include: { MahasiswaProfile: true },
+    });
 
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
@@ -655,11 +534,11 @@ terminateProtectedRouter.openapi(requestTerminateFromOTARoute, async (c) => {
     await transporter
       .sendMail({
         from: env.EMAIL_FROM,
-        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : maData[0].email,
+        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : maUser?.email,
         subject: "Permintaan Pemutusan Bantuan Asuh",
         html: requestTerminasiEmail(
           user.name ?? "",
-          maData[0].name ?? "",
+          maUser?.MahasiswaProfile?.name ?? "",
           "ota",
           "https://wa.me/6285624654990",
         ),
@@ -668,14 +547,12 @@ terminateProtectedRouter.openapi(requestTerminateFromOTARoute, async (c) => {
         console.error("Error sending email:", error);
       });
 
-    const subscription = await db
-      .select()
-      .from(pushSubscriptionTable)
-      .where(eq(pushSubscriptionTable.accountId, user.id))
-      .limit(1);
+    const subscription = await prisma.pushSubscription.findFirst({
+      where: { userId: user.id },
+    });
 
-    if (subscription.length > 0) {
-      const { endpoint, keys } = subscription[0];
+    if (subscription) {
+      const { endpoint, keys } = subscription;
       const { p256dh, auth } = keys as { p256dh: string; auth: string };
 
       const validatedData = SubscriptionSchema.parse({
@@ -741,13 +618,12 @@ terminateProtectedRouter.openapi(validateTerminateRoute, async (c) => {
   const zodParseResult = verifTerminateRequestSchema.parse(data);
   const { mahasiswaId, otaId } = zodParseResult;
 
-  const userAccount = await db
-    .select()
-    .from(accountTable)
-    .where(eq(accountTable.id, user.id))
-    .limit(1);
+  const userAccount = await prisma.user.findFirst({
+    where: { id: user.id },
+    select: { verificationStatus: true },
+  });
 
-  if (userAccount[0].status === "unverified") {
+  if (userAccount?.verificationStatus === "unverified") {
     return c.json(
       {
         success: false,
@@ -773,18 +649,11 @@ terminateProtectedRouter.openapi(validateTerminateRoute, async (c) => {
     );
   }
 
-  const connection = await db
-    .select()
-    .from(connectionTable)
-    .where(
-      and(
-        eq(connectionTable.mahasiswaId, mahasiswaId),
-        eq(connectionTable.otaId, otaId),
-      ),
-    )
-    .limit(1);
+  const connection = await prisma.connection.findFirst({
+    where: { mahasiswaId, otaId },
+  });
 
-  if (connection.length === 0) {
+  if (!connection) {
     return c.json(
       {
         success: false,
@@ -795,21 +664,12 @@ terminateProtectedRouter.openapi(validateTerminateRoute, async (c) => {
     );
   }
 
-  const otaData = await db
-    .select({
-      id: accountOtaDetailTable.accountId,
-      name: accountOtaDetailTable.name,
-      email: accountTable.email,
-    })
-    .from(accountOtaDetailTable)
-    .innerJoin(
-      accountTable,
-      eq(accountOtaDetailTable.accountId, accountTable.id),
-    )
-    .where(eq(accountOtaDetailTable.accountId, otaId))
-    .limit(1);
+  const otaUser = await prisma.user.findFirst({
+    where: { id: otaId },
+    include: { OtaProfile: true },
+  });
 
-  if (otaData.length === 0) {
+  if (!otaUser || !otaUser.OtaProfile) {
     return c.json(
       {
         success: false,
@@ -820,21 +680,12 @@ terminateProtectedRouter.openapi(validateTerminateRoute, async (c) => {
     );
   }
 
-  const maData = await db
-    .select({
-      id: accountMahasiswaDetailTable.accountId,
-      name: accountMahasiswaDetailTable.name,
-      email: accountTable.email,
-    })
-    .from(accountMahasiswaDetailTable)
-    .innerJoin(
-      accountTable,
-      eq(accountMahasiswaDetailTable.accountId, accountTable.id),
-    )
-    .where(eq(accountMahasiswaDetailTable.accountId, mahasiswaId))
-    .limit(1);
+  const maUser = await prisma.user.findFirst({
+    where: { id: mahasiswaId },
+    include: { MahasiswaProfile: true },
+  });
 
-  if (maData.length === 0) {
+  if (!maUser || !maUser.MahasiswaProfile) {
     return c.json(
       {
         success: false,
@@ -846,36 +697,32 @@ terminateProtectedRouter.openapi(validateTerminateRoute, async (c) => {
   }
 
   try {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(accountMahasiswaDetailTable)
-        .set({ mahasiswaStatus: "inactive" })
-        .where(eq(accountMahasiswaDetailTable.accountId, mahasiswaId));
+    await prisma.$transaction(async (tx) => {
+      await tx.mahasiswaProfile.update({
+        where: { userId: mahasiswaId },
+        data: { mahasiswaStatus: "inactive" },
+      });
 
-      await tx
-        .update(transactionTable)
-        .set({ transactionStatus: "paid", transferStatus: "paid" })
-        .where(
-          and(
-            eq(transactionTable.mahasiswaId, mahasiswaId),
-            eq(transactionTable.otaId, otaId),
-            eq(transactionTable.transactionStatus, "unpaid"),
-          ),
-        );
+      await tx.transaction.updateMany({
+        where: {
+          mahasiswaId,
+          otaId,
+          transactionStatus: "unpaid",
+        },
+        data: { transactionStatus: "paid", transferStatus: "paid" },
+      });
 
-      await tx
-        .delete(connectionTable)
-        .where(
-          and(
-            eq(connectionTable.mahasiswaId, mahasiswaId),
-            eq(connectionTable.otaId, otaId),
-            eq(connectionTable.connectionStatus, "accepted"),
-            or(
-              eq(connectionTable.requestTerminateMahasiswa, true),
-              eq(connectionTable.requestTerminateOta, true),
-            ),
-          ),
-        );
+      await tx.connection.deleteMany({
+        where: {
+          mahasiswaId,
+          otaId,
+          connectionStatus: "accepted",
+          OR: [
+            { requestTerminateMahasiswa: true },
+            { requestTerminateOta: true },
+          ],
+        },
+      });
     });
 
     const transporter = nodemailer.createTransport({
@@ -896,26 +743,27 @@ terminateProtectedRouter.openapi(validateTerminateRoute, async (c) => {
       }
     });
 
-    if (connection[0].requestTerminateMahasiswa === true) {
+    if (connection.requestTerminateMahasiswa === true) {
       await transporter
         .sendMail({
           from: env.EMAIL_FROM,
-          to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : maData[0].email,
+          to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : maUser.email,
           subject: "Permintaan Pemberhentian Hubungan Asuh Disetujui",
-          html: terminasiAcceptedMAEmail(maData[0].name ?? "", otaData[0].name),
+          html: terminasiAcceptedMAEmail(
+            maUser.MahasiswaProfile.name ?? "",
+            otaUser.OtaProfile.name ?? "",
+          ),
         })
         .catch((error) => {
           console.error("Error sending email:", error);
         });
 
-      const subscriptionMA = await db
-        .select()
-        .from(pushSubscriptionTable)
-        .where(eq(pushSubscriptionTable.accountId, maData[0].id))
-        .limit(1);
+      const subscriptionMA = await prisma.pushSubscription.findFirst({
+        where: { userId: maUser.id },
+      });
 
-      if (subscriptionMA.length > 0) {
-        const { endpoint, keys } = subscriptionMA[0];
+      if (subscriptionMA) {
+        const { endpoint, keys } = subscriptionMA;
         const { p256dh, auth } = keys as { p256dh: string; auth: string };
 
         const validatedData = SubscriptionSchema.parse({
@@ -934,7 +782,7 @@ terminateProtectedRouter.openapi(validateTerminateRoute, async (c) => {
 
         const notificationData = {
           title: "Permintaan Pemberhentian Hubungan Asuh Disetujui",
-          body: `Permintaan pemberhentian hubungan asuh dengan OTA ${otaData[0].name} disetujui`,
+          body: `Permintaan pemberhentian hubungan asuh dengan OTA ${otaUser.OtaProfile.name} disetujui`,
           icon: "/icon/logo-iom-white.png",
           actions: [
             {
@@ -949,26 +797,27 @@ terminateProtectedRouter.openapi(validateTerminateRoute, async (c) => {
       }
     }
 
-    if (connection[0].requestTerminateOta === true) {
+    if (connection.requestTerminateOta === true) {
       await transporter
         .sendMail({
           from: env.EMAIL_FROM,
-          to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : otaData[0].email,
+          to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : otaUser.email,
           subject: "Permintaan Pemberhentian Hubungan Asuh Disetujui",
-          html: terminasiAcceptedMAEmail(otaData[0].name, maData[0].name ?? ""),
+          html: terminasiAcceptedMAEmail(
+            otaUser.OtaProfile.name ?? "",
+            maUser.MahasiswaProfile.name ?? "",
+          ),
         })
         .catch((error) => {
           console.error("Error sending email:", error);
         });
 
-      const subscriptionOTA = await db
-        .select()
-        .from(pushSubscriptionTable)
-        .where(eq(pushSubscriptionTable.accountId, otaData[0].id))
-        .limit(1);
+      const subscriptionOTA = await prisma.pushSubscription.findFirst({
+        where: { userId: otaUser.id },
+      });
 
-      if (subscriptionOTA.length > 0) {
-        const { endpoint, keys } = subscriptionOTA[0];
+      if (subscriptionOTA) {
+        const { endpoint, keys } = subscriptionOTA;
         const { p256dh, auth } = keys as { p256dh: string; auth: string };
 
         const validatedData = SubscriptionSchema.parse({
@@ -987,7 +836,7 @@ terminateProtectedRouter.openapi(validateTerminateRoute, async (c) => {
 
         const notificationData = {
           title: "Permintaan Pemberhentian Hubungan Asuh Disetujui",
-          body: `Permintaan pemberhentian hubungan asuh dengan mahasiswa ${maData[0].name} disetujui`,
+          body: `Permintaan pemberhentian hubungan asuh dengan mahasiswa ${maUser.MahasiswaProfile.name} disetujui`,
           icon: "/icon/logo-iom-white.png",
           actions: [
             {
@@ -1034,13 +883,12 @@ terminateProtectedRouter.openapi(rejectTerminateRoute, async (c) => {
   const zodParseResult = verifTerminateRequestSchema.parse(data);
   const { mahasiswaId, otaId } = zodParseResult;
 
-  const userAccount = await db
-    .select()
-    .from(accountTable)
-    .where(eq(accountTable.id, user.id))
-    .limit(1);
+  const userAccount = await prisma.user.findFirst({
+    where: { id: user.id },
+    select: { verificationStatus: true },
+  });
 
-  if (userAccount[0].status === "unverified") {
+  if (userAccount?.verificationStatus === "unverified") {
     return c.json(
       {
         success: false,
@@ -1067,27 +915,23 @@ terminateProtectedRouter.openapi(rejectTerminateRoute, async (c) => {
   }
 
   try {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(connectionTable)
-        .set({
-          requestTerminateMahasiswa: false,
-          requestTerminateOta: false,
-          connectionStatus: "accepted",
-          requestTerminationNoteMA: null,
-          requestTerminationNoteOTA: null,
-        })
-        .where(
-          and(
-            eq(connectionTable.mahasiswaId, mahasiswaId),
-            eq(connectionTable.otaId, otaId),
-            eq(connectionTable.connectionStatus, "accepted"),
-            or(
-              eq(connectionTable.requestTerminateMahasiswa, true),
-              eq(connectionTable.requestTerminateOta, true),
-            ),
-          ),
-        );
+    await prisma.connection.updateMany({
+      where: {
+        mahasiswaId,
+        otaId,
+        connectionStatus: "accepted",
+        OR: [
+          { requestTerminateMahasiswa: true },
+          { requestTerminateOta: true },
+        ],
+      },
+      data: {
+        requestTerminateMahasiswa: false,
+        requestTerminateOta: false,
+        connectionStatus: "accepted",
+        requestTerminationNoteMa: null,
+        requestTerminationNoteOta: null,
+      },
     });
 
     return c.json(

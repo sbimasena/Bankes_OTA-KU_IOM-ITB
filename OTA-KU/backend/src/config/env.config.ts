@@ -16,9 +16,16 @@ const EnvSchema = z.object({
   AZURE_CLIENT_ID: z.string(),
   AZURE_CLIENT_SECRET: z.string(),
   VITE_PUBLIC_URL: z.string().url(),
-  CLOUDINARY_CLOUD_NAME: z.string(),
-  CLOUDINARY_API_KEY: z.string(),
-  CLOUDINARY_API_SECRET: z.string(),
+  MINIO_ENDPOINT: z.string().default("minio"),
+  MINIO_PORT: z.coerce.number().default(9000),
+  MINIO_USE_SSL: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
+  MINIO_ACCESS_KEY: z.string().default("minioadmin"),
+  MINIO_SECRET_KEY: z.string().default("minioadmin"),
+  MINIO_PUBLIC_HOST: z.string().default("localhost"),
+  MINIO_PUBLIC_PORT: z.coerce.number().default(9000),
   EMAIL: z.string().email(),
   EMAIL_FROM: z.string(),
   EMAIL_PASSWORD: z.string(),

@@ -10,9 +10,16 @@
     ],
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
-    "outDir": "./dist",
+    "outDir": "./dist"
   },
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "src/db/drizzle.ts",
+    "src/db/schema.ts",
+    "src/db/scripts",
+    "src/db/seed.ts",
+    "src/db/reset.ts",
+    "src/lib/cloudinary.ts",
+    "src/lib/file-upload.ts"
   ]
 }

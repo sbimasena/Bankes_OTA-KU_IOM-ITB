@@ -1,8 +1,6 @@
-import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
-import { db } from "../db/drizzle.js";
-import { accountTable } from "../db/schema.js";
+import { prisma } from "../db/prisma.js";
 import { changePasswordRoute } from "../routes/password.route.js";
 import { ChangePasswordRequestSchema } from "../zod/password.js";
 import { createAuthRouter, createRouter } from "./router-factory.js";
@@ -34,11 +32,11 @@ passwordProtectedRouter.openapi(changePasswordRoute, async (c) => {
     // Hash the password before storing it
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
-    
-    await db
-      .update(accountTable)
-      .set({ password: hashedPassword })
-      .where(eq(accountTable.id, id));
+
+    await prisma.user.update({
+      where: { id },
+      data: { password: hashedPassword },
+    });
 
     return c.json(
       {

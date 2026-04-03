@@ -2,19 +2,22 @@ FROM node:22-alpine AS base
 
 FROM base AS builder
 
-RUN apk add --no-cache gcompat
+RUN apk add --no-cache gcompat openssl
 WORKDIR /app
 
-COPY package*json tsconfig.json src ./
+COPY package*json tsconfig.json ./
+COPY prisma ./prisma
+COPY src ./src
 
 RUN npm ci && \
+    npx prisma generate && \
     npm run build && \
     npm prune --production
 
 FROM base AS runner
 WORKDIR /app
 
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl openssl
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 hono
 

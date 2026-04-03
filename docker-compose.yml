@@ -23,7 +23,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d iom_ota_db"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d iom_ota_db" ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -37,7 +37,7 @@ services:
     container_name: iom-ota-minio
     ports:
       - "9000:9000"
-      - "9001:9001"   # MinIO Console
+      - "9001:9001" # MinIO Console
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -45,7 +45,7 @@ services:
       - minio-data:/data
     command: server /data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,12 +63,7 @@ services:
     networks:
       - iom-ota-network
     entrypoint: >
-      /bin/sh -c "
-      mc alias set myminio http://minio:9000 minioadmin minioadmin;
-      mc mb --ignore-existing myminio/documents-bucket;
-      mc anonymous set public myminio/documents-bucket;
-      echo '✅ MinIO bucket initialized';
-      "
+      /bin/sh -c " mc alias set myminio http://minio:9000 minioadmin minioadmin; mc mb --ignore-existing myminio/documents-bucket; mc anonymous set public myminio/documents-bucket; echo '✅ MinIO bucket initialized'; "
     restart: "no"
 
   # ── Prisma Migration + Seed ──────────────────────────────────────────────────
@@ -86,17 +81,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/iom_ota_db
     command: >
-      sh -c "
-      cd /workspace/prisma &&
-      npm install --quiet &&
-      echo '📦 Dependencies installed' &&
-      npx prisma generate &&
-      echo '⚙️  Prisma client generated' &&
-      npx prisma db push &&
-      echo '🗄️  Schema pushed' &&
-      npx prisma db seed &&
-      echo '🌱 Seed completed'
-      "
+      sh -c " cd /workspace/prisma && npm install --quiet && echo '📦 Dependencies installed' && npx prisma generate && echo '⚙️  Prisma client generated' && npx prisma db push && echo '🗄️  Schema pushed' && npx prisma db seed && echo '🌱 Seed completed' "
     depends_on:
       postgres:
         condition: service_healthy
@@ -145,29 +130,53 @@ services:
     restart: unless-stopped
 
   # ── OTA-KU Backend ──────────────────────────────────────────────────────────
-  # Note: OTA masih menggunakan Drizzle ORM sementara menunggu migrasi kode ke Prisma.
-  # OTA-KU BELUM kompatibel dengan schema baru (tabel `account` vs `user`).
-  # Service ini dinonaktifkan (profile: ota) sampai migrasi kode OTA selesai.
-  # Untuk menjalankan OTA terpisah: cd OTA-KU && docker compose up
+  # Migrasi ke Prisma + MinIO selesai. Aktifkan dengan: docker compose --profile ota up
   ota-backend:
-    profiles: ["ota"]  # Aktifkan dengan: docker compose --profile ota up
+    profiles: [ "ota" ]
     build:
       context: ./OTA-KU/backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: iom-ota-backend
     ports:
       - "3000:3000"
+    volumes:
+      - ./OTA-KU/backend:/app:delegated
+      - ota-backend-node-modules:/app/node_modules
     environment:
+      NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/iom_ota_db
+      JWT_SECRET: random-dev-secret
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_PUBLIC_HOST: localhost
+      MINIO_PUBLIC_PORT: "9000"
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-placeholder}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-placeholder}
+      VITE_PUBLIC_URL: ${VITE_PUBLIC_URL:-http://localhost:5173}
+      ALLOWED_ORIGINS: '["http://localhost:5173"]'
+      EMAIL: ${EMAIL:-noreply@example.com}
+      EMAIL_FROM: ${EMAIL_FROM:-OTA-KU <noreply@example.com>}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-placeholder}
+      VAPID_MAILTO: ${VAPID_MAILTO:-admin@example.com}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-placeholder}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-placeholder}
+      TEST_EMAIL: ${TEST_EMAIL:-test@example.com}
+      BACKEND_PORT: "3000"
+    command: sh -c "npm install --quiet && npx prisma generate && npm run dev"
     depends_on:
       migrate:
         condition: service_completed_successfully
+      minio:
+        condition: service_healthy
     networks:
       - iom-ota-network
     restart: unless-stopped
 
   ota-frontend:
-    profiles: ["ota"]
+    profiles: [ "ota" ]
     build:
       context: ./OTA-KU/frontend
       dockerfile: Dockerfile
@@ -186,8 +195,9 @@ volumes:
   minio-data:
   migrate-node-modules:
   bankes-node-modules:
+  ota-backend-node-modules:
 
-# ── Networks ─────────────────────────────────────────────────────────────────
+    # ── Networks ─────────────────────────────────────────────────────────────────
 networks:
   iom-ota-network:
     driver: bridge

@@ -1,14 +1,7 @@
-import { eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
 
 import { env } from "../config/env.config.js";
-import { db } from "../db/drizzle.js";
-import {
-  accountMahasiswaDetailTable,
-  accountOtaDetailTable,
-  accountTable,
-  pushSubscriptionTable,
-} from "../db/schema.js";
+import { prisma } from "../db/prisma.js";
 import { registrasiAcceptedEmail } from "../lib/email/registrasi-accepted.js";
 import { registrasiRejectedEmail } from "../lib/email/registrasi-rejected.js";
 import { sendNotification } from "../lib/web-push.js";
@@ -34,42 +27,33 @@ statusProtectedRouter.openapi(applicationStatusRoute, async (c) => {
   const { status, adminOnlyNotes, notes, bill } = zodParseResult;
 
   try {
-    const [[user], [detail]] = await db.transaction(async (tx) => {
-      await tx
-        .update(accountTable)
-        .set({
-          applicationStatus: status,
-        })
-        .where(eq(accountTable.id, id));
+    const [user, detail] = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.update({
+        where: { id },
+        data: { applicationStatus: status },
+      });
 
-      const user = await tx
-        .select()
-        .from(accountTable)
-        .where(eq(accountTable.id, id));
+      let detail: { name: string | null } | null = null;
 
-      const type = user[0]?.type;
-
-      let detail = null;
-
-      if (type === "mahasiswa") {
-        await tx
-          .update(accountMahasiswaDetailTable)
-          .set({
-            bill: bill,
+      if (user.role === "Mahasiswa") {
+        await tx.mahasiswaProfile.update({
+          where: { userId: id },
+          data: {
+            bill: bill ?? 0,
             notes: notes ?? null,
             adminOnlyNotes: adminOnlyNotes ?? null,
-          })
-          .where(eq(accountMahasiswaDetailTable.accountId, id));
+          },
+        });
 
-        detail = await tx
-          .select({ name: accountMahasiswaDetailTable.name })
-          .from(accountMahasiswaDetailTable)
-          .where(eq(accountMahasiswaDetailTable.accountId, id));
+        detail = await tx.mahasiswaProfile.findFirst({
+          where: { userId: id },
+          select: { name: true },
+        });
       } else {
-        detail = await tx
-          .select({ name: accountOtaDetailTable.name })
-          .from(accountOtaDetailTable)
-          .where(eq(accountOtaDetailTable.accountId, id));
+        detail = await tx.otaProfile.findFirst({
+          where: { userId: id },
+          select: { name: true },
+        });
       }
 
       return [user, detail];
@@ -101,29 +85,27 @@ statusProtectedRouter.openapi(applicationStatusRoute, async (c) => {
         html:
           status === "accepted"
             ? registrasiAcceptedEmail(
-                detail.name!,
+                detail?.name!,
                 env.VITE_PUBLIC_URL,
-                user.type === "mahasiswa" ? "ma" : "ota",
+                user.role === "Mahasiswa" ? "ma" : "ota",
               )
             : registrasiRejectedEmail(
-                detail.name!,
+                detail?.name!,
                 "https://wa.me/6285624654990",
-                user.type === "mahasiswa" ? "ma" : "ota",
+                user.role === "Mahasiswa" ? "ma" : "ota",
               ),
       })
       .catch((error) => {
         console.error("Error sending email:", error);
       });
 
-    const subscription = await db
-      .select()
-      .from(pushSubscriptionTable)
-      .where(eq(pushSubscriptionTable.accountId, user.id))
-      .limit(1);
+    const subscription = await prisma.pushSubscription.findFirst({
+      where: { userId: user.id },
+    });
 
-    if (subscription.length > 0) {
-      const { endpoint, keys } = subscription[0];
-      const { p256dh, auth } = keys as { p256dh: string; auth: string };
+    if (subscription) {
+      const { endpoint } = subscription;
+      const { p256dh, auth } = subscription.keys as { p256dh: string; auth: string };
 
       const validatedData = SubscriptionSchema.parse({
         endpoint,
@@ -192,16 +174,15 @@ statusProtectedRouter.openapi(getApplicationStatusRoute, async (c) => {
   }
 
   try {
-    const user = await db
-      .select()
-      .from(accountTable)
-      .where(eq(accountTable.id, id));
+    const account = await prisma.user.findFirst({
+      where: { id },
+    });
 
     return c.json(
       {
         success: true,
         message: "Berhasil mengambil status pendaftaran",
-        body: { status: user[0].applicationStatus },
+        body: { status: account!.applicationStatus },
       },
       200,
     );
@@ -234,16 +215,15 @@ statusProtectedRouter.openapi(getVerificationStatusRoute, async (c) => {
   }
 
   try {
-    const user = await db
-      .select()
-      .from(accountTable)
-      .where(eq(accountTable.id, id));
+    const account = await prisma.user.findFirst({
+      where: { id },
+    });
 
     return c.json(
       {
         success: true,
         message: "Berhasil mengambil status pendaftaran",
-        body: { status: user[0].status },
+        body: { status: account!.verificationStatus },
       },
       200,
     );
@@ -276,12 +256,11 @@ statusProtectedRouter.openapi(getReapplicationStatusRoute, async (c) => {
   }
 
   try {
-    const user = await db
-      .select()
-      .from(accountTable)
-      .where(eq(accountTable.id, id));
+    const account = await prisma.user.findFirst({
+      where: { id },
+    });
 
-    if (user[0].type !== "mahasiswa") {
+    if (account?.role !== "Mahasiswa") {
       return c.json(
         {
           success: false,
@@ -292,16 +271,14 @@ statusProtectedRouter.openapi(getReapplicationStatusRoute, async (c) => {
       );
     }
 
-    const dueNextUpdateAt = await db
-      .select({
-        dueNextUpdateAt: accountMahasiswaDetailTable.dueNextUpdateAt,
-      })
-      .from(accountMahasiswaDetailTable)
-      .where(eq(accountMahasiswaDetailTable.accountId, id));
+    const mahasiswaProfile = await prisma.mahasiswaProfile.findFirst({
+      where: { userId: id },
+      select: { dueNextUpdateAt: true },
+    });
 
     // Return true if current date is 30 days before dueNextUpdateAt
     const currentDate = new Date();
-    const dueDate = new Date(dueNextUpdateAt[0].dueNextUpdateAt);
+    const dueDate = new Date(mahasiswaProfile!.dueNextUpdateAt);
     const thirtyDaysBeforeDueDate = new Date(
       dueDate.getTime() - 30 * 24 * 60 * 60 * 1000,
     );

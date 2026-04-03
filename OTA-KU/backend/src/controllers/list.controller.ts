@@ -1,25 +1,5 @@
-import {
-  and,
-  count,
-  desc,
-  eq,
-  ilike,
-  isNotNull,
-  lt,
-  or,
-  sql,
-} from "drizzle-orm";
-import { connect } from "http2";
-
-import { db } from "../db/drizzle.js";
-import {
-  accountAdminDetailTable,
-  accountMahasiswaDetailTable,
-  accountOtaDetailTable,
-  accountTable,
-  connectionTable,
-} from "../db/schema.js";
-import type { Jurusan } from "../lib/nim.js";
+import { prisma } from "../db/prisma.js";
+import type { Fakultas, Jurusan } from "../lib/nim.js";
 import {
   listAllAccountRoute,
   listAvailableOTARoute,
@@ -61,7 +41,6 @@ listProtectedRouter.openapi(listMahasiswaOtaRoute, async (c) => {
     );
   }
 
-  // Validate page to be a positive integer
   let pageNumber = Number(page);
   if (isNaN(pageNumber) || pageNumber < 1) {
     pageNumber = 1;
@@ -70,70 +49,43 @@ listProtectedRouter.openapi(listMahasiswaOtaRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const conditions = [
-      and(
-        eq(accountMahasiswaDetailTable.mahasiswaStatus, "inactive"),
-        eq(accountTable.applicationStatus, "accepted"),
-        isNotNull(accountMahasiswaDetailTable.description),
-        isNotNull(accountMahasiswaDetailTable.file),
-        or(
-          ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-          ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-        ),
-      ),
-    ];
-
-    if (major) {
-      conditions.push(eq(accountMahasiswaDetailTable.major, major));
+    const where: Record<string, unknown> = {
+      mahasiswaStatus: "inactive",
+      description: { not: null },
+      StudentFiles: { some: { type: "Profile_Photo" } },
+      User: { applicationStatus: "accepted" },
+    };
+    if (major) where.major = major as Jurusan;
+    if (faculty) where.faculty = faculty as Fakultas;
+    if (religion) where.religion = religion;
+    if (gender) where.gender = gender;
+    if (q) {
+      where.OR = [
+        { name: { contains: q, mode: "insensitive" } },
+        { nim: { contains: q, mode: "insensitive" } },
+      ];
     }
 
-    if (faculty) {
-      conditions.push(eq(accountMahasiswaDetailTable.faculty, faculty));
-    }
-
-    if (religion) {
-      conditions.push(eq(accountMahasiswaDetailTable.religion, religion));
-    }
-
-    if (gender) {
-      conditions.push(eq(accountMahasiswaDetailTable.gender, gender));
-    }
-
-    const countsQuery = db
-      .select({ count: count() })
-      .from(accountMahasiswaDetailTable)
-      .innerJoin(
-        accountTable,
-        eq(accountMahasiswaDetailTable.accountId, accountTable.id),
-      )
-      .where(and(...conditions));
-
-    const mahasiswaListQuery = db
-      .select({
-        accountId: accountMahasiswaDetailTable.accountId,
-        name: accountMahasiswaDetailTable.name,
-        nim: accountMahasiswaDetailTable.nim,
-        major: accountMahasiswaDetailTable.major,
-        faculty: accountMahasiswaDetailTable.faculty,
-        cityOfOrigin: accountMahasiswaDetailTable.cityOfOrigin,
-        highschoolAlumni: accountMahasiswaDetailTable.highschoolAlumni,
-        religion: accountMahasiswaDetailTable.religion,
-        gender: accountMahasiswaDetailTable.gender,
-        gpa: accountMahasiswaDetailTable.gpa,
-      })
-      .from(accountMahasiswaDetailTable)
-      .innerJoin(
-        accountTable,
-        eq(accountMahasiswaDetailTable.accountId, accountTable.id),
-      )
-      .where(and(...conditions))
-      .orderBy(desc(accountMahasiswaDetailTable.createdAt))
-      .limit(LIST_PAGE_SIZE)
-      .offset(offset);
-
-    const [mahasiswaList, counts] = await Promise.all([
-      mahasiswaListQuery,
-      countsQuery,
+    const [mahasiswaList, totalCount] = await Promise.all([
+      prisma.mahasiswaProfile.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: LIST_PAGE_SIZE,
+        skip: offset,
+        select: {
+          userId: true,
+          name: true,
+          nim: true,
+          major: true,
+          faculty: true,
+          cityOfOrigin: true,
+          highschoolAlumni: true,
+          religion: true,
+          gender: true,
+          gpa: true,
+        },
+      }),
+      prisma.mahasiswaProfile.count({ where }),
     ]);
 
     return c.json(
@@ -141,19 +93,19 @@ listProtectedRouter.openapi(listMahasiswaOtaRoute, async (c) => {
         success: true,
         message: "Daftar mahasiswa berhasil diambil",
         body: {
-          data: mahasiswaList.map((mahasiswa) => ({
-            accountId: mahasiswa.accountId,
-            name: mahasiswa.name!,
-            nim: mahasiswa.nim,
-            major: mahasiswa.major || "",
-            faculty: mahasiswa.faculty || "",
-            cityOfOrigin: mahasiswa.cityOfOrigin || "",
-            highschoolAlumni: mahasiswa.highschoolAlumni || "",
-            religion: mahasiswa.religion!,
-            gender: mahasiswa.gender!,
-            gpa: mahasiswa.gpa!,
+          data: mahasiswaList.map((m) => ({
+            accountId: m.userId,
+            name: m.name!,
+            nim: m.nim,
+            major: m.major || "",
+            faculty: m.faculty || "",
+            cityOfOrigin: m.cityOfOrigin || "",
+            highschoolAlumni: m.highschoolAlumni || "",
+            religion: m.religion as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
+            gender: m.gender as "M" | "F",
+            gpa: m.gpa!,
           })),
-          totalData: counts[0].count,
+          totalData: totalCount,
         },
       },
       200,
@@ -194,7 +146,6 @@ listProtectedRouter.openapi(listMahasiswaAdminRoute, async (c) => {
     );
   }
 
-  // Validate page to be a positive integer
   let pageNumber = Number(page);
   if (isNaN(pageNumber) || pageNumber < 1) {
     pageNumber = 1;
@@ -203,157 +154,104 @@ listProtectedRouter.openapi(listMahasiswaAdminRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_DETAIL_SIZE;
 
-    const baseConditions = [
-      eq(accountTable.type, "mahasiswa"),
-      isNotNull(accountTable.phoneNumber),
-    ];
+    const baseWhere = {
+      role: "Mahasiswa",
+      phoneNumber: { not: null },
+    } as const;
 
-    const searchCondition = q
-      ? or(
-          ilike(accountMahasiswaDetailTable.name, `%${q}%`),
-          ilike(accountTable.email, `%${q}%`),
-        )
-      : undefined;
+    const listWhere: Record<string, unknown> = {
+      role: "Mahasiswa",
+      phoneNumber: { not: null },
+      MahasiswaProfile: { description: { not: null } },
+    };
+    if (q) {
+      listWhere.OR = [
+        { MahasiswaProfile: { name: { contains: q, mode: "insensitive" } } },
+        { email: { contains: q, mode: "insensitive" } },
+      ];
+    }
+    if (status) listWhere.applicationStatus = status;
+    if (jurusan) {
+      (listWhere.MahasiswaProfile as Record<string, unknown>).major =
+        jurusan as Jurusan;
+    }
 
-    const filterConditions = [
-      status
-        ? eq(
-            accountTable.applicationStatus,
-            status as "pending" | "accepted" | "rejected" | "unregistered",
-          )
-        : undefined,
-      jurusan
-        ? eq(accountMahasiswaDetailTable.major, jurusan as Jurusan)
-        : undefined,
-    ];
-
-    const countsQuery = db
-      .select({
-        total: sql<number>`sum(case when ${accountTable.applicationStatus} != 'unregistered' then 1 else 0 end)`,
-        accepted: sql<number>`sum(case when ${accountTable.applicationStatus} = 'accepted' then 1 else 0 end)`,
-        pending: sql<number>`sum(case when ${accountTable.applicationStatus} = 'pending' then 1 else 0 end)`,
-        rejected: sql<number>`sum(case when ${accountTable.applicationStatus} = 'rejected' then 1 else 0 end)`,
-      })
-      .from(accountTable)
-      .where(and(...baseConditions));
-
-    const countsPaginationQuery = db
-      .select({ count: count() })
-      .from(accountTable)
-      .leftJoin(
-        accountMahasiswaDetailTable,
-        eq(accountTable.id, accountMahasiswaDetailTable.accountId),
-      )
-      .where(
-        and(
-          ...baseConditions,
-          searchCondition,
-          ...filterConditions,
-          isNotNull(accountMahasiswaDetailTable.description),
-        ),
-      );
-
-    const mahasiswaListQuery = db
-      .select({
-        id: accountTable.id,
-        email: accountTable.email,
-        phoneNumber: accountTable.phoneNumber,
-        provider: accountTable.provider,
-        status: accountTable.status,
-        applicationStatus: accountTable.applicationStatus,
-        type: accountTable.type,
-        name: accountMahasiswaDetailTable.name,
-        nim: accountMahasiswaDetailTable.nim,
-        mahasiswaStatus: accountMahasiswaDetailTable.mahasiswaStatus,
-        description: accountMahasiswaDetailTable.description,
-        file: accountMahasiswaDetailTable.file,
-        major: accountMahasiswaDetailTable.major,
-        faculty: accountMahasiswaDetailTable.faculty,
-        cityOfOrigin: accountMahasiswaDetailTable.cityOfOrigin,
-        highschoolAlumni: accountMahasiswaDetailTable.highschoolAlumni,
-        religion: accountMahasiswaDetailTable.religion,
-        gender: accountMahasiswaDetailTable.gender,
-        gpa: accountMahasiswaDetailTable.gpa,
-        kk: accountMahasiswaDetailTable.kk,
-        ktm: accountMahasiswaDetailTable.ktm,
-        waliRecommendationLetter:
-          accountMahasiswaDetailTable.waliRecommendationLetter,
-        transcript: accountMahasiswaDetailTable.transcript,
-        salaryReport: accountMahasiswaDetailTable.salaryReport,
-        pbb: accountMahasiswaDetailTable.pbb,
-        electricityBill: accountMahasiswaDetailTable.electricityBill,
-        ditmawaRecommendationLetter:
-          accountMahasiswaDetailTable.ditmawaRecommendationLetter,
-        bill: accountMahasiswaDetailTable.bill,
-        notes: accountMahasiswaDetailTable.notes,
-        adminOnlyNotes: accountMahasiswaDetailTable.adminOnlyNotes,
-      })
-      .from(accountTable)
-      .leftJoin(
-        accountMahasiswaDetailTable,
-        eq(accountTable.id, accountMahasiswaDetailTable.accountId),
-      )
-      .where(
-        and(
-          ...baseConditions,
-          searchCondition,
-          ...filterConditions,
-          isNotNull(accountMahasiswaDetailTable.description),
-        ),
-      )
-      .orderBy(desc(accountMahasiswaDetailTable.createdAt))
-      .limit(LIST_PAGE_DETAIL_SIZE)
-      .offset(offset);
-
-    const [mahasiswaList, counts, countsPagination] = await Promise.all([
-      mahasiswaListQuery,
-      countsQuery,
-      countsPaginationQuery,
-    ]);
+    const [total, accepted, pending, rejected, totalPagination, mahasiswaList] =
+      await Promise.all([
+        prisma.user.count({
+          where: { ...baseWhere, applicationStatus: { not: "unregistered" } },
+        }),
+        prisma.user.count({
+          where: { ...baseWhere, applicationStatus: "accepted" },
+        }),
+        prisma.user.count({
+          where: { ...baseWhere, applicationStatus: "pending" },
+        }),
+        prisma.user.count({
+          where: { ...baseWhere, applicationStatus: "rejected" },
+        }),
+        prisma.user.count({ where: listWhere }),
+        prisma.user.findMany({
+          where: listWhere,
+          orderBy: { MahasiswaProfile: { createdAt: "desc" } },
+          take: LIST_PAGE_DETAIL_SIZE,
+          skip: offset,
+          include: {
+            MahasiswaProfile: { include: { StudentFiles: true } },
+          },
+        }),
+      ]);
 
     return c.json(
       {
         success: true,
         message: "Daftar mahasiswa berhasil diambil",
         body: {
-          data: mahasiswaList.map((mahasiswa) => ({
-            id: mahasiswa.id,
-            email: mahasiswa.email,
-            phoneNumber: mahasiswa.phoneNumber!,
-            provider: mahasiswa.provider,
-            status: mahasiswa.status,
-            applicationStatus: mahasiswa.applicationStatus,
-            type: mahasiswa.type,
-            name: mahasiswa.name!,
-            nim: mahasiswa.nim!,
-            mahasiswaStatus: mahasiswa.mahasiswaStatus!,
-            description: mahasiswa.description!,
-            file: mahasiswa.file!,
-            major: mahasiswa.major || "",
-            faculty: mahasiswa.faculty || "",
-            cityOfOrigin: mahasiswa.cityOfOrigin || "",
-            highschoolAlumni: mahasiswa.highschoolAlumni || "",
-            religion: mahasiswa.religion!,
-            gender: mahasiswa.gender!,
-            gpa: mahasiswa.gpa!,
-            kk: mahasiswa.kk || "",
-            ktm: mahasiswa.ktm || "",
-            waliRecommendationLetter: mahasiswa.waliRecommendationLetter || "",
-            transcript: mahasiswa.transcript || "",
-            salaryReport: mahasiswa.salaryReport || "",
-            pbb: mahasiswa.pbb || "",
-            electricityBill: mahasiswa.electricityBill || "",
-            ditmawaRecommendationLetter:
-              mahasiswa.ditmawaRecommendationLetter || "",
-            bill: mahasiswa.bill || 0,
-            notes: mahasiswa.notes || "",
-            adminOnlyNotes: mahasiswa.adminOnlyNotes || "",
-          })),
-          totalPagination: countsPagination[0].count,
-          totalData: Number(counts[0].total),
-          totalPending: Number(counts[0].pending),
-          totalAccepted: Number(counts[0].accepted),
-          totalRejected: Number(counts[0].rejected),
+          data: mahasiswaList.map((u) => {
+            const mp = u.MahasiswaProfile;
+            const files = mp?.StudentFiles ?? [];
+            const getFile = (type: string) =>
+              files.find((f) => f.type === type)?.fileUrl ?? "";
+            return {
+              id: u.id,
+              email: u.email,
+              phoneNumber: u.phoneNumber!,
+              provider: u.provider,
+              status: u.verificationStatus,
+              applicationStatus: u.applicationStatus,
+              type: u.role as unknown as "mahasiswa" | "ota" | "admin" | "bankes" | "pengurus",
+              name: mp?.name ?? "",
+              nim: mp?.nim ?? "",
+              mahasiswaStatus: mp?.mahasiswaStatus ?? "inactive",
+              description: mp?.description ?? "",
+              file: getFile("Profile_Photo"),
+              major: mp?.major ?? "",
+              faculty: mp?.faculty ?? "",
+              cityOfOrigin: mp?.cityOfOrigin ?? "",
+              highschoolAlumni: mp?.highschoolAlumni ?? "",
+              religion: (mp?.religion ?? "") as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
+              gender: (mp?.gender ?? "") as "M" | "F",
+              gpa: mp?.gpa ?? "",
+              kk: getFile("KK"),
+              ktm: getFile("KTM"),
+              waliRecommendationLetter: getFile("Wali_Recommendation_Letter"),
+              transcript: getFile("Transcript"),
+              salaryReport: getFile("Salary_Report"),
+              pbb: getFile("PBB"),
+              electricityBill: getFile("Electricity_Bill"),
+              ditmawaRecommendationLetter: getFile(
+                "Ditmawa_Recommendation_Letter",
+              ),
+              bill: mp?.bill ?? 0,
+              notes: mp?.notes ?? "",
+              adminOnlyNotes: mp?.adminOnlyNotes ?? "",
+            };
+          }),
+          totalPagination,
+          totalData: total,
+          totalPending: pending,
+          totalAccepted: accepted,
+          totalRejected: rejected,
         },
       },
       200,
@@ -394,7 +292,6 @@ listProtectedRouter.openapi(listOrangTuaAdminRoute, async (c) => {
     );
   }
 
-  // Validate page to be a positive integer
   let pageNumber = Number(page);
   if (isNaN(pageNumber) || pageNumber < 1) {
     pageNumber = 1;
@@ -403,111 +300,89 @@ listProtectedRouter.openapi(listOrangTuaAdminRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_DETAIL_SIZE;
 
-    const baseConditions = [eq(accountTable.type, "ota")];
+    const baseWhere = { role: "OrangTuaAsuh" } as const;
 
-    const searchCondition = q
-      ? or(ilike(accountOtaDetailTable.name, `%${q}%`))
-      : undefined;
+    const listWhere: Record<string, unknown> = { role: "OrangTuaAsuh" };
+    if (q) {
+      listWhere.OtaProfile = {
+        name: { contains: q, mode: "insensitive" },
+      };
+    }
+    if (status) listWhere.applicationStatus = status;
 
-    const filterConditions = [
-      status
-        ? eq(
-            accountTable.applicationStatus,
-            status as "pending" | "accepted" | "rejected",
-          )
-        : undefined,
-    ];
-
-    const countsQuery = db
-      .select({
-        total: sql<number>`sum(case when ${accountTable.applicationStatus} != 'unregistered' then 1 else 0 end)`,
-        accepted: sql<number>`sum(case when ${accountTable.applicationStatus} = 'accepted' then 1 else 0 end)`,
-        pending: sql<number>`sum(case when ${accountTable.applicationStatus} = 'pending' then 1 else 0 end)`,
-        rejected: sql<number>`sum(case when ${accountTable.applicationStatus} = 'rejected' then 1 else 0 end)`,
-      })
-      .from(accountTable)
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(accountTable.id, accountOtaDetailTable.accountId),
-      )
-      .where(and(...baseConditions));
-
-    const countsPaginationQuery = db
-      .select({ count: count() })
-      .from(accountTable)
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(accountTable.id, accountOtaDetailTable.accountId),
-      )
-      .where(and(...baseConditions, searchCondition, ...filterConditions));
-
-    const orangTuaListQuery = db
-      .select({
-        id: accountTable.id,
-        email: accountTable.email,
-        phoneNumber: accountTable.phoneNumber,
-        provider: accountTable.provider,
-        status: accountTable.status,
-        applicationStatus: accountTable.applicationStatus,
-        name: accountOtaDetailTable.name,
-        job: accountOtaDetailTable.job,
-        address: accountOtaDetailTable.address,
-        linkage: accountOtaDetailTable.linkage,
-        funds: accountOtaDetailTable.funds,
-        maxCapacity: accountOtaDetailTable.maxCapacity,
-        startDate: accountOtaDetailTable.startDate,
-        maxSemester: accountOtaDetailTable.maxSemester,
-        transferDate: accountOtaDetailTable.transferDate,
-        criteria: accountOtaDetailTable.criteria,
-        isDetailVisible: accountOtaDetailTable.isDetailVisible,
-        allowAdminSelection: accountOtaDetailTable.allowAdminSelection,
-      })
-      .from(accountTable)
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(accountTable.id, accountOtaDetailTable.accountId),
-      )
-      .where(and(...baseConditions, searchCondition, ...filterConditions))
-      .orderBy(desc(accountOtaDetailTable.createdAt))
-      .limit(LIST_PAGE_DETAIL_SIZE)
-      .offset(offset);
-
-    const [orangTuaList, counts, countsPagination] = await Promise.all([
-      orangTuaListQuery,
-      countsQuery,
-      countsPaginationQuery,
-    ]);
+    const [total, accepted, pending, rejected, totalPagination, orangTuaList] =
+      await Promise.all([
+        prisma.user.count({
+          where: {
+            ...baseWhere,
+            applicationStatus: { not: "unregistered" },
+            OtaProfile: { isNot: null },
+          },
+        }),
+        prisma.user.count({
+          where: {
+            ...baseWhere,
+            applicationStatus: "accepted",
+            OtaProfile: { isNot: null },
+          },
+        }),
+        prisma.user.count({
+          where: {
+            ...baseWhere,
+            applicationStatus: "pending",
+            OtaProfile: { isNot: null },
+          },
+        }),
+        prisma.user.count({
+          where: {
+            ...baseWhere,
+            applicationStatus: "rejected",
+            OtaProfile: { isNot: null },
+          },
+        }),
+        prisma.user.count({ where: { ...listWhere, OtaProfile: { isNot: null } } }),
+        prisma.user.findMany({
+          where: { ...listWhere, OtaProfile: { isNot: null } },
+          orderBy: { OtaProfile: { createdAt: "desc" } },
+          take: LIST_PAGE_DETAIL_SIZE,
+          skip: offset,
+          include: { OtaProfile: true },
+        }),
+      ]);
 
     return c.json(
       {
         success: true,
         message: "Daftar orang tua berhasil diambil",
         body: {
-          data: orangTuaList.map((orangTua) => ({
-            id: orangTua.id,
-            email: orangTua.email,
-            phoneNumber: orangTua.phoneNumber!,
-            provider: orangTua.provider,
-            status: orangTua.status,
-            applicationStatus: orangTua.applicationStatus,
-            name: orangTua.name,
-            job: orangTua.job,
-            address: orangTua.address,
-            linkage: orangTua.linkage,
-            funds: orangTua.funds,
-            maxCapacity: orangTua.maxCapacity,
-            startDate: orangTua.startDate,
-            maxSemester: orangTua.maxSemester,
-            transferDate: orangTua.transferDate,
-            criteria: orangTua.criteria,
-            isDetailVisible: orangTua.isDetailVisible,
-            allowAdminSelection: orangTua.allowAdminSelection,
-          })),
-          totalPagination: countsPagination[0].count,
-          totalData: Number(counts[0].total),
-          totalPending: Number(counts[0].pending),
-          totalAccepted: Number(counts[0].accepted),
-          totalRejected: Number(counts[0].rejected),
+          data: orangTuaList.map((u) => {
+            const op = u.OtaProfile!;
+            return {
+              id: u.id,
+              email: u.email,
+              phoneNumber: u.phoneNumber!,
+              provider: u.provider,
+              status: u.verificationStatus,
+              applicationStatus: u.applicationStatus,
+              name: op.name,
+              job: op.job,
+              address: op.address,
+              linkage: op.linkage,
+              funds: op.funds,
+              maxCapacity: op.maxCapacity,
+              startDate: op.startDate,
+              maxSemester: op.maxSemester,
+              transferDate: op.transferDate,
+              criteria: op.criteria,
+              isDetailVisible: op.isDetailVisible,
+              allowAdminSelection: op.allowAdminSelection,
+            };
+          }),
+          totalPagination,
+          totalData: total,
+          totalPending: pending,
+          totalAccepted: accepted,
+          totalRejected: rejected,
         },
       },
       200,
@@ -543,7 +418,6 @@ listProtectedRouter.openapi(listAllAccountRoute, async (c) => {
     );
   }
 
-  // Validate page to be a positive integer
   let pageNumber = Number(page);
   if (isNaN(pageNumber) || pageNumber < 1) {
     pageNumber = 1;
@@ -552,144 +426,32 @@ listProtectedRouter.openapi(listAllAccountRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_DETAIL_SIZE;
 
-    // Build filter conditions array with only non-undefined filters
-    const filterConditions = [];
-
-    // Add search condition if q is provided
+    const where: Record<string, unknown> = {};
+    if (status) where.verificationStatus = status;
+    if (type) where.role = type;
+    if (applicationStatus) where.applicationStatus = applicationStatus;
     if (q) {
-      filterConditions.push(
-        or(
-          ilike(accountMahasiswaDetailTable.name, `%${q}%`),
-          ilike(accountOtaDetailTable.name, `%${q}%`),
-          ilike(accountAdminDetailTable.name, `%${q}%`),
-          ilike(accountTable.email, `%${q}%`),
-        ),
-      );
+      where.OR = [
+        { MahasiswaProfile: { name: { contains: q, mode: "insensitive" } } },
+        { OtaProfile: { name: { contains: q, mode: "insensitive" } } },
+        { AdminProfile: { name: { contains: q, mode: "insensitive" } } },
+        { email: { contains: q, mode: "insensitive" } },
+      ];
     }
 
-    // Add status filter if provided
-    if (status) {
-      filterConditions.push(
-        eq(accountTable.status, status as "verified" | "unverified"),
-      );
-    }
-
-    // Add type filter if provided
-    if (type) {
-      filterConditions.push(
-        eq(
-          accountTable.type,
-          type as "mahasiswa" | "ota" | "admin" | "bankes" | "pengurus",
-        ),
-      );
-    }
-
-    // Add applicationStatus filter if provided
-    if (applicationStatus) {
-      filterConditions.push(
-        eq(
-          accountTable.applicationStatus,
-          applicationStatus as
-            | "pending"
-            | "accepted"
-            | "rejected"
-            | "unregistered"
-            | "reapply"
-            | "outdated",
-        ),
-      );
-    }
-
-    // Combine conditions with AND
-    const whereCondition =
-      filterConditions.length > 0 ? and(...filterConditions) : undefined;
-
-    const countsPaginationQuery = db
-      .select({ count: count() })
-      .from(accountTable)
-      .leftJoin(
-        accountMahasiswaDetailTable,
-        eq(accountTable.id, accountMahasiswaDetailTable.accountId),
-      )
-      .leftJoin(
-        accountOtaDetailTable,
-        eq(accountTable.id, accountOtaDetailTable.accountId),
-      )
-      .leftJoin(
-        accountAdminDetailTable,
-        eq(accountTable.id, accountAdminDetailTable.accountId),
-      )
-      .where(whereCondition);
-
-    const accountListQuery = db
-      .select({
-        id: accountTable.id,
-        email: accountTable.email,
-        type: accountTable.type,
-        phoneNumber: accountTable.phoneNumber,
-        provider: accountTable.provider,
-        status: accountTable.status,
-        applicationStatus: accountTable.applicationStatus,
-        ma_name: accountMahasiswaDetailTable.name,
-        ota_name: accountOtaDetailTable.name,
-        admin_name: accountAdminDetailTable.name,
-        nim: accountMahasiswaDetailTable.nim,
-        mahasiswaStatus: accountMahasiswaDetailTable.mahasiswaStatus,
-        description: accountMahasiswaDetailTable.description,
-        file: accountMahasiswaDetailTable.file,
-        major: accountMahasiswaDetailTable.major,
-        faculty: accountMahasiswaDetailTable.faculty,
-        cityOfOrigin: accountMahasiswaDetailTable.cityOfOrigin,
-        highschoolAlumni: accountMahasiswaDetailTable.highschoolAlumni,
-        religion: accountMahasiswaDetailTable.religion,
-        gender: accountMahasiswaDetailTable.gender,
-        gpa: accountMahasiswaDetailTable.gpa,
-        kk: accountMahasiswaDetailTable.kk,
-        ktm: accountMahasiswaDetailTable.ktm,
-        waliRecommendationLetter:
-          accountMahasiswaDetailTable.waliRecommendationLetter,
-        transcript: accountMahasiswaDetailTable.transcript,
-        salaryReport: accountMahasiswaDetailTable.salaryReport,
-        pbb: accountMahasiswaDetailTable.pbb,
-        electricityBill: accountMahasiswaDetailTable.electricityBill,
-        ditmawaRecommendationLetter:
-          accountMahasiswaDetailTable.ditmawaRecommendationLetter,
-        bill: accountMahasiswaDetailTable.bill,
-        notes: accountMahasiswaDetailTable.notes,
-        adminOnlyNotes: accountMahasiswaDetailTable.adminOnlyNotes,
-        job: accountOtaDetailTable.job,
-        address: accountOtaDetailTable.address,
-        linkage: accountOtaDetailTable.linkage,
-        funds: accountOtaDetailTable.funds,
-        maxCapacity: accountOtaDetailTable.maxCapacity,
-        startDate: accountOtaDetailTable.startDate,
-        maxSemester: accountOtaDetailTable.maxSemester,
-        transferDate: accountOtaDetailTable.transferDate,
-        criteria: accountOtaDetailTable.criteria,
-        isDetailVisible: accountOtaDetailTable.isDetailVisible,
-        allowAdminSelection: accountOtaDetailTable.allowAdminSelection,
-      })
-      .from(accountTable)
-      .leftJoin(
-        accountMahasiswaDetailTable,
-        eq(accountTable.id, accountMahasiswaDetailTable.accountId),
-      )
-      .leftJoin(
-        accountOtaDetailTable,
-        eq(accountTable.id, accountOtaDetailTable.accountId),
-      )
-      .leftJoin(
-        accountAdminDetailTable,
-        eq(accountTable.id, accountAdminDetailTable.accountId),
-      )
-      .where(whereCondition)
-      .orderBy(desc(accountTable.createdAt))
-      .limit(LIST_PAGE_DETAIL_SIZE)
-      .offset(offset);
-
-    const [accountList, countsPagination] = await Promise.all([
-      accountListQuery,
-      countsPaginationQuery,
+    const [totalPagination, accountList] = await Promise.all([
+      prisma.user.count({ where }),
+      prisma.user.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: LIST_PAGE_DETAIL_SIZE,
+        skip: offset,
+        include: {
+          MahasiswaProfile: { include: { StudentFiles: true } },
+          OtaProfile: true,
+          AdminProfile: true,
+        },
+      }),
     ]);
 
     return c.json(
@@ -697,53 +459,62 @@ listProtectedRouter.openapi(listAllAccountRoute, async (c) => {
         success: true,
         message: "Daftar seluruh akun berhasil diambil",
         body: {
-          data: accountList.map((account) => ({
-            id: account.id,
-            email: account.email,
-            phoneNumber: account.phoneNumber || "",
-            provider: account.provider,
-            status: account.status,
-            applicationStatus: account.applicationStatus,
-            type: account.type,
-            ma_name: account.ma_name || "",
-            ota_name: account.ota_name || "",
-            admin_name: account.admin_name || "",
-            nim: account.nim || "",
-            mahasiswaStatus: account.mahasiswaStatus || "inactive",
-            description: account.description || "",
-            file: account.file || "",
-            major: account.major || "",
-            faculty: account.faculty || "",
-            cityOfOrigin: account.cityOfOrigin || "",
-            highschoolAlumni: account.highschoolAlumni || "",
-            religion: account.religion || "Islam",
-            gender: account.gender || "M",
-            gpa: account.gpa || "",
-            kk: account.kk || "",
-            ktm: account.ktm || "",
-            waliRecommendationLetter: account.waliRecommendationLetter || "",
-            transcript: account.transcript || "",
-            salaryReport: account.salaryReport || "",
-            pbb: account.pbb || "",
-            electricityBill: account.electricityBill || "",
-            ditmawaRecommendationLetter:
-              account.ditmawaRecommendationLetter || "",
-            bill: account.bill || 0,
-            notes: account.notes || "",
-            adminOnlyNotes: account.adminOnlyNotes || "",
-            job: account.job || "",
-            address: account.address || "",
-            linkage: account.linkage || "otm",
-            funds: account.funds || 0,
-            maxCapacity: account.maxCapacity || 0,
-            startDate: account.startDate || "",
-            maxSemester: account.maxSemester || 0,
-            transferDate: account.transferDate || 0,
-            criteria: account.criteria || "",
-            isDetailVisible: account.isDetailVisible || false,
-            allowAdminSelection: account.allowAdminSelection || false,
-          })),
-          totalPagination: countsPagination[0].count,
+          data: accountList.map((u) => {
+            const mp = u.MahasiswaProfile;
+            const op = u.OtaProfile;
+            const ap = u.AdminProfile;
+            const files = mp?.StudentFiles ?? [];
+            const getFile = (t: string) =>
+              files.find((f) => f.type === t)?.fileUrl ?? "";
+            return {
+              id: u.id,
+              email: u.email,
+              phoneNumber: u.phoneNumber ?? "",
+              provider: u.provider,
+              status: u.verificationStatus,
+              applicationStatus: u.applicationStatus,
+              type: u.role as unknown as "mahasiswa" | "ota" | "admin" | "bankes" | "pengurus",
+              ma_name: mp?.name ?? "",
+              ota_name: op?.name ?? "",
+              admin_name: ap?.name ?? "",
+              nim: mp?.nim ?? "",
+              mahasiswaStatus: mp?.mahasiswaStatus ?? "inactive",
+              description: mp?.description ?? "",
+              file: getFile("Profile_Photo"),
+              major: mp?.major ?? "",
+              faculty: mp?.faculty ?? "",
+              cityOfOrigin: mp?.cityOfOrigin ?? "",
+              highschoolAlumni: mp?.highschoolAlumni ?? "",
+              religion: (mp?.religion ?? "Islam") as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
+              gender: (mp?.gender ?? "M") as "M" | "F",
+              gpa: mp?.gpa ?? "",
+              kk: getFile("KK"),
+              ktm: getFile("KTM"),
+              waliRecommendationLetter: getFile("Wali_Recommendation_Letter"),
+              transcript: getFile("Transcript"),
+              salaryReport: getFile("Salary_Report"),
+              pbb: getFile("PBB"),
+              electricityBill: getFile("Electricity_Bill"),
+              ditmawaRecommendationLetter: getFile(
+                "Ditmawa_Recommendation_Letter",
+              ),
+              bill: mp?.bill ?? 0,
+              notes: mp?.notes ?? "",
+              adminOnlyNotes: mp?.adminOnlyNotes ?? "",
+              job: op?.job ?? "",
+              address: op?.address ?? "",
+              linkage: op?.linkage ?? "otm",
+              funds: op?.funds ?? 0,
+              maxCapacity: op?.maxCapacity ?? 0,
+              startDate: op?.startDate ?? "",
+              maxSemester: op?.maxSemester ?? 0,
+              transferDate: op?.transferDate ?? 0,
+              criteria: op?.criteria ?? "",
+              isDetailVisible: op?.isDetailVisible ?? false,
+              allowAdminSelection: op?.allowAdminSelection ?? false,
+            };
+          }),
+          totalPagination,
         },
       },
       200,
@@ -780,7 +551,6 @@ listProtectedRouter.openapi(listOtaKuRoute, async (c) => {
     );
   }
 
-  // Validate page to be a positive integer
   let pageNumber = Number(page);
   if (isNaN(pageNumber) || pageNumber < 1) {
     pageNumber = 1;
@@ -789,61 +559,38 @@ listProtectedRouter.openapi(listOtaKuRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const countsQuery = db
-      .select({ count: count() })
-      .from(accountOtaDetailTable)
-      .innerJoin(
-        connectionTable,
-        eq(connectionTable.otaId, accountOtaDetailTable.accountId),
-      )
-      .where(
-        and(
-          eq(connectionTable.mahasiswaId, maId),
-          eq(connectionTable.connectionStatus, "accepted"),
-          ilike(accountOtaDetailTable.name, `%${q || ""}%`),
-        ),
-      );
+    const where = {
+      mahasiswaId: maId,
+      connectionStatus: "accepted" as const,
+      OtaProfile: q
+        ? { name: { contains: q, mode: "insensitive" as const } }
+        : undefined,
+    };
 
-    const OTAListQuery = db
-      .select({
-        accountId: accountOtaDetailTable.accountId,
-        name: accountOtaDetailTable.name,
-        phoneNumber: accountTable.phoneNumber,
-        nominal: accountOtaDetailTable.funds,
-      })
-      .from(accountOtaDetailTable)
-      .innerJoin(
-        accountTable,
-        eq(accountTable.id, accountOtaDetailTable.accountId),
-      )
-      .innerJoin(
-        connectionTable,
-        eq(connectionTable.otaId, accountOtaDetailTable.accountId),
-      )
-      .where(
-        and(
-          eq(connectionTable.mahasiswaId, maId),
-          eq(connectionTable.connectionStatus, "accepted"),
-          ilike(accountOtaDetailTable.name, `%${q || ""}%`),
-        ),
-      )
-      .limit(LIST_PAGE_SIZE)
-      .offset(offset);
-
-    const [OTAList, counts] = await Promise.all([OTAListQuery, countsQuery]);
+    const [OTAList, totalCount] = await Promise.all([
+      prisma.connection.findMany({
+        where,
+        take: LIST_PAGE_SIZE,
+        skip: offset,
+        include: {
+          OtaProfile: { include: { User: { select: { phoneNumber: true } } } },
+        },
+      }),
+      prisma.connection.count({ where }),
+    ]);
 
     return c.json(
       {
         success: true,
         message: "Daftar OTA-ku berhasil diambil",
         body: {
-          data: OTAList.map((OTA) => ({
-            accountId: OTA.accountId,
-            name: OTA.name,
-            phoneNumber: OTA.phoneNumber ?? "",
-            nominal: OTA.nominal,
+          data: OTAList.map((conn) => ({
+            accountId: conn.otaId,
+            name: conn.OtaProfile.name,
+            phoneNumber: conn.OtaProfile.User.phoneNumber ?? "",
+            nominal: conn.OtaProfile.funds,
           })),
-          totalData: counts[0].count,
+          totalData: totalCount,
         },
       },
       200,
@@ -880,7 +627,6 @@ listProtectedRouter.openapi(listMAActiveRoute, async (c) => {
     );
   }
 
-  // Validate page to be a positive integer
   let pageNumber = Number(page);
   if (isNaN(pageNumber) || pageNumber < 1) {
     pageNumber = 1;
@@ -889,69 +635,27 @@ listProtectedRouter.openapi(listMAActiveRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const countsQuery = db
-      .select({ count: count() })
-      .from(connectionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(connectionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountTable,
-        eq(accountMahasiswaDetailTable.accountId, accountTable.id),
-      )
-      .where(
-        and(
-          eq(connectionTable.otaId, otaId),
-          eq(connectionTable.connectionStatus, "accepted"),
-          or(
-            ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-            ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-          ),
-        ),
-      );
+    const where: Record<string, unknown> = {
+      otaId,
+      connectionStatus: "accepted",
+    };
+    if (q) {
+      where.MahasiswaProfile = {
+        OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { nim: { contains: q, mode: "insensitive" } },
+        ],
+      };
+    }
 
-    const mahasiswaListQuery = db
-      .select({
-        accountId: accountMahasiswaDetailTable.accountId,
-        name: accountMahasiswaDetailTable.name,
-        nim: accountMahasiswaDetailTable.nim,
-        major: accountMahasiswaDetailTable.major,
-        faculty: accountMahasiswaDetailTable.faculty,
-        cityOfOrigin: accountMahasiswaDetailTable.cityOfOrigin,
-        highschoolAlumni: accountMahasiswaDetailTable.highschoolAlumni,
-        gender: accountMahasiswaDetailTable.gender,
-        religion: accountMahasiswaDetailTable.religion,
-        gpa: accountMahasiswaDetailTable.gpa,
-        mahasiswaStatus: accountMahasiswaDetailTable.mahasiswaStatus,
-        request_term_ota: connectionTable.requestTerminateOta,
-        request_term_ma: connectionTable.requestTerminateMahasiswa,
-      })
-      .from(connectionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(connectionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountTable,
-        eq(accountMahasiswaDetailTable.accountId, accountTable.id),
-      )
-      .where(
-        and(
-          eq(connectionTable.otaId, otaId),
-          eq(connectionTable.connectionStatus, "accepted"),
-          or(
-            ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-            ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-          ),
-        ),
-      )
-      .limit(LIST_PAGE_SIZE)
-      .offset(offset);
-
-    const [mahasiswaList, counts] = await Promise.all([
-      mahasiswaListQuery,
-      countsQuery,
+    const [mahasiswaList, totalCount] = await Promise.all([
+      prisma.connection.findMany({
+        where,
+        take: LIST_PAGE_SIZE,
+        skip: offset,
+        include: { MahasiswaProfile: true },
+      }),
+      prisma.connection.count({ where }),
     ]);
 
     return c.json(
@@ -959,22 +663,25 @@ listProtectedRouter.openapi(listMAActiveRoute, async (c) => {
         success: true,
         message: "Daftar MA aktif berhasil diambil",
         body: {
-          data: mahasiswaList.map((mahasiswa) => ({
-            accountId: mahasiswa.accountId,
-            name: mahasiswa.name!,
-            nim: mahasiswa.nim,
-            major: mahasiswa.major || "",
-            faculty: mahasiswa.faculty || "",
-            cityOfOrigin: mahasiswa.cityOfOrigin || "",
-            highschoolAlumni: mahasiswa.highschoolAlumni || "",
-            gender: mahasiswa.gender!,
-            religion: mahasiswa.religion!,
-            mahasiswaStatus: mahasiswa.mahasiswaStatus,
-            gpa: mahasiswa.gpa!,
-            request_term_ota: mahasiswa.request_term_ota,
-            request_term_ma: mahasiswa.request_term_ma,
-          })),
-          totalData: counts[0].count,
+          data: mahasiswaList.map((conn) => {
+            const mp = conn.MahasiswaProfile;
+            return {
+              accountId: conn.mahasiswaId,
+              name: mp.name!,
+              nim: mp.nim,
+              major: mp.major ?? "",
+              faculty: mp.faculty ?? "",
+              cityOfOrigin: mp.cityOfOrigin ?? "",
+              highschoolAlumni: mp.highschoolAlumni ?? "",
+              gender: mp.gender as "M" | "F",
+              religion: mp.religion as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
+              mahasiswaStatus: mp.mahasiswaStatus,
+              gpa: mp.gpa!,
+              request_term_ota: conn.requestTerminateOta,
+              request_term_ma: conn.requestTerminateMahasiswa,
+            };
+          }),
+          totalData: totalCount,
         },
       },
       200,
@@ -1011,7 +718,6 @@ listProtectedRouter.openapi(listMAPendingRoute, async (c) => {
     );
   }
 
-  // Validate page to be a positive integer
   let pageNumber = Number(page);
   if (isNaN(pageNumber) || pageNumber < 1) {
     pageNumber = 1;
@@ -1020,73 +726,29 @@ listProtectedRouter.openapi(listMAPendingRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const countsQuery = db
-      .select({ count: count() })
-      .from(connectionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(connectionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountTable,
-        eq(accountMahasiswaDetailTable.accountId, accountTable.id),
-      )
-      .where(
-        and(
-          eq(connectionTable.otaId, otaId),
-          eq(connectionTable.connectionStatus, "pending"),
-          eq(connectionTable.requestTerminateMahasiswa, false),
-          eq(connectionTable.requestTerminateOta, false),
-          or(
-            ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-            ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-          ),
-        ),
-      );
+    const where: Record<string, unknown> = {
+      otaId,
+      connectionStatus: "pending",
+      requestTerminateMahasiswa: false,
+      requestTerminateOta: false,
+    };
+    if (q) {
+      where.MahasiswaProfile = {
+        OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { nim: { contains: q, mode: "insensitive" } },
+        ],
+      };
+    }
 
-    const mahasiswaListQuery = db
-      .select({
-        accountId: accountMahasiswaDetailTable.accountId,
-        name: accountMahasiswaDetailTable.name,
-        nim: accountMahasiswaDetailTable.nim,
-        major: accountMahasiswaDetailTable.major,
-        faculty: accountMahasiswaDetailTable.faculty,
-        cityOfOrigin: accountMahasiswaDetailTable.cityOfOrigin,
-        highschoolAlumni: accountMahasiswaDetailTable.highschoolAlumni,
-        gender: accountMahasiswaDetailTable.gender,
-        religion: accountMahasiswaDetailTable.religion,
-        gpa: accountMahasiswaDetailTable.gpa,
-        mahasiswaStatus: accountMahasiswaDetailTable.mahasiswaStatus,
-        request_term_ota: connectionTable.requestTerminateOta,
-        request_term_ma: connectionTable.requestTerminateMahasiswa,
-      })
-      .from(connectionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(connectionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountTable,
-        eq(accountMahasiswaDetailTable.accountId, accountTable.id),
-      )
-      .where(
-        and(
-          eq(connectionTable.otaId, otaId),
-          eq(connectionTable.connectionStatus, "pending"),
-          eq(connectionTable.requestTerminateMahasiswa, false),
-          eq(connectionTable.requestTerminateOta, false),
-          or(
-            ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-            ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-          ),
-        ),
-      )
-      .limit(LIST_PAGE_SIZE)
-      .offset(offset);
-
-    const [mahasiswaList, counts] = await Promise.all([
-      mahasiswaListQuery,
-      countsQuery,
+    const [mahasiswaList, totalCount] = await Promise.all([
+      prisma.connection.findMany({
+        where,
+        take: LIST_PAGE_SIZE,
+        skip: offset,
+        include: { MahasiswaProfile: true },
+      }),
+      prisma.connection.count({ where }),
     ]);
 
     return c.json(
@@ -1094,22 +756,25 @@ listProtectedRouter.openapi(listMAPendingRoute, async (c) => {
         success: true,
         message: "Daftar MA pending berhasil diambil",
         body: {
-          data: mahasiswaList.map((mahasiswa) => ({
-            accountId: mahasiswa.accountId,
-            name: mahasiswa.name!,
-            nim: mahasiswa.nim,
-            major: mahasiswa.major || "",
-            faculty: mahasiswa.faculty || "",
-            cityOfOrigin: mahasiswa.cityOfOrigin || "",
-            highschoolAlumni: mahasiswa.highschoolAlumni || "",
-            gender: mahasiswa.gender!,
-            religion: mahasiswa.religion!,
-            gpa: mahasiswa.gpa!,
-            mahasiswaStatus: mahasiswa.mahasiswaStatus,
-            request_term_ota: mahasiswa.request_term_ota,
-            request_term_ma: mahasiswa.request_term_ma,
-          })),
-          totalData: counts[0].count,
+          data: mahasiswaList.map((conn) => {
+            const mp = conn.MahasiswaProfile;
+            return {
+              accountId: conn.mahasiswaId,
+              name: mp.name!,
+              nim: mp.nim,
+              major: mp.major ?? "",
+              faculty: mp.faculty ?? "",
+              cityOfOrigin: mp.cityOfOrigin ?? "",
+              highschoolAlumni: mp.highschoolAlumni ?? "",
+              gender: mp.gender as "M" | "F",
+              religion: mp.religion as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
+              gpa: mp.gpa!,
+              mahasiswaStatus: mp.mahasiswaStatus,
+              request_term_ota: conn.requestTerminateOta,
+              request_term_ma: conn.requestTerminateMahasiswa,
+            };
+          }),
+          totalData: totalCount,
         },
       },
       200,
@@ -1132,7 +797,6 @@ listProtectedRouter.openapi(listAvailableOTARoute, async (c) => {
   const zodParseResult = OTAListQuerySchema.parse(c.req.query());
   const { q, page } = zodParseResult;
 
-  // Validate page to be a positive integer
   let pageNumber = Number(page);
   if (isNaN(pageNumber) || pageNumber < 1) {
     pageNumber = 1;
@@ -1160,81 +824,44 @@ listProtectedRouter.openapi(listAvailableOTARoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const countsQuery = db
-      .select({ count: count() })
-      .from(accountOtaDetailTable)
-      .innerJoin(
-        accountTable,
-        eq(accountTable.id, accountOtaDetailTable.accountId),
-      )
-      .where(
-        and(
-          eq(accountOtaDetailTable.allowAdminSelection, true),
-          eq(accountTable.applicationStatus, "accepted"),
-          ilike(accountOtaDetailTable.name, `%${q || ""}%`),
-        ),
-      );
+    const baseWhere = {
+      allowAdminSelection: true,
+      User: { applicationStatus: "accepted" as const },
+      ...(q
+        ? { name: { contains: q, mode: "insensitive" as const } }
+        : undefined),
+    };
 
-    const otaListQuery = db
-      .select({
-        id: accountOtaDetailTable.accountId,
-        name: accountOtaDetailTable.name,
-        number: accountTable.phoneNumber,
-        funds: accountOtaDetailTable.funds,
-        maxCapacity: accountOtaDetailTable.maxCapacity,
-        currentCount: sql<number>`COUNT(${connectionTable.mahasiswaId})`,
-        criteria: accountOtaDetailTable.criteria,
-      })
-      .from(accountOtaDetailTable)
-      .innerJoin(
-        accountTable,
-        eq(accountTable.id, accountOtaDetailTable.accountId),
-      )
-      .leftJoin(
-        connectionTable,
-        and(
-          eq(connectionTable.otaId, accountOtaDetailTable.accountId),
-          eq(connectionTable.connectionStatus, "accepted"),
-        ),
-      )
-      .where(
-        and(
-          eq(accountOtaDetailTable.allowAdminSelection, true),
-          eq(accountTable.applicationStatus, "accepted"),
-          ilike(accountOtaDetailTable.name, `%${q || ""}%`),
-        ),
-      )
-      .groupBy(
-        accountOtaDetailTable.accountId,
-        accountOtaDetailTable.name,
-        accountTable.phoneNumber,
-        accountOtaDetailTable.funds,
-        accountOtaDetailTable.maxCapacity,
-        accountOtaDetailTable.criteria,
-      )
-      .having(
-        lt(
-          sql<number>`COUNT(${connectionTable.mahasiswaId})`,
-          accountOtaDetailTable.maxCapacity,
-        ),
-      )
-      .limit(LIST_PAGE_SIZE)
-      .offset(offset);
+    // Fetch all matching OTAs with accepted connection count, then filter by capacity
+    const allOtas = await prisma.otaProfile.findMany({
+      where: baseWhere,
+      include: {
+        User: { select: { phoneNumber: true } },
+        _count: {
+          select: {
+            Connections: { where: { connectionStatus: "accepted" } },
+          },
+        },
+      },
+    });
 
-    const [otaList, counts] = await Promise.all([otaListQuery, countsQuery]);
+    const available = allOtas.filter(
+      (ota) => ota._count.Connections < ota.maxCapacity,
+    );
+    const paginated = available.slice(offset, offset + LIST_PAGE_SIZE);
 
     return c.json(
       {
         success: true,
         message: "Daftar OTA yang tersedia berhasil diambil",
         body: {
-          data: otaList.map((ota) => ({
-            accountId: ota.id,
+          data: paginated.map((ota) => ({
+            accountId: ota.userId,
             name: ota.name,
-            phoneNumber: ota.number ?? "",
+            phoneNumber: ota.User.phoneNumber ?? "",
             nominal: ota.funds,
           })),
-          totalData: counts[0].count,
+          totalData: available.length,
         },
       },
       200,

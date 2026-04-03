@@ -1,17 +1,8 @@
 import { addMonths, setDate } from "date-fns";
-import { and, count, eq, ilike, or, sql } from "drizzle-orm";
 import nodemailer from "nodemailer";
 
 import { env } from "../config/env.config.js";
-import { db } from "../db/drizzle.js";
-import {
-  accountMahasiswaDetailTable,
-  accountOtaDetailTable,
-  accountTable,
-  connectionTable,
-  pushSubscriptionTable,
-  transactionTable,
-} from "../db/schema.js";
+import { prisma } from "../db/prisma.js";
 import { penjodohanOlehAdminEmail } from "../lib/email/penjodohan-oleh-admin.js";
 import { persetujuanAsuhMA } from "../lib/email/persetujuan-asuh.js";
 import { sendNotification } from "../lib/web-push.js";
@@ -62,56 +53,41 @@ connectProtectedRouter.openapi(connectOtaMahasiswaRoute, async (c) => {
   }
 
   try {
-    await db.transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       // Get OTA's max capacity
-      const otaDetails = await tx
-        .select({
-          maxCapacity: accountOtaDetailTable.maxCapacity,
-        })
-        .from(accountOtaDetailTable)
-        .where(eq(accountOtaDetailTable.accountId, otaId))
-        .then((rows) => rows[0]);
+      const otaProfile = await tx.otaProfile.findFirst({
+        where: { userId: otaId },
+        select: { maxCapacity: true },
+      });
 
-      // active count di query terpisah
-      const activeCount = await tx
-        .select({
-          count: sql<number>`count(*)`,
-        })
-        .from(accountMahasiswaDetailTable)
-        .where(
-          sql`${accountMahasiswaDetailTable.mahasiswaStatus} = 'active' AND 
-              ${accountMahasiswaDetailTable.accountId} IN (
-                SELECT ${accountMahasiswaDetailTable.accountId}
-                FROM ${accountMahasiswaDetailTable}
-                JOIN ${accountTable} 
-                  ON ${accountTable.id} = ${accountMahasiswaDetailTable.accountId}
-                WHERE ${accountTable.type} = 'mahasiswa'
-                AND ${accountTable.id} = ${mahasiswaId}
-              )`,
-        )
-        .then((rows) => Number(rows[0]?.count || 0));
+      if (!otaProfile) {
+        throw new Error("OTA profile not found");
+      }
 
-      if (activeCount >= otaDetails.maxCapacity) {
-        return c.json(
-          {
-            success: false,
-            message: "Kapasitas orang tua asuh sudah penuh.",
-            error: {},
-          },
-          400,
-        );
+      // Count how many active mahasiswa this OTA already has
+      const activeCount = await tx.connection.count({
+        where: {
+          otaId,
+          connectionStatus: "accepted",
+        },
+      });
+
+      if (activeCount >= otaProfile.maxCapacity) {
+        throw new Error("KAPASITAS_PENUH");
       }
 
       // Update mahasiswa status to active
-      await tx
-        .update(accountMahasiswaDetailTable)
-        .set({ mahasiswaStatus: "active" })
-        .where(eq(accountMahasiswaDetailTable.accountId, mahasiswaId));
+      await tx.mahasiswaProfile.update({
+        where: { userId: mahasiswaId },
+        data: { mahasiswaStatus: "active" },
+      });
 
-      await tx.insert(connectionTable).values({
-        mahasiswaId,
-        otaId,
-        paidFor: 0,
+      await tx.connection.create({
+        data: {
+          mahasiswaId,
+          otaId,
+          paidFor: 0,
+        },
       });
     });
 
@@ -127,6 +103,16 @@ connectProtectedRouter.openapi(connectOtaMahasiswaRoute, async (c) => {
       200,
     );
   } catch (error) {
+    if (error instanceof Error && error.message === "KAPASITAS_PENUH") {
+      return c.json(
+        {
+          success: false,
+          message: "Kapasitas orang tua asuh sudah penuh.",
+          error: {},
+        },
+        400,
+      );
+    }
     console.error(error);
     return c.json(
       {
@@ -162,119 +148,74 @@ connectProtectedRouter.openapi(connectOtaMahasiswaByAdminRoute, async (c) => {
   }
 
   try {
-    await db.transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       // Get OTA's max capacity
-      const otaDetails = await tx
-        .select({
-          maxCapacity: accountOtaDetailTable.maxCapacity,
-        })
-        .from(accountOtaDetailTable)
-        .where(eq(accountOtaDetailTable.accountId, otaId))
-        .then((rows) => rows[0]);
+      const otaProfile = await tx.otaProfile.findFirst({
+        where: { userId: otaId },
+        select: { maxCapacity: true, transferDate: true },
+      });
 
-      // active count di query terpisah
-      const activeCount = await tx
-        .select({
-          count: sql<number>`count(*)`,
-        })
-        .from(accountMahasiswaDetailTable)
-        .where(
-          sql`${accountMahasiswaDetailTable.mahasiswaStatus} = 'active' AND 
-              ${accountMahasiswaDetailTable.accountId} IN (
-                SELECT ${accountMahasiswaDetailTable.accountId}
-                FROM ${accountMahasiswaDetailTable}
-                JOIN ${accountTable} 
-                  ON ${accountTable.id} = ${accountMahasiswaDetailTable.accountId}
-                WHERE ${accountTable.type} = 'mahasiswa'
-                AND ${accountTable.id} = ${mahasiswaId}
-              )`,
-        )
-        .then((rows) => Number(rows[0]?.count || 0));
+      if (!otaProfile) {
+        throw new Error("OTA profile not found");
+      }
 
-      if (activeCount >= otaDetails.maxCapacity) {
-        return c.json(
-          {
-            success: false,
-            message: "Kapasitas orang tua asuh sudah penuh.",
-            error: {},
-          },
-          400,
-        );
+      // Count how many active mahasiswa this OTA already has
+      const activeCount = await tx.connection.count({
+        where: {
+          otaId,
+          connectionStatus: "accepted",
+        },
+      });
+
+      if (activeCount >= otaProfile.maxCapacity) {
+        throw new Error("KAPASITAS_PENUH");
       }
 
       // Update mahasiswa status to active
-      await tx
-        .update(accountMahasiswaDetailTable)
-        .set({ mahasiswaStatus: "active" })
-        .where(eq(accountMahasiswaDetailTable.accountId, mahasiswaId));
+      await tx.mahasiswaProfile.update({
+        where: { userId: mahasiswaId },
+        data: { mahasiswaStatus: "active" },
+      });
 
-      await tx.insert(connectionTable).values({
-        mahasiswaId: mahasiswaId,
-        otaId: otaId,
-        connectionStatus: "accepted",
-        paidFor: 0,
+      await tx.connection.create({
+        data: {
+          mahasiswaId,
+          otaId,
+          connectionStatus: "accepted",
+          paidFor: 0,
+        },
       });
 
       // Get bill
-      const billResult = await tx
-        .select({
-          bill: accountMahasiswaDetailTable.bill,
-        })
-        .from(accountMahasiswaDetailTable)
-        .where(eq(accountMahasiswaDetailTable.accountId, mahasiswaId))
-        .limit(1);
+      const maProfile = await tx.mahasiswaProfile.findFirst({
+        where: { userId: mahasiswaId },
+        select: { bill: true },
+      });
 
-      const bill_mahasiswa = billResult[0]?.bill;
-
-      // Get transfer_date from OTA
-      const transferDateResult = await tx
-        .select({
-          transferDate: accountOtaDetailTable.transferDate,
-        })
-        .from(accountOtaDetailTable)
-        .where(eq(accountOtaDetailTable.accountId, otaId))
-        .limit(1);
-
-      const transfer_date = transferDateResult[0]?.transferDate;
-
+      const bill_mahasiswa = maProfile?.bill ?? 0;
+      const transfer_date = otaProfile.transferDate;
       const dueDate = setDate(addMonths(new Date(), 1), transfer_date);
 
-      await tx.insert(transactionTable).values({
-        transferStatus: "unpaid",
-        mahasiswaId: mahasiswaId,
-        otaId: otaId,
-        bill: bill_mahasiswa,
-        dueDate: dueDate,
+      await tx.transaction.create({
+        data: {
+          transferStatus: "unpaid",
+          mahasiswaId,
+          otaId,
+          bill: bill_mahasiswa,
+          dueDate,
+        },
       });
     });
 
-    const otaData = await db
-      .select({
-        id: accountOtaDetailTable.accountId,
-        name: accountOtaDetailTable.name,
-        email: accountTable.email,
-      })
-      .from(accountOtaDetailTable)
-      .innerJoin(
-        accountTable,
-        eq(accountOtaDetailTable.accountId, accountTable.id),
-      )
-      .where(eq(accountOtaDetailTable.accountId, otaId))
-      .limit(1);
+    const otaUser = await prisma.user.findFirst({
+      where: { id: otaId },
+      include: { OtaProfile: true },
+    });
 
-    const maData = await db
-      .select({
-        id: accountMahasiswaDetailTable.accountId,
-        name: accountMahasiswaDetailTable.name,
-        email: accountTable.email,
-      })
-      .from(accountMahasiswaDetailTable)
-      .innerJoin(
-        accountTable,
-        eq(accountMahasiswaDetailTable.accountId, accountTable.id),
-      )
-      .where(eq(accountMahasiswaDetailTable.accountId, mahasiswaId))
-      .limit(1);
+    const maUser = await prisma.user.findFirst({
+      where: { id: mahasiswaId },
+      include: { MahasiswaProfile: true },
+    });
 
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
@@ -297,11 +238,11 @@ connectProtectedRouter.openapi(connectOtaMahasiswaByAdminRoute, async (c) => {
     await transporter
       .sendMail({
         from: env.EMAIL_FROM,
-        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : maData[0].email,
+        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : maUser?.email,
         subject: "Penerimaan Hubungan Bantuan Asuh",
         html: persetujuanAsuhMA(
-          maData[0].name ?? "",
-          otaData[0].name,
+          maUser?.MahasiswaProfile?.name ?? "",
+          otaUser?.OtaProfile?.name ?? "",
           "ma",
           env.VITE_PUBLIC_URL + "/orang-tua-asuh-saya",
         ),
@@ -310,14 +251,12 @@ connectProtectedRouter.openapi(connectOtaMahasiswaByAdminRoute, async (c) => {
         console.error("Error sending email:", error);
       });
 
-    const subscriptionMA = await db
-      .select()
-      .from(pushSubscriptionTable)
-      .where(eq(pushSubscriptionTable.accountId, maData[0].id))
-      .limit(1);
+    const subscriptionMA = await prisma.pushSubscription.findFirst({
+      where: { userId: mahasiswaId },
+    });
 
-    if (subscriptionMA.length > 0) {
-      const { endpoint, keys } = subscriptionMA[0];
+    if (subscriptionMA) {
+      const { endpoint, keys } = subscriptionMA;
       const { p256dh, auth } = keys as { p256dh: string; auth: string };
 
       const validatedData = SubscriptionSchema.parse({
@@ -353,26 +292,24 @@ connectProtectedRouter.openapi(connectOtaMahasiswaByAdminRoute, async (c) => {
     await transporter
       .sendMail({
         from: env.EMAIL_FROM,
-        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : otaData[0].email,
+        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : otaUser?.email,
         subject: "Pemilihan Mahasiswa Asuh",
         html: penjodohanOlehAdminEmail(
-          otaData[0].name,
-          maData[0].name ?? "",
-          `/detail/mahasiswa/${maData[0].id}`,
+          otaUser?.OtaProfile?.name ?? "",
+          maUser?.MahasiswaProfile?.name ?? "",
+          `/detail/mahasiswa/${mahasiswaId}`,
         ),
       })
       .catch((error) => {
         console.error("Error sending email:", error);
       });
 
-    const subscriptionOTA = await db
-      .select()
-      .from(pushSubscriptionTable)
-      .where(eq(pushSubscriptionTable.accountId, otaData[0].id))
-      .limit(1);
+    const subscriptionOTA = await prisma.pushSubscription.findFirst({
+      where: { userId: otaId },
+    });
 
-    if (subscriptionOTA.length > 0) {
-      const { endpoint, keys } = subscriptionOTA[0];
+    if (subscriptionOTA) {
+      const { endpoint, keys } = subscriptionOTA;
       const { p256dh, auth } = keys as { p256dh: string; auth: string };
 
       const validatedData = SubscriptionSchema.parse({
@@ -417,6 +354,16 @@ connectProtectedRouter.openapi(connectOtaMahasiswaByAdminRoute, async (c) => {
       200,
     );
   } catch (error) {
+    if (error instanceof Error && error.message === "KAPASITAS_PENUH") {
+      return c.json(
+        {
+          success: false,
+          message: "Kapasitas orang tua asuh sudah penuh.",
+          error: {},
+        },
+        400,
+      );
+    }
     console.error(error);
     return c.json(
       {
@@ -451,100 +398,80 @@ connectProtectedRouter.openapi(verifyConnectionAccRoute, async (c) => {
   }
 
   try {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(connectionTable)
-        .set({ connectionStatus: "accepted" })
-        .where(
-          and(
-            eq(connectionTable.mahasiswaId, mahasiswaId),
-            eq(connectionTable.otaId, otaId),
-            eq(connectionTable.connectionStatus, "pending"),
-            and(
-              eq(connectionTable.requestTerminateMahasiswa, false),
-              eq(connectionTable.requestTerminateOta, false),
-            ),
-          ),
-        );
+    await prisma.$transaction(async (tx) => {
+      await tx.connection.updateMany({
+        where: {
+          mahasiswaId,
+          otaId,
+          connectionStatus: "pending",
+          requestTerminateMahasiswa: false,
+          requestTerminateOta: false,
+        },
+        data: { connectionStatus: "accepted" },
+      });
 
       // Get bill
-      const billResult = await tx
-        .select({
-          bill: accountMahasiswaDetailTable.bill,
-        })
-        .from(accountMahasiswaDetailTable)
-        .where(eq(accountMahasiswaDetailTable.accountId, mahasiswaId))
-        .limit(1);
+      const maProfile = await tx.mahasiswaProfile.findFirst({
+        where: { userId: mahasiswaId },
+        select: { bill: true },
+      });
 
-      const bill_mahasiswa = billResult[0]?.bill;
+      const bill_mahasiswa = maProfile?.bill ?? 0;
 
       // Get transfer_date from OTA
-      const transferDateResult = await tx
-        .select({
-          transferDate: accountOtaDetailTable.transferDate,
-        })
-        .from(accountOtaDetailTable)
-        .where(eq(accountOtaDetailTable.accountId, otaId))
-        .limit(1);
+      const otaProfile = await tx.otaProfile.findFirst({
+        where: { userId: otaId },
+        select: { transferDate: true },
+      });
 
-      const transfer_date = transferDateResult[0]?.transferDate;
-
+      const transfer_date = otaProfile?.transferDate ?? 1;
       const dueDate = setDate(addMonths(new Date(), 1), transfer_date);
 
       // Check for existing transaction with same mahasiswaId, otaId, and dueDate (year, month, date)
-      const existingTransaction = await tx
-        .select()
-        .from(transactionTable)
-        .where(
-          and(
-            eq(transactionTable.mahasiswaId, mahasiswaId),
-            eq(transactionTable.otaId, otaId),
-            // Compare year, month, and date
-            sql`EXTRACT(YEAR FROM ${transactionTable.dueDate}) = ${dueDate.getFullYear()}`,
-            sql`EXTRACT(MONTH FROM ${transactionTable.dueDate}) = ${dueDate.getMonth() + 1}`,
-            sql`EXTRACT(DAY FROM ${transactionTable.dueDate}) = ${dueDate.getDate()}`,
-          ),
-        )
-        .limit(1);
+      const dueDateStart = new Date(
+        dueDate.getFullYear(),
+        dueDate.getMonth(),
+        dueDate.getDate(),
+      );
+      const dueDateEnd = new Date(
+        dueDate.getFullYear(),
+        dueDate.getMonth(),
+        dueDate.getDate() + 1,
+      );
 
-      if (existingTransaction.length === 0) {
-        await tx.insert(transactionTable).values({
-          transferStatus: "unpaid",
-          mahasiswaId: mahasiswaId,
-          otaId: otaId,
-          bill: bill_mahasiswa,
-          dueDate: dueDate,
+      const existingTransaction = await tx.transaction.findFirst({
+        where: {
+          mahasiswaId,
+          otaId,
+          dueDate: {
+            gte: dueDateStart,
+            lt: dueDateEnd,
+          },
+        },
+      });
+
+      if (!existingTransaction) {
+        await tx.transaction.create({
+          data: {
+            transferStatus: "unpaid",
+            mahasiswaId,
+            otaId,
+            bill: bill_mahasiswa,
+            dueDate,
+          },
         });
       }
     });
 
-    const otaData = await db
-      .select({
-        id: accountOtaDetailTable.accountId,
-        name: accountOtaDetailTable.name,
-        email: accountTable.email,
-      })
-      .from(accountOtaDetailTable)
-      .innerJoin(
-        accountTable,
-        eq(accountOtaDetailTable.accountId, accountTable.id),
-      )
-      .where(eq(accountOtaDetailTable.accountId, otaId))
-      .limit(1);
+    const otaUser = await prisma.user.findFirst({
+      where: { id: otaId },
+      include: { OtaProfile: true },
+    });
 
-    const maData = await db
-      .select({
-        id: accountMahasiswaDetailTable.accountId,
-        name: accountMahasiswaDetailTable.name,
-        email: accountTable.email,
-      })
-      .from(accountMahasiswaDetailTable)
-      .innerJoin(
-        accountTable,
-        eq(accountMahasiswaDetailTable.accountId, accountTable.id),
-      )
-      .where(eq(accountMahasiswaDetailTable.accountId, mahasiswaId))
-      .limit(1);
+    const maUser = await prisma.user.findFirst({
+      where: { id: mahasiswaId },
+      include: { MahasiswaProfile: true },
+    });
 
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
@@ -567,27 +494,25 @@ connectProtectedRouter.openapi(verifyConnectionAccRoute, async (c) => {
     await transporter
       .sendMail({
         from: env.EMAIL_FROM,
-        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : otaData[0].email,
+        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : otaUser?.email,
         subject: "Penerimaan Hubungan Bantuan Asuh",
         html: persetujuanAsuhMA(
-          otaData[0].name,
-          maData[0].name ?? "",
+          otaUser?.OtaProfile?.name ?? "",
+          maUser?.MahasiswaProfile?.name ?? "",
           "ota",
-          env.VITE_PUBLIC_URL + `/detail/mahasiswa/${maData[0].id}`,
+          env.VITE_PUBLIC_URL + `/detail/mahasiswa/${mahasiswaId}`,
         ),
       })
       .catch((error) => {
         console.error("Error sending email:", error);
       });
 
-    const subscriptionOTA = await db
-      .select()
-      .from(pushSubscriptionTable)
-      .where(eq(pushSubscriptionTable.accountId, otaData[0].id))
-      .limit(1);
+    const subscriptionOTA = await prisma.pushSubscription.findFirst({
+      where: { userId: otaId },
+    });
 
-    if (subscriptionOTA.length > 0) {
-      const { endpoint, keys } = subscriptionOTA[0];
+    if (subscriptionOTA) {
+      const { endpoint, keys } = subscriptionOTA;
       const { p256dh, auth } = keys as { p256dh: string; auth: string };
 
       const validatedData = SubscriptionSchema.parse({
@@ -623,11 +548,11 @@ connectProtectedRouter.openapi(verifyConnectionAccRoute, async (c) => {
     await transporter
       .sendMail({
         from: env.EMAIL_FROM,
-        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : maData[0].email,
+        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : maUser?.email,
         subject: "Penerimaan Hubungan Bantuan Asuh",
         html: persetujuanAsuhMA(
-          maData[0].name ?? "",
-          otaData[0].name,
+          maUser?.MahasiswaProfile?.name ?? "",
+          otaUser?.OtaProfile?.name ?? "",
           "ma",
           "/orang-tua-asuh-saya",
         ),
@@ -636,14 +561,12 @@ connectProtectedRouter.openapi(verifyConnectionAccRoute, async (c) => {
         console.error("Error sending email:", error);
       });
 
-    const subscriptionMA = await db
-      .select()
-      .from(pushSubscriptionTable)
-      .where(eq(pushSubscriptionTable.accountId, maData[0].id))
-      .limit(1);
+    const subscriptionMA = await prisma.pushSubscription.findFirst({
+      where: { userId: mahasiswaId },
+    });
 
-    if (subscriptionMA.length > 0) {
-      const { endpoint, keys } = subscriptionMA[0];
+    if (subscriptionMA) {
+      const { endpoint, keys } = subscriptionMA;
       const { p256dh, auth } = keys as { p256dh: string; auth: string };
 
       const validatedData = SubscriptionSchema.parse({
@@ -719,21 +642,17 @@ connectProtectedRouter.openapi(verifyConnectionRejectRoute, async (c) => {
   }
 
   try {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(connectionTable)
-        .set({ connectionStatus: "rejected" })
-        .where(
-          and(
-            eq(connectionTable.mahasiswaId, mahasiswaId),
-            eq(connectionTable.otaId, otaId),
-            eq(connectionTable.connectionStatus, "pending"),
-            and(
-              eq(connectionTable.requestTerminateMahasiswa, false),
-              eq(connectionTable.requestTerminateOta, false),
-            ),
-          ),
-        );
+    await prisma.$transaction(async (tx) => {
+      await tx.connection.updateMany({
+        where: {
+          mahasiswaId,
+          otaId,
+          connectionStatus: "pending",
+          requestTerminateMahasiswa: false,
+          requestTerminateOta: false,
+        },
+        data: { connectionStatus: "rejected" },
+      });
     });
 
     return c.json(
@@ -790,71 +709,38 @@ connectProtectedRouter.openapi(listPendingConnectionRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const countsQuery = db
-      .select({ count: count() })
-      .from(connectionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(connectionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(connectionTable.otaId, accountOtaDetailTable.accountId),
-      )
-      .where(
-        and(
-          eq(connectionTable.connectionStatus, "pending"),
-          or(
-            ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-            ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-            ilike(accountOtaDetailTable.name, `%${q || ""}%`),
-          ),
-          and(
-            eq(connectionTable.requestTerminateMahasiswa, false),
-            eq(connectionTable.requestTerminateOta, false),
-          ),
-        ),
-      );
+    const searchFilter = q
+      ? {
+          OR: [
+            { MahasiswaProfile: { name: { contains: q, mode: "insensitive" as const } } },
+            { MahasiswaProfile: { nim: { contains: q, mode: "insensitive" as const } } },
+            { OtaProfile: { name: { contains: q, mode: "insensitive" as const } } },
+          ],
+        }
+      : {};
 
-    const connectionListQuery = db
-      .select({
-        mahasiswa_id: connectionTable.mahasiswaId,
-        name_ma: accountMahasiswaDetailTable.name,
-        nim_ma: accountMahasiswaDetailTable.nim,
-        ota_id: connectionTable.otaId,
-        name_ota: accountOtaDetailTable.name,
-        number_ota: accountTable.phoneNumber,
-      })
-      .from(connectionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(connectionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(connectionTable.otaId, accountOtaDetailTable.accountId),
-      )
-      .innerJoin(accountTable, eq(connectionTable.otaId, accountTable.id))
-      .where(
-        and(
-          eq(connectionTable.connectionStatus, "pending"),
-          or(
-            ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-            ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-            ilike(accountOtaDetailTable.name, `%${q || ""}%`),
-          ),
-          and(
-            eq(connectionTable.requestTerminateMahasiswa, false),
-            eq(connectionTable.requestTerminateOta, false),
-          ),
-        ),
-      )
-      .limit(LIST_PAGE_SIZE)
-      .offset(offset);
+    const baseWhere = {
+      connectionStatus: "pending" as const,
+      requestTerminateMahasiswa: false,
+      requestTerminateOta: false,
+      ...searchFilter,
+    };
 
-    const [connectionList, counts] = await Promise.all([
-      connectionListQuery,
-      countsQuery,
+    const [connectionList, totalCount] = await Promise.all([
+      prisma.connection.findMany({
+        where: baseWhere,
+        include: {
+          MahasiswaProfile: {
+            include: { User: true },
+          },
+          OtaProfile: {
+            include: { User: true },
+          },
+        },
+        skip: offset,
+        take: LIST_PAGE_SIZE,
+      }),
+      prisma.connection.count({ where: baseWhere }),
     ]);
 
     return c.json(
@@ -863,14 +749,14 @@ connectProtectedRouter.openapi(listPendingConnectionRoute, async (c) => {
         message: "Daftar connection pending berhasil diambil",
         body: {
           data: connectionList.map((connection) => ({
-            mahasiswa_id: connection.mahasiswa_id,
-            name_ma: connection.name_ma ?? "",
-            nim_ma: connection.nim_ma,
-            ota_id: connection.ota_id,
-            name_ota: connection.name_ota,
-            number_ota: connection.number_ota ?? "",
+            mahasiswa_id: connection.mahasiswaId,
+            name_ma: connection.MahasiswaProfile?.name ?? "",
+            nim_ma: connection.MahasiswaProfile?.nim ?? "",
+            ota_id: connection.otaId,
+            name_ota: connection.OtaProfile?.name ?? "",
+            number_ota: connection.OtaProfile?.User?.phoneNumber ?? "",
           })),
-          totalData: counts[0].count,
+          totalData: totalCount,
         },
       },
       200,
@@ -923,79 +809,40 @@ connectProtectedRouter.openapi(
     try {
       const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-      const countsQuery = db
-        .select({ count: count() })
-        .from(connectionTable)
-        .innerJoin(
-          accountMahasiswaDetailTable,
-          eq(
-            connectionTable.mahasiswaId,
-            accountMahasiswaDetailTable.accountId,
-          ),
-        )
-        .innerJoin(
-          accountOtaDetailTable,
-          eq(connectionTable.otaId, accountOtaDetailTable.accountId),
-        )
-        .where(
-          and(
-            eq(connectionTable.connectionStatus, "pending"),
-            or(
-              ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-              ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-              ilike(accountOtaDetailTable.name, `%${q || ""}%`),
-            ),
-            or(
-              eq(connectionTable.requestTerminateMahasiswa, true),
-              eq(connectionTable.requestTerminateOta, true),
-            ),
-          ),
-        );
+      const searchFilter = q
+        ? {
+            OR: [
+              { MahasiswaProfile: { name: { contains: q, mode: "insensitive" as const } } },
+              { MahasiswaProfile: { nim: { contains: q, mode: "insensitive" as const } } },
+              { OtaProfile: { name: { contains: q, mode: "insensitive" as const } } },
+            ],
+          }
+        : {};
 
-      const connectionListQuery = db
-        .select({
-          mahasiswa_id: connectionTable.mahasiswaId,
-          name_ma: accountMahasiswaDetailTable.name,
-          nim_ma: accountMahasiswaDetailTable.nim,
-          ota_id: connectionTable.otaId,
-          name_ota: accountOtaDetailTable.name,
-          number_ota: accountTable.phoneNumber,
-          request_term_ota: connectionTable.requestTerminateOta,
-          request_term_ma: connectionTable.requestTerminateMahasiswa,
-        })
-        .from(connectionTable)
-        .innerJoin(
-          accountMahasiswaDetailTable,
-          eq(
-            connectionTable.mahasiswaId,
-            accountMahasiswaDetailTable.accountId,
-          ),
-        )
-        .innerJoin(
-          accountOtaDetailTable,
-          eq(connectionTable.otaId, accountOtaDetailTable.accountId),
-        )
-        .innerJoin(accountTable, eq(connectionTable.otaId, accountTable.id))
-        .where(
-          and(
-            eq(connectionTable.connectionStatus, "pending"),
-            or(
-              ilike(accountMahasiswaDetailTable.name, `%${q || ""}%`),
-              ilike(accountMahasiswaDetailTable.nim, `%${q || ""}%`),
-              ilike(accountOtaDetailTable.name, `%${q || ""}%`),
-            ),
-            or(
-              eq(connectionTable.requestTerminateMahasiswa, true),
-              eq(connectionTable.requestTerminateOta, true),
-            ),
-          ),
-        )
-        .limit(LIST_PAGE_SIZE)
-        .offset(offset);
+      const baseWhere = {
+        connectionStatus: "pending" as const,
+        OR: [
+          { requestTerminateMahasiswa: true },
+          { requestTerminateOta: true },
+        ],
+        ...searchFilter,
+      };
 
-      const [connectionList, counts] = await Promise.all([
-        connectionListQuery,
-        countsQuery,
+      const [connectionList, totalCount] = await Promise.all([
+        prisma.connection.findMany({
+          where: baseWhere,
+          include: {
+            MahasiswaProfile: {
+              include: { User: true },
+            },
+            OtaProfile: {
+              include: { User: true },
+            },
+          },
+          skip: offset,
+          take: LIST_PAGE_SIZE,
+        }),
+        prisma.connection.count({ where: baseWhere }),
       ]);
 
       return c.json(
@@ -1004,16 +851,16 @@ connectProtectedRouter.openapi(
           message: "Daftar connection pending berhasil diambil",
           body: {
             data: connectionList.map((connection) => ({
-              mahasiswa_id: connection.mahasiswa_id,
-              name_ma: connection.name_ma ?? "",
-              nim_ma: connection.nim_ma,
-              ota_id: connection.ota_id,
-              name_ota: connection.name_ota,
-              number_ota: connection.number_ota ?? "",
-              request_term_ota: connection.request_term_ota,
-              request_term_ma: connection.request_term_ma,
+              mahasiswa_id: connection.mahasiswaId,
+              name_ma: connection.MahasiswaProfile?.name ?? "",
+              nim_ma: connection.MahasiswaProfile?.nim ?? "",
+              ota_id: connection.otaId,
+              name_ota: connection.OtaProfile?.name ?? "",
+              number_ota: connection.OtaProfile?.User?.phoneNumber ?? "",
+              request_term_ota: connection.requestTerminateOta,
+              request_term_ma: connection.requestTerminateMahasiswa,
             })),
-            totalData: counts[0].count,
+            totalData: totalCount,
           },
         },
         200,
@@ -1065,66 +912,40 @@ connectProtectedRouter.openapi(listAllConnectionRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const searchCondition = q
-      ? or(
-          ilike(accountMahasiswaDetailTable.name, `%${q}%`),
-          ilike(accountOtaDetailTable.name, `%${q}%`),
-          ilike(accountMahasiswaDetailTable.nim, `%${q}%`),
-        )
-      : undefined;
+    const searchFilter = q
+      ? {
+          OR: [
+            { MahasiswaProfile: { name: { contains: q, mode: "insensitive" as const } } },
+            { MahasiswaProfile: { nim: { contains: q, mode: "insensitive" as const } } },
+            { OtaProfile: { name: { contains: q, mode: "insensitive" as const } } },
+          ],
+        }
+      : {};
 
-    const filterConditions = [
-      connection_status
-        ? eq(
-            connectionTable.connectionStatus,
-            connection_status as "accepted" | "rejected" | "pending",
-          )
-        : undefined,
-    ];
+    const statusFilter = connection_status
+      ? { connectionStatus: connection_status as "accepted" | "rejected" | "pending" }
+      : {};
 
-    const countsQuery = db
-      .select({ count: count() })
-      .from(connectionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(connectionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(connectionTable.otaId, accountOtaDetailTable.accountId),
-      )
-      .where(and(searchCondition, ...filterConditions));
+    const baseWhere = {
+      ...searchFilter,
+      ...statusFilter,
+    };
 
-    const connectionListQuery = db
-      .select({
-        mahasiswa_id: connectionTable.mahasiswaId,
-        name_ma: accountMahasiswaDetailTable.name,
-        nim_ma: accountMahasiswaDetailTable.nim,
-        ota_id: connectionTable.otaId,
-        name_ota: accountOtaDetailTable.name,
-        number_ota: accountTable.phoneNumber,
-        connection_status: connectionTable.connectionStatus,
-        request_term_ota: connectionTable.requestTerminateOta,
-        request_term_ma: connectionTable.requestTerminateMahasiswa,
-        paidFor: connectionTable.paidFor,
-      })
-      .from(connectionTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(connectionTable.mahasiswaId, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(connectionTable.otaId, accountOtaDetailTable.accountId),
-      )
-      .innerJoin(accountTable, eq(connectionTable.otaId, accountTable.id))
-      .where(and(searchCondition, ...filterConditions))
-      .limit(LIST_PAGE_SIZE)
-      .offset(offset);
-
-    const [connectionList, counts] = await Promise.all([
-      connectionListQuery,
-      countsQuery,
+    const [connectionList, totalCount] = await Promise.all([
+      prisma.connection.findMany({
+        where: baseWhere,
+        include: {
+          MahasiswaProfile: {
+            include: { User: true },
+          },
+          OtaProfile: {
+            include: { User: true },
+          },
+        },
+        skip: offset,
+        take: LIST_PAGE_SIZE,
+      }),
+      prisma.connection.count({ where: baseWhere }),
     ]);
 
     return c.json(
@@ -1133,18 +954,18 @@ connectProtectedRouter.openapi(listAllConnectionRoute, async (c) => {
         message: "Daftar connection pending berhasil diambil",
         body: {
           data: connectionList.map((connection) => ({
-            mahasiswa_id: connection.mahasiswa_id,
-            name_ma: connection.name_ma ?? "",
-            nim_ma: connection.nim_ma,
-            ota_id: connection.ota_id,
-            name_ota: connection.name_ota,
-            number_ota: connection.number_ota ?? "",
-            connection_status: connection.connection_status,
-            request_term_ota: connection.request_term_ota,
-            request_term_ma: connection.request_term_ma,
+            mahasiswa_id: connection.mahasiswaId,
+            name_ma: connection.MahasiswaProfile?.name ?? "",
+            nim_ma: connection.MahasiswaProfile?.nim ?? "",
+            ota_id: connection.otaId,
+            name_ota: connection.OtaProfile?.name ?? "",
+            number_ota: connection.OtaProfile?.User?.phoneNumber ?? "",
+            connection_status: connection.connectionStatus,
+            request_term_ota: connection.requestTerminateOta,
+            request_term_ma: connection.requestTerminateMahasiswa,
             paidFor: connection.paidFor,
           })),
-          totalPagination: counts[0].count,
+          totalPagination: totalCount,
         },
       },
       200,
@@ -1183,18 +1004,14 @@ connectProtectedRouter.openapi(isConnectedRoute, async (c) => {
   }
 
   try {
-    const connection = await db
-      .select()
-      .from(connectionTable)
-      .where(
-        and(
-          eq(connectionTable.mahasiswaId, mahasiswaId),
-          eq(connectionTable.otaId, user.id),
-        ),
-      )
-      .limit(1);
+    const connection = await prisma.connection.findFirst({
+      where: {
+        mahasiswaId,
+        otaId: user.id,
+      },
+    });
 
-    if (!connection.length) {
+    if (!connection) {
       return c.json(
         {
           isConnected: false,
@@ -1204,7 +1021,7 @@ connectProtectedRouter.openapi(isConnectedRoute, async (c) => {
       );
     }
 
-    if (connection[0].connectionStatus === "accepted") {
+    if (connection.connectionStatus === "accepted") {
       return c.json(
         {
           isConnected: true,
@@ -1254,33 +1071,26 @@ connectProtectedRouter.openapi(deleteConnectionRoute, async (c) => {
   }
 
   try {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(accountMahasiswaDetailTable)
-        .set({ mahasiswaStatus: "inactive" })
-        .where(eq(accountMahasiswaDetailTable.accountId, mahasiswaId))
-        .returning();
+    await prisma.$transaction(async (tx) => {
+      await tx.mahasiswaProfile.update({
+        where: { userId: mahasiswaId },
+        data: { mahasiswaStatus: "inactive" },
+      });
 
-      await tx
-        .update(transactionTable)
-        .set({ transactionStatus: "paid", transferStatus: "paid" })
-        .where(
-          and(
-            eq(transactionTable.mahasiswaId, mahasiswaId),
-            eq(transactionTable.otaId, otaId),
-            eq(transactionTable.transactionStatus, "unpaid"),
-          ),
-        );
+      await tx.transaction.updateMany({
+        where: {
+          mahasiswaId,
+          otaId,
+          transactionStatus: "unpaid",
+        },
+        data: { transactionStatus: "paid", transferStatus: "paid" },
+      });
 
-      await tx
-        .delete(connectionTable)
-        .where(
-          and(
-            eq(connectionTable.mahasiswaId, mahasiswaId),
-            eq(connectionTable.otaId, otaId),
-            eq(connectionTable.connectionStatus, "accepted"),
-          ),
-        );
+      await tx.connection.delete({
+        where: {
+          mahasiswaId_otaId: { mahasiswaId, otaId },
+        },
+      });
     });
 
     return c.json(
