@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FileType, PrismaClient } from "@prisma/client";
+import { StudentFileType, PrismaClient } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/authOptions";
 import { v4 as uuidv4 } from "uuid";
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       const file = files[i];
       const documentType = documentTypes[i];
 
-      if (!documentType || !Object.values(FileType).includes(documentType as FileType)) {
+      if (!documentType || !Object.values(StudentFileType).includes(documentType as StudentFileType)) {
         return NextResponse.json(
           { success: false, error: `Invalid document type for ${file.name}.` },
           { status: 400 }
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      
+
       const normalizedOriginalName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
       const objectFileName = `${uuidv4()}-${normalizedOriginalName}`;
       const objectKey = buildObjectKey("ota", studentId, objectFileName);
@@ -153,17 +153,17 @@ export async function POST(request: NextRequest) {
         await prisma.studentFile.update({
           where: { id: existingFile.id },
           data: {
-            file_url: fileUrl,
-            file_name: objectKey,
+            fileUrl: fileUrl,
+            fileName: objectKey,
           },
         });
       } else {
         await prisma.studentFile.create({
           data: {
-            file_url: fileUrl,
-            file_name: objectKey,
-            type: documentType as FileType,
-            student_id: studentId,
+            fileUrl: fileUrl,
+            fileName: objectKey,
+            type: documentType as StudentFileType,
+            MahasiswaProfile: { connect: { userId: studentId } },
           },
         });
       }
