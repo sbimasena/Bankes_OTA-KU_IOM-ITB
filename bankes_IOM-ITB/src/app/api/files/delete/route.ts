@@ -93,7 +93,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    await minioClient.removeObject(BUCKET_NAME, fileRecord.file_name);
+    await minioClient.removeObject(BUCKET_NAME, fileRecord.fileName);
 
     await prisma.studentFile.delete({
       where: {

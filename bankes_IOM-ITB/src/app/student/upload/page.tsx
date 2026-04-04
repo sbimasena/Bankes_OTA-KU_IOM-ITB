@@ -15,8 +15,8 @@ interface UploadResponse {
 }
 
 interface FileData {
-  file_url: string;
-  file_name: string;
+  fileUrl: string;
+  fileName: string;
   type: string;
 }
 
@@ -26,7 +26,7 @@ export default function Upload() {
   const [selectedFiles, setSelectedFiles] = useState<{ key: string; file: File }[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<FileData[]>([]);
   const [fileTypes, setFileTypes] = useState<{ title: string; key: string }[]>([]);
-  const [loadingFileTypes, setLoadingFileTypes] = useState(true); 
+  const [loadingFileTypes, setLoadingFileTypes] = useState(true);
 
   useEffect(() => {
     const fetchFiles = async () => {
@@ -76,7 +76,7 @@ export default function Upload() {
       toast.error("Ukuran berkas terlalu besar. Maksimal 5MB.");
       return;
     }
-    
+
     setSelectedFiles((prev) => [...prev.filter((f) => f.key !== key), { key, file }]);
     toast.info(`Berkas "${file.name}" dipilih untuk ${fileTypes.find(ft => ft.key === key)?.title || 'dokumen'}.`);
   };
@@ -104,7 +104,7 @@ export default function Upload() {
       if (response.data.success) {
         toast.success("Semua berkas berhasil diunggah!", { id: toastId });
         setSelectedFiles([]);
-        location.reload(); 
+        location.reload();
       } else {
         toast.error(response.data.error || "Gagal mengunggah sebagian atau semua berkas.", { id: toastId });
       }
@@ -121,10 +121,10 @@ export default function Upload() {
       toast.error("Berkas tidak ditemukan.");
       return;
     }
-    const toastId = toast.loading(`Menghapus ${fileToDelete.file_name}...`);
+    const toastId = toast.loading(`Menghapus ${fileToDelete.fileName}...`);
     try {
       const response = await axios.delete("/api/files/delete", {
-        data: { fileType: fileTypeKey }, 
+        data: { fileType: fileTypeKey },
       });
 
       if (response.data.success) {
@@ -160,7 +160,7 @@ export default function Upload() {
               <p className="text-slate-500">Memuat jenis dokumen...</p>
             </div>
           ) : fileTypes.length === 0 ? (
-             <div className="text-center py-16">
+            <div className="text-center py-16">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 text-slate-400 mx-auto mb-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
               </svg>
@@ -177,13 +177,13 @@ export default function Upload() {
                   <div key={type.key} className="pb-8 border-b border-gray-200 last:border-b-0 last:pb-0">
                     <h2 className="text-xl font-semibold text-slate-700 mb-1">{type.title}</h2>
                     <p className="text-sm text-slate-500 mb-4">
-                      {existingFile 
-                        ? "Anda sudah mengunggah berkas ini." 
-                        : selectedFile 
-                        ? "Berkas siap diunggah." 
-                        : "Silakan pilih berkas untuk diunggah."}
+                      {existingFile
+                        ? "Anda sudah mengunggah berkas ini."
+                        : selectedFile
+                          ? "Berkas siap diunggah."
+                          : "Silakan pilih berkas untuk diunggah."}
                     </p>
-                    
+
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       {/* File Input / Selected File Display */}
                       <div className="w-full md:flex-1">
@@ -219,22 +219,22 @@ export default function Upload() {
                       {existingFile && (
                         <div className="flex items-center space-x-3 mt-2 md:mt-0 md:w-auto flex-shrink-0 pl-0 md:pl-4">
                           <a
-                            href={existingFile.file_url}
+                            href={existingFile.fileUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center py-1.5"
-                            title={`Lihat ${existingFile.file_name}`}
+                            title={`Lihat ${existingFile.fileName}`}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-1.5 flex-shrink-0">
                               <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5Z" />
                               <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.18l.879-1.148a1.65 1.65 0 00-.523-2.318l-.995-.666a1.65 1.65 0 01-.342-2.37L1.29 2.295a1.65 1.65 0 012.37-.342l.996.666a1.65 1.65 0 002.318-.523l1.148-.879A1.65 1.65 0 0110.59.664l1.18 0c.423 0 .83.143 1.148.379l1.148.879a1.65 1.65 0 002.318.523l.996-.666a1.65 1.65 0 012.37.342L18.71 3.5a1.65 1.65 0 01-.342 2.37l-.995.666a1.65 1.65 0 00-.523 2.318l.879 1.148a1.651 1.651 0 010 1.18l-.879 1.148a1.65 1.65 0 00.523 2.318l.995.666a1.65 1.65 0 01.342 2.37L18.71 17.705a1.65 1.65 0 01-2.37.342l-.996-.666a1.65 1.65 0 00-2.318.523l-1.148.879A1.65 1.65 0 019.41.336l-1.18 0a1.651 1.651 0 01-1.148-.379l-1.148-.879a1.65 1.65 0 00-2.318-.523l-.996.666a1.65 1.65 0 01-2.37-.342L1.29 16.5a1.65 1.65 0 01.342-2.37l.995-.666a1.65 1.65 0 00.523-2.318L.664 10.59zM10 15.25a5.25 5.25 0 100-10.5 5.25 5.25 0 000 10.5z" clipRule="evenodd" />
                             </svg>
-                            <span className="truncate max-w-[120px] sm:max-w-[180px]">{existingFile.file_name}</span>
+                            <span className="truncate max-w-[120px] sm:max-w-[180px]">{existingFile.fileName}</span>
                           </a>
                           <button
                             onClick={() => handleDelete(existingFile.type)}
                             className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                            title={`Hapus ${existingFile.file_name}`}
+                            title={`Hapus ${existingFile.fileName}`}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
                               <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.197-2.326.368a.75.75 0 00-.512.734v1.75a.75.75 0 00.75.75H4.5v8.25A3.75 3.75 0 008.25 19h3.5A3.75 3.75 0 0015.5 15.25V8.75h.75a.75.75 0 00.75-.75v-1.75a.75.75 0 00-.512-.734c-.746-.17-1.531-.291-2.326-.368v-.443A2.75 2.75 0 0011.25 1h-2.5zM7.5 3.75c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25v.443c-.708.07-1.406.183-2.09.326a.75.75 0 00-.82 0c-.684-.143-1.382-.255-2.09-.326V3.75z" clipRule="evenodd" />
