@@ -4,28 +4,22 @@ import { Card } from "@/components/ui/card"
 import SidebarMahasiswa from "@/app/components/layout/sidebarmahasiswa"
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { useUser } from "@/app/contexts/UserContext";
 
 export default function Account() {
   const { data: session } = useSession();
-  const [name, setName] = useState<string | null>(null);
+  const { userName, isLoading: userLoading } = useUser();
   const [nim, setNim] = useState<string | null>(null);
   const [prodi, setProdi] = useState<string | null>(null);
   const [fakultas, setFakultas] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [studentLoading, setStudentLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const fetchUserName = async () => {
+    const fetchStudentData = async () => {
       if (session?.user?.id) {
         try {
-          // Fetch user data
-          let response = await fetch(`/api/users`);
-          if (response.ok) {
-            const user = await response.json();
-            setName(user.name);
-          }
-
-          // Fetch student data
-          response = await fetch(`/api/student`);
+          // Fetch student data only
+          const response = await fetch(`/api/student`);
           if (response.ok) {
             const student = await response.json();
             setNim(student.nim);
@@ -33,19 +27,19 @@ export default function Account() {
             setFakultas(student.faculty);
           }
         } catch (error) {
-          console.error("Error fetching user data:", error);
+          console.error("Error fetching student data:", error);
         } finally {
-          setLoading(false);
+          setStudentLoading(false);
         }
       } else {
-        setLoading(false);
+        setStudentLoading(false);
       }
     };
 
-    fetchUserName();
+    fetchStudentData();
   }, [session]);
 
-  if (loading) {
+  if (userLoading || studentLoading) {
     return (
       <div className="flex min-h-screen bg-gray-100 justify-center items-center">
         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
@@ -70,7 +64,7 @@ export default function Account() {
                 {name?.charAt(0) || 'M'}
               </div> */}
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">{name}</h2>
+                <h2 className="text-2xl font-bold text-gray-900">{userName}</h2>
                 <p className="text-gray-600">{nim}</p>
               </div>
             </div>
@@ -86,7 +80,7 @@ export default function Account() {
                   </div>
                   <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Nama Lengkap</h3>
                 </div>
-                <p className="text-lg font-medium text-gray-800">{name}</p>
+                <p className="text-lg font-medium text-gray-800">{userName}</p>
               </div>
 
               <div className="bg-gray-50 rounded-xl p-6 hover:bg-gray-100 transition-colors">
