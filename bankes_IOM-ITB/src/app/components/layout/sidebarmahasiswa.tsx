@@ -86,6 +86,7 @@ function SidebarMahasiswa({ activeTab }: SidebarMahasiswaProps) {
               alt="IOM logo" 
               width={32} 
               height={32}
+              priority
               className="flex-shrink-0"
             />
             {isCollapsed && (

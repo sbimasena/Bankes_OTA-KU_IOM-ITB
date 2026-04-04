@@ -8,7 +8,7 @@ const Navbar: React.FC = () => {
 			<div className='flex flex-col space-y-2'>
 				<div className="flex items-center space-x-4">
 						<div>
-							<Image src="/logoIOM.png" alt="IOM logo"  width={46} height={0}/>
+							<Image src="/logoIOM.png" alt="IOM logo" width={46} height={46} priority loading="eager"/>
 						</div>
 						<div>
 							<p className="text-[18px] font-bold text-main leading-5">Ikatan Orang Tua Mahasiswa</p>	
