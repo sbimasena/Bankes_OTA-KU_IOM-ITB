@@ -16,8 +16,8 @@ export interface Period {
 
 interface File {
   file_id: number;
-  file_url: string;
-  file_name: string;
+  fileUrl: string;
+  fileName: string;
   type: string;
 }
 
@@ -59,16 +59,16 @@ export default function Upload() {
     student.Student.nim.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.Student.User.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  
+
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
-  const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);  
+  const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
 
   const [fileTypes, setFileTypes] = useState<{ title: string; key: string }[]>([]);
-  
+
   const areAllFilesUploaded = (studentFiles: File[]) => {
     const requiredTypes = new Set(fileTypes.map((type) => type.key));
     const uploadedTypes = new Set(studentFiles.map((file) => file.type));
-    
+
     return [...requiredTypes].every((type) => uploadedTypes.has(type));
   };
 
@@ -86,7 +86,7 @@ export default function Upload() {
         toast.error("An error occurred while loading file types.");
       }
     };
-  
+
     fetchFileTypes();
   }, []);
 
@@ -216,7 +216,7 @@ export default function Upload() {
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Toaster position="bottom-right" richColors />
-      
+
       {/* Sidebar */}
       <div className="w-80 p-6">
         <SidebarIOM activeTab="document" />
@@ -225,7 +225,7 @@ export default function Upload() {
       {/* Main Content */}
       <div className="flex-1 p-6">
         <div className="max-w-7xl mx-auto space-y-6">
-          
+
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -250,7 +250,7 @@ export default function Upload() {
                 </div>
               </div>
             </Card>
-            
+
             <Card className="p-4 bg-white/70 backdrop-blur-sm border-0 shadow-lg">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-green-100 rounded-lg">
@@ -291,7 +291,7 @@ export default function Upload() {
           {/* Controls */}
           <Card className="p-6 bg-white/70 backdrop-blur-sm border-0 shadow-lg">
             <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
-              
+
               {/* Period Selector */}
               <div className="flex items-center gap-3">
                 <Filter className="h-5 w-5 text-slate-600" />
@@ -373,11 +373,10 @@ export default function Upload() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {currentStudents.map((student, index) => (
-                      <tr 
-                        key={student.student_id} 
-                        className={`hover:bg-slate-50/50 transition-colors ${
-                          index % 2 === 0 ? 'bg-white/50' : 'bg-slate-50/30'
-                        }`}
+                      <tr
+                        key={student.student_id}
+                        className={`hover:bg-slate-50/50 transition-colors ${index % 2 === 0 ? 'bg-white/50' : 'bg-slate-50/30'
+                          }`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="font-mono text-sm font-medium text-slate-900">
@@ -395,7 +394,7 @@ export default function Upload() {
                             <td key={key} className="px-6 py-4 whitespace-nowrap text-center">
                               {file ? (
                                 <a
-                                  href={file.file_url}
+                                  href={file.fileUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-700 text-xs font-medium rounded-full hover:bg-green-200 transition-colors"
@@ -426,11 +425,10 @@ export default function Upload() {
                               }
                               className="sr-only"
                             />
-                            <div className={`relative w-6 h-6 rounded-md border-2 transition-all ${
-                              student.passDitmawa 
-                                ? 'bg-purple-600 border-purple-600' 
+                            <div className={`relative w-6 h-6 rounded-md border-2 transition-all ${student.passDitmawa
+                                ? 'bg-purple-600 border-purple-600'
                                 : 'bg-white border-slate-300 hover:border-purple-400'
-                            }`}>
+                              }`}>
                               {student.passDitmawa && (
                                 <CheckCircle2 className="h-4 w-4 text-white absolute top-0.5 left-0.5" />
                               )}
@@ -453,13 +451,12 @@ export default function Upload() {
                                 disabled={!areAllFilesUploaded(student.Student.Files)}
                                 className="sr-only"
                               />
-                              <div className={`relative w-6 h-6 rounded-md border-2 transition-all ${
-                                !areAllFilesUploaded(student.Student.Files)
+                              <div className={`relative w-6 h-6 rounded-md border-2 transition-all ${!areAllFilesUploaded(student.Student.Files)
                                   ? 'bg-slate-100 border-slate-200 cursor-not-allowed'
-                                  : student.passIOM 
-                                    ? 'bg-orange-600 border-orange-600' 
+                                  : student.passIOM
+                                    ? 'bg-orange-600 border-orange-600'
                                     : 'bg-white border-slate-300 hover:border-orange-400'
-                              }`}>
+                                }`}>
                                 {student.passIOM && areAllFilesUploaded(student.Student.Files) && (
                                   <CheckCircle2 className="h-4 w-4 text-white absolute top-0.5 left-0.5" />
                                 )}
@@ -484,7 +481,7 @@ export default function Upload() {
                   <div className="text-sm text-slate-600">
                     Menampilkan {indexOfFirstStudent + 1}-{Math.min(indexOfLastStudent, filteredStudents.length)} dari {filteredStudents.length} data
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -507,11 +504,10 @@ export default function Upload() {
                           <button
                             key={page}
                             onClick={() => setCurrentPage(page)}
-                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                              currentPage === page
+                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${currentPage === page
                                 ? "bg-blue-600 text-white"
                                 : "text-slate-600 bg-white border border-slate-200 hover:bg-slate-50"
-                            }`}
+                              }`}
                           >
                             {page}
                           </button>
