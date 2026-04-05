@@ -10,46 +10,13 @@ import { useSession } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-
-interface InterviewParticipant {
-    id: number; // Add this property
-    user_id: number;
-    User: {
-      name: string;
-    };
-  }
-  
-interface InterviewSlot {
-  id: number;
-  title: string | null;
-  description: string | null;
-  start_time: string;
-  end_time: string;
-  user_id: number;
-  student_id: number | null;
-  User: {
-    name: string;
-  };
-  Participants: InterviewParticipant[];
-  Student?: {
-    User: {
-      name: string;
-    };
-  };
-}
+import type { InterviewSlot, IOMStaff } from "../types";
 
 interface StudentCalendarViewProps {
   slots: InterviewSlot[];
   myBookings: InterviewSlot[];
   handleBookSlot: (slot: InterviewSlot) => void;
   handleCancelBooking: (slotId: number) => void;
-}
-
-interface IOMStaff {
-  user_id: number;
-  name: string;
-  email: string;
 }
 
 
@@ -360,12 +327,12 @@ export default function StudentCalendarView({
                 <div className="space-y-2">
                   <p className="font-medium">{selectedSlot.title || "Slot Wawancara"}</p>
                   <p className="text-sm">
-                    {format(new Date(selectedSlot.start_time), "EEEE, d MMMM yyyy", { locale: id })}
+                    {format(new Date(selectedSlot.startTime), "EEEE, d MMMM yyyy", { locale: id })}
                   </p>
                   <p className="text-sm">
-                    {format(new Date(selectedSlot.start_time), "HH:mm")} - {format(new Date(selectedSlot.end_time), "HH:mm")}
+                    {format(new Date(selectedSlot.startTime), "HH:mm")} - {format(new Date(selectedSlot.endTime), "HH:mm")}
                   </p>
-                  {selectedSlot.student_id ? (
+                  {selectedSlot.studentId ? (
                     <div className="flex items-center">
                       <User className="h-4 w-4 mr-2 text-blue-500" />
                       <span>
@@ -414,7 +381,7 @@ export default function StudentCalendarView({
                     <X className="h-4 w-4 mr-1" />
                     Cancel Booking
                   </Button>
-                ) : !selectedSlot.student_id ? (
+                ) : !selectedSlot.studentId ? (
                   // Slot is available - show book button
                   <Button
                     variant="outline" 
