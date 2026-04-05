@@ -131,6 +131,12 @@ export default function PendaftaranMahasiswa({
       nim,
       major: jurusan,
       faculty: fakultas,
+      cityOfOrigin: "",
+      highschoolAlumni: "",
+      religion: "Islam",
+      gender: "M",
+      gpa: 0,
+      description: "",
     },
   });
 

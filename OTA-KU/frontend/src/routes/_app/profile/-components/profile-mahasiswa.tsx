@@ -78,8 +78,6 @@ function ProfileMahasiswa({
               joinDate={profileData?.body?.createdAt || "-"}
               dueNextUpdateAt={profileData?.body?.dueNextUpdateAt}
               applicationStatus={applicationStatus}
-              onEnableEdit={() => setIsEditingEnabled(true)}
-              isEditingEnabled={isEditingEnabled}
               status={data?.body.status || false}
               daysRemaining={data?.body.daysRemaining || 0}
             />

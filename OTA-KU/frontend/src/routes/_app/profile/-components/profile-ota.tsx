@@ -5,7 +5,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { UserCog } from "lucide-react";
 
-
 import ProfileCard from "./profile-card";
 import ChangePasswordForm from "./profile-change-password";
 import ProfileFormOTA from "./profile-form-ota";
@@ -16,18 +15,21 @@ function ProfileOta({
 }: {
   session: UserSchema;
   applicationStatus:
-    | "accepted"
-    | "rejected"
-    | "pending"
-    | "unregistered"
-    | "reapply"
-    | "outdated";
+  | "accepted"
+  | "rejected"
+  | "pending"
+  | "unregistered"
+  | "reapply"
+  | "outdated";
 }) {
   const { data: profileData, isLoading } = useQuery({
     queryKey: ["otaProfile", session.id],
     queryFn: () => api.profile.profileOrangTua({ id: session.id ?? "" }),
     enabled: !!session.id,
   });
+
+  // console.log("ProfileOTA - profileData:", profileData);
+  // console.log("ProfileOTA - linkage value:", profileData?.body?.linkage);
 
   if (
     applicationStatus === "unregistered" ||
@@ -62,6 +64,7 @@ function ProfileOta({
               phone={
                 profileData?.body?.phone_number || session.phoneNumber || "-"
               }
+              linkage={profileData?.body?.linkage}
               joinDate={profileData?.body?.join_date || "Belum tersedia"}
               status={false}
               daysRemaining={0}

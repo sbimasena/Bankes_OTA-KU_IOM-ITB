@@ -7,14 +7,15 @@ interface ProfileCardProps {
   email: string;
   phone: string;
   joinDate: string;
+  linkage?: "alumni" | "otm" | "dosen" | "lainnya" | "none";
   dueNextUpdateAt?: string;
   applicationStatus?:
-    | "accepted"
-    | "rejected"
-    | "pending"
-    | "unregistered"
-    | "reapply"
-    | "outdated";
+  | "accepted"
+  | "rejected"
+  | "pending"
+  | "unregistered"
+  | "reapply"
+  | "outdated";
   status: boolean;
   daysRemaining: number;
   onEnableEdit?: () => void;
@@ -27,6 +28,7 @@ function ProfileCard({
   email,
   phone,
   joinDate,
+  linkage,
   dueNextUpdateAt,
   applicationStatus,
   status,
@@ -35,6 +37,23 @@ function ProfileCard({
   isEditingEnabled = false,
 }: ProfileCardProps) {
   const contactNumber = "+62 856-2465-4990";
+
+  // Map linkage value to display text
+  const getLinkageText = (linkageValue?: string): string => {
+    switch (linkageValue) {
+      case "alumni":
+        return "Alumni";
+      case "otm":
+        return "Orang Tua Mahasiswa";
+      case "dosen":
+        return "Dosen";
+      case "lainnya":
+        return "Lainnya";
+      case "none":
+      default:
+        return "Tidak Ada";
+    }
+  };
 
   // Format join date to show only Month Year
   const formatJoinDate = (dateString: string): string => {
@@ -134,6 +153,11 @@ function ProfileCard({
         <div className="flex items-center gap-3">
           <Calendar className="h-5 w-5" />
           <span className="text-sm">Bergabung di {formattedJoinDate}</span>
+        </div>
+
+        <div className="flex items-start gap-3">
+          <span className="text-sm font-medium">Keterkaitan:</span>
+          <span className="text-sm">{getLinkageText(linkage)}</span>
         </div>
       </div>
 

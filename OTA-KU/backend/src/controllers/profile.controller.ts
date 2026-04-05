@@ -36,63 +36,69 @@ profileProtectedRouter.openapi(pendaftaranMahasiswaRoute, async (c) => {
   const body = await c.req.formData();
   const data = Object.fromEntries(body.entries());
 
-  const zodParseResult = MahasiswaRegistrationFormSchema.parse(data);
-  const {
-    name,
-    nim,
-    description,
-    file,
-    phoneNumber,
-    cityOfOrigin,
-    ditmawaRecommendationLetter,
-    electricityBill,
-    faculty,
-    highschoolAlumni,
-    kk,
-    ktm,
-    major,
-    pbb,
-    salaryReport,
-    transcript,
-    waliRecommendationLetter,
-    gender,
-    gpa,
-    religion,
-  } = zodParseResult;
-
-  const userAccount = await prisma.user.findFirst({
-    where: { id: user.id },
-  });
-
-  if (userAccount?.verificationStatus === "unverified") {
-    return c.json(
-      {
-        success: false,
-        message: "Akun anda belum diverifikasi.",
-        error: {},
-      },
-      403,
-    );
-  }
-
-  if (user.type !== "mahasiswa") {
-    return c.json(
-      {
-        success: false,
-        message: "Forbidden",
-        error: {
-          code: "Forbidden",
-          message: "Hanya MA yang bisa mendaftar sebagai mahasiswa asuh",
-        },
-      },
-      403,
-    );
-  }
-
   try {
+    const zodParseResult = MahasiswaRegistrationFormSchema.parse(data);
+    const {
+      name,
+      nim,
+      description,
+      file,
+      phoneNumber,
+      cityOfOrigin,
+      ditmawaRecommendationLetter,
+      electricityBill,
+      faculty,
+      highschoolAlumni,
+      kk,
+      ktm,
+      major,
+      pbb,
+      salaryReport,
+      transcript,
+      waliRecommendationLetter,
+      gender,
+      gpa,
+      religion,
+    } = zodParseResult;
+
+    // Convert space-formatted major to underscore format for Prisma
+    const majorForDb = major?.replace(/ /g, "_") as Jurusan | undefined;
+
+    // Convert hyphen-formatted faculty to underscore format for Prisma
+    const facultyForDb = (faculty?.replace(/-/g, "_") as unknown) as Fakultas | undefined;
+
+    const userAccount = await prisma.user.findFirst({
+      where: { id: user.id },
+    });
+
+    if (userAccount?.verificationStatus === "unverified") {
+      return c.json(
+        {
+          success: false,
+          message: "Akun anda belum diverifikasi.",
+          error: {},
+        },
+        403,
+      );
+    }
+
+    if (user.type !== "mahasiswa") {
+      return c.json(
+        {
+          success: false,
+          message: "Forbidden",
+          error: {
+            code: "Forbidden",
+            message: "Hanya MA yang bisa mendaftar sebagai mahasiswa asuh",
+          },
+        },
+        403,
+      );
+    }
+
     // Upload all files first (outside tx — cannot mix Prisma tx with MinIO)
     const fileUrls: Record<string, string | null> = {};
-    const fileTypeMap: Array<[File | string | undefined, StudentFileType]> = [
+    const fileTypeMap: Array<[any, StudentFileType]> = [
       [file, "Profile_Photo"],
       [kk, "KK"],
       [ktm, "KTM"],
@@ -141,8 +147,8 @@ profileProtectedRouter.openapi(pendaftaranMahasiswaRoute, async (c) => {
           name,
           nim,
           description,
-          major: major as Jurusan | undefined,
-          faculty: faculty as Fakultas | undefined,
+          major: majorForDb,
+          faculty: facultyForDb,
           cityOfOrigin,
           highschoolAlumni,
           religion,
@@ -156,8 +162,8 @@ profileProtectedRouter.openapi(pendaftaranMahasiswaRoute, async (c) => {
           name,
           nim,
           description,
-          major: major as Jurusan | undefined,
-          faculty: faculty as Fakultas | undefined,
+          major: majorForDb,
+          faculty: facultyForDb,
           cityOfOrigin,
           highschoolAlumni,
           religion,
@@ -227,12 +233,12 @@ profileProtectedRouter.openapi(pendaftaranMahasiswaRoute, async (c) => {
       200,
     );
   } catch (error) {
-    console.error(error);
+    console.error("Pendaftaran Mahasiswa Error:", error);
     return c.json(
       {
         success: false,
         message: "Internal server error",
-        error: error,
+        error: error instanceof Error ? error.message : error,
       },
       500,
     );
@@ -512,6 +518,9 @@ profileProtectedRouter.openapi(editProfileOrangTuaRoute, async (c) => {
         maxSemester,
         name,
         transferDate,
+        startDate: startDate ? new Date(startDate) : undefined,
+        isDetailVisible: isDetailVisible === "true" || isDetailVisible === true,
+        allowAdminSelection: allowAdminSelection === "true" || allowAdminSelection === true,
       },
     });
 
@@ -699,14 +708,14 @@ profileProtectedRouter.openapi(editProfileMahasiswaRoute, async (c) => {
           updatedAt: new Date(),
           dueNextUpdateAt: existingProfile?.dueNextUpdateAt
             ? new Date(
-                existingProfile.dueNextUpdateAt.getFullYear(),
-                existingProfile.dueNextUpdateAt.getMonth() + 6,
-                existingProfile.dueNextUpdateAt.getDate(),
-                existingProfile.dueNextUpdateAt.getHours(),
-                existingProfile.dueNextUpdateAt.getMinutes(),
-                existingProfile.dueNextUpdateAt.getSeconds(),
-                existingProfile.dueNextUpdateAt.getMilliseconds(),
-              )
+              existingProfile.dueNextUpdateAt.getFullYear(),
+              existingProfile.dueNextUpdateAt.getMonth() + 6,
+              existingProfile.dueNextUpdateAt.getDate(),
+              existingProfile.dueNextUpdateAt.getHours(),
+              existingProfile.dueNextUpdateAt.getMinutes(),
+              existingProfile.dueNextUpdateAt.getSeconds(),
+              existingProfile.dueNextUpdateAt.getMilliseconds(),
+            )
             : undefined,
         },
       },
@@ -795,6 +804,8 @@ profileProtectedRouter.openapi(profileOrangTuaRoute, async (c) => {
       allowAdminSelection: profile.allowAdminSelection!,
       join_date: profile.createdAt,
     };
+
+    console.log("ProfileOTA response body:", formattedProfile);
 
     return c.json(
       {

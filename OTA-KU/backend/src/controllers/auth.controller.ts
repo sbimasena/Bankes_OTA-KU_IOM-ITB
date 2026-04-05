@@ -581,9 +581,18 @@ authProtectedRouter.openapi(otpRoute, async (c) => {
 
       if (updatedUser.role === "Mahasiswa") {
         const nim = updatedUser.email.split("@")[0];
-        await tx.mahasiswaProfile.update({
+        await tx.mahasiswaProfile.upsert({
           where: { userId: user.id },
-          data: {
+          update: {
+            nim,
+            major: getNimJurusanCodeMap()[nim.slice(0, 3)],
+            faculty:
+              getNimFakultasCodeMap()[
+                getNimFakultasFromNimJurusanMap()[nim.slice(0, 3)]
+              ],
+          },
+          create: {
+            userId: user.id,
             nim,
             major: getNimJurusanCodeMap()[nim.slice(0, 3)],
             faculty:
