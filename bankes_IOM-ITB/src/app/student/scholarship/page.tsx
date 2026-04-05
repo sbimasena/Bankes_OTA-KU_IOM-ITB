@@ -7,11 +7,16 @@ import { Toaster, toast } from "sonner";
 
 interface Period {
   period_id: number;
+  id?: number;
   period: string;
   start_date: string;
+  startDate?: string;
   end_date: string;
+  endDate?: string;
   is_current: boolean;
+  isCurrent?: boolean;
   is_open: boolean;
+  isOpen?: boolean;
   is_registered?: boolean;
 }
 
@@ -37,8 +42,21 @@ export default function Upload() {
       }
       const periodsData: Period[] = await periodsResponse.json();
 
+      const normalizedPeriods: Period[] = periodsData.map((period) => ({
+        ...period,
+        period_id: period.period_id ?? period.id ?? 0,
+        start_date: period.start_date ?? period.startDate ?? "",
+        end_date: period.end_date ?? period.endDate ?? "",
+        is_current: period.is_current ?? period.isCurrent ?? false,
+        is_open: period.is_open ?? period.isOpen ?? false,
+      }));
+
       const updatedPeriods = await Promise.all(
-        periodsData.map(async (period) => {
+        normalizedPeriods.map(async (period) => {
+          if (!period.period_id) {
+            return { ...period, is_registered: false };
+          }
+
           const response = await fetch("/api/status/check-registration", {
             method: "POST",
             headers: {
@@ -50,7 +68,7 @@ export default function Upload() {
           if (!response.ok) {
             const errorBody = await response.text();
             console.error("Check registration error body:", errorBody);
-            throw new Error(`Failed to check registration status for period ${period.period_id}. Status: ${response.status}`);
+            return { ...period, is_registered: false };
           }
 
           const result = await response.json();

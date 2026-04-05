@@ -92,9 +92,10 @@ export async function POST(request: Request) {
 
     const userId = session.user.id;
     const body = await request.json();
-    const { period_id } = body;
+    const rawPeriodId = body?.period_id ?? body?.periodId ?? body?.id;
+    const periodId = Number(rawPeriodId);
 
-    if (!period_id || isNaN(Number(period_id))) {
+    if (!periodId || Number.isNaN(periodId)) {
       return NextResponse.json(
         { success: false, error: "Invalid or missing period_id" },
         { status: 400 }
@@ -104,7 +105,7 @@ export async function POST(request: Request) {
     const existingRecord = await prisma.bankesStatus.findFirst({
       where: {
         userId,
-        periodId: Number(period_id),
+        periodId,
       },
     });
 

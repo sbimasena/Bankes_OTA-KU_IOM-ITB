@@ -101,6 +101,7 @@ services:
     volumes:
       - ./bankes_IOM-ITB:/app:delegated
       - bankes-node-modules:/app/node_modules
+      - /app/.next
     environment:
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: "1"

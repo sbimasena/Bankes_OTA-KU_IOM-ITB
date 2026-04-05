@@ -79,7 +79,17 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(newPeriod, { status: 201 });
+    return NextResponse.json(
+      {
+        period_id: newPeriod.id,
+        period: newPeriod.period,
+        start_date: newPeriod.startDate,
+        end_date: newPeriod.endDate,
+        is_current: newPeriod.isCurrent,
+        is_open: newPeriod.isOpen,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error(error);
     return NextResponse.json({ message: "Error creating period" }, { status: 500 });

@@ -33,7 +33,16 @@ const prisma = new PrismaClient();
 export async function GET() {
   try {
     const periods = await prisma.period.findMany();
-    return NextResponse.json(periods);
+    const normalizedPeriods = periods.map((period) => ({
+      period_id: period.id,
+      period: period.period,
+      start_date: period.startDate,
+      end_date: period.endDate,
+      is_current: period.isCurrent,
+      is_open: period.isOpen,
+    }));
+
+    return NextResponse.json(normalizedPeriods);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ message: "Error fetching periods" }, { status: 500 });

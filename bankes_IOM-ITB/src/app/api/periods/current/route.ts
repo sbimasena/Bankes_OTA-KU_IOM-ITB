@@ -27,7 +27,19 @@ export async function GET() {
     const currentPeriod = await prisma.period.findFirst({
       where: { isCurrent: true },
     });
-    return NextResponse.json(currentPeriod || null);
+
+    if (!currentPeriod) {
+      return NextResponse.json(null);
+    }
+
+    return NextResponse.json({
+      period_id: currentPeriod.id,
+      period: currentPeriod.period,
+      start_date: currentPeriod.startDate,
+      end_date: currentPeriod.endDate,
+      is_current: currentPeriod.isCurrent,
+      is_open: currentPeriod.isOpen,
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ message: "Error fetching current period" }, { status: 500 });
