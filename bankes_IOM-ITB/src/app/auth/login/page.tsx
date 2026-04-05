@@ -60,7 +60,7 @@ export default function LoginPage() {
                 const user = await response.json();
                 const userrole : string = user.role;
                 const roleBasedCallbackUrls : { [key: string] : string }  = {
-                    Mahasiswa : "student/profile",
+                    Mahasiswa : "/student/profile",
                     "Admin" : "/admin/account/",
                     "Pengurus_IOM" : "/iom/document/",
                     "Guest" : "/guest/",

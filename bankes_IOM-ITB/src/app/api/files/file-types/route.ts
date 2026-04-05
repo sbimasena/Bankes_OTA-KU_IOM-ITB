@@ -1,8 +1,5 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { FileType } from "@prisma/client";
+import { StudentFileType } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/authOptions";
 
 /**
  * @swagger
@@ -11,7 +8,7 @@ import { authOptions } from "../../auth/[...nextauth]/authOptions";
  *     tags:
  *       - Files
  *     summary: Get all available file types
- *     description: Returns the list of file types from the FileType enum.
+ *     description: Returns the list of file types from the StudentFileType enum.
  *     responses:
  *       200:
  *         description: A list of file types
@@ -31,7 +28,7 @@ import { authOptions } from "../../auth/[...nextauth]/authOptions";
  */
 export async function GET() {
   try {
-    const fileTypes = Object.values(FileType).map((key) => ({
+    const fileTypes = (Object.values(StudentFileType) as string[]).map((key) => ({
         title: key.replace(/_/g, " "),
         key,
     }));

@@ -16,7 +16,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, createFileRoute, redirect } from "@tanstack/react-router";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -35,8 +34,6 @@ export const Route = createFileRoute("/_app/auth/login/")({
 type UserLoginFormValues = z.infer<typeof UserLoginRequestSchema>;
 
 function RouteComponent() {
-  const [state, setState] = useState<string | null>(null);
-  const [clientId, setClientId] = useState<string | null>(null);
   const navigate = useNavigate();
   const loginCallbackMutation = useMutation({
     mutationFn: (data: UserLoginFormValues) =>
@@ -75,17 +72,6 @@ function RouteComponent() {
   async function onSubmit(values: UserLoginFormValues) {
     loginCallbackMutation.mutate(values);
   }
-
-  useEffect(() => {
-    const state = crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
-    localStorage.setItem("state", state);
-    setState(state);
-  }, []);
-
-  const azureClientId = import.meta.env.VITE_AZURE_CLIENT_ID;
-  useEffect(() => {
-    setClientId(azureClientId);
-  }, [azureClientId]);
 
   return (
     <main className="flex min-h-[calc(100vh-70px)] flex-col p-2 px-6 py-16 md:px-12 lg:min-h-[calc(100vh-96px)]">
@@ -158,26 +144,6 @@ function RouteComponent() {
 
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 Masuk
-              </Button>
-
-              <p className="text-primary text-center">atau</p>
-
-              <Button
-                type="button"
-                disabled={loginCallbackMutation.isPending}
-                variant={"outline"}
-                asChild
-              >
-                <a
-                  href={`https://login.microsoftonline.com/db6e1183-4c65-405c-82ce-7cd53fa6e9dc/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}&prompt=select_account`}
-                >
-                  <img
-                    src="/microsoft.svg"
-                    alt="Microsoft Logo"
-                    className="w-6"
-                  />
-                  Masuk dengan akun Mahasiswa ITB
-                </a>
               </Button>
 
               <p className="text-primary text-center text-base">

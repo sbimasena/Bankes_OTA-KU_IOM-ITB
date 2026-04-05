@@ -82,18 +82,25 @@ export async function PUT(
     }
 
     await prisma.period.updateMany({
-      data: { 
-        is_current: false,
-        is_open: false,
+      data: {
+        isCurrent: false,
+        isOpen: false,
       },
     });
 
     const updatedPeriod = await prisma.period.update({
-      where: { period_id: periodId },
-      data: { is_current: true },
+      where: { id: periodId },
+      data: { isCurrent: true },
     });
 
-    return NextResponse.json(updatedPeriod);
+    return NextResponse.json({
+      period_id: updatedPeriod.id,
+      period: updatedPeriod.period,
+      start_date: updatedPeriod.startDate,
+      end_date: updatedPeriod.endDate,
+      is_current: updatedPeriod.isCurrent,
+      is_open: updatedPeriod.isOpen,
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ message: "Error setting current period" }, { status: 500 });

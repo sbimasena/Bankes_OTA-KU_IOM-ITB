@@ -15,7 +15,7 @@ const Navbar: React.FC = () => {
 			{session?.user?.role === "Mahasiswa" ? <PushNotification /> : null}
 			<Link href="/" className="flex items-center space-x-4">
 					<div>
-						<Image src="/logoIOM.png" alt="IOM logo"  width={46} height={0}/>
+						<Image src="/logoIOM.png" alt="IOM logo" width={46} height={46} priority loading="eager"/>
 					</div>
 					<div>
 						<h1 className="text-[18px] font-bold text-main leading-5">Ikatan Orang Tua Mahasiswa</h1>	

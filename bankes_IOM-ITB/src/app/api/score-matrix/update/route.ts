@@ -71,18 +71,18 @@ export async function POST(request: NextRequest) {
 
     for (const entry of scoreEntries) {
       const {
-        student_id,
-        period_id,
-        question_id,
-        score_category,
+        userId,
+        periodId,
+        questionId,
+        scoreCategory,
         comment,
       } = entry;
 
       if (
-        typeof student_id !== "number" ||
-        typeof period_id !== "number" ||
-        typeof question_id !== "number" ||
-        !["KURANG", "CUKUP", "BAIK"].includes(score_category)
+        typeof userId !== "string" ||
+        typeof periodId !== "number" ||
+        typeof questionId !== "number" ||
+        !["KURANG", "CUKUP", "BAIK"].includes(scoreCategory)
       ) {
         return NextResponse.json(
           { message: "Invalid or missing fields in one of the entries" },
@@ -95,21 +95,21 @@ export async function POST(request: NextRequest) {
       scoreEntries.map((entry) =>
         prisma.scoreMatrix.upsert({
           where: {
-            student_id_period_id_question_id: {
-              student_id: entry.student_id,
-              period_id: entry.period_id,
-              question_id: entry.question_id,
+            userId_periodId_questionId: {
+              userId: entry.userId,
+              periodId: entry.periodId,
+              questionId: entry.questionId,
             },
           },
           update: {
-            score_category: entry.score_category,
+            scoreCategory: entry.scoreCategory,
             comment: entry.comment || "",
           },
           create: {
-            student_id: entry.student_id,
-            period_id: entry.period_id,
-            question_id: entry.question_id,
-            score_category: entry.score_category,
+            userId: entry.userId,
+            periodId: entry.periodId,
+            questionId: entry.questionId,
+            scoreCategory: entry.scoreCategory,
             comment: entry.comment || "",
           },
         })

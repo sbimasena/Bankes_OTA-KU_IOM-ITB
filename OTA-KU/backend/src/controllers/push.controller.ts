@@ -1,7 +1,4 @@
-import { eq } from "drizzle-orm";
-
-import { db } from "../db/drizzle.js";
-import { pushSubscriptionTable } from "../db/schema.js";
+import { prisma } from "../db/prisma.js";
 import { sendNotification } from "../lib/web-push.js";
 import {
   createPushSubscription,
@@ -35,13 +32,11 @@ pushProtectedRouter.openapi(getPushSubscription, async (c) => {
   }
 
   try {
-    const subscription = await db
-      .select()
-      .from(pushSubscriptionTable)
-      .where(eq(pushSubscriptionTable.accountId, id))
-      .limit(1);
+    const subscription = await prisma.pushSubscription.findFirst({
+      where: { userId: id },
+    });
 
-    if (subscription.length === 0) {
+    if (!subscription) {
       return c.json(
         {
           success: true,
@@ -98,27 +93,24 @@ pushProtectedRouter.openapi(createPushSubscription, async (c) => {
   const { auth, endpoint, p256dh } = zodParseResult;
 
   const keys = {
-    p256dh: p256dh,
-    auth: auth,
+    p256dh,
+    auth,
   };
 
   try {
-    await db
-      .insert(pushSubscriptionTable)
-      .values({
-        accountId: id,
-        endpoint: endpoint,
-        keys: JSON.stringify(keys),
-      })
-      .onConflictDoUpdate({
-        target: [
-          pushSubscriptionTable.accountId,
-          pushSubscriptionTable.endpoint,
-        ],
-        set: {
-          keys: JSON.stringify(keys),
-        },
-      });
+    await prisma.pushSubscription.upsert({
+      where: {
+        userId_endpoint: { userId: id, endpoint },
+      },
+      create: {
+        userId: id,
+        endpoint,
+        keys: keys as any,
+      },
+      update: {
+        keys: keys as any,
+      },
+    });
 
     return c.json(
       {
@@ -156,9 +148,9 @@ pushProtectedRouter.openapi(deletePushSubscription, async (c) => {
   }
 
   try {
-    await db
-      .delete(pushSubscriptionTable)
-      .where(eq(pushSubscriptionTable.accountId, id));
+    await prisma.pushSubscription.deleteMany({
+      where: { userId: id },
+    });
 
     return c.json(
       {
@@ -212,13 +204,11 @@ pushProtectedRouter.openapi(sendPushNotification, async (c) => {
   }
 
   try {
-    const subscription = await db
-      .select()
-      .from(pushSubscriptionTable)
-      .where(eq(pushSubscriptionTable.accountId, userId))
-      .limit(1);
+    const subscription = await prisma.pushSubscription.findFirst({
+      where: { userId },
+    });
 
-    if (subscription.length === 0) {
+    if (!subscription) {
       return c.json(
         {
           success: false,
@@ -229,18 +219,21 @@ pushProtectedRouter.openapi(sendPushNotification, async (c) => {
       );
     }
 
-    const { endpoint, auth, p256dh } = SubscriptionSchema.parse(
-      subscription[0],
-    );
+    const { endpoint } = subscription;
+    const { p256dh, auth } = subscription.keys as { p256dh: string; auth: string };
 
-    const keys = {
+    const validatedData = SubscriptionSchema.parse({
+      endpoint,
       p256dh,
       auth,
-    };
+    });
 
     const pushSubscription = {
-      endpoint,
-      keys,
+      endpoint: validatedData.endpoint,
+      keys: {
+        p256dh: validatedData.p256dh,
+        auth: validatedData.auth,
+      },
     };
 
     const notificationData = {

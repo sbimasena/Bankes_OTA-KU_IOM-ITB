@@ -62,32 +62,32 @@ export async function GET() {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await prisma.status.groupBy({
-    by: ['period_id'],
+  const result = await prisma.bankesStatus.groupBy({
+    by: ['periodId'],
     _count: {
-      student_id: true,
+      userId: true,
     },
     orderBy: {
-      period_id: 'asc',
+      periodId: 'asc',
     }
   });
 
   const periods = await prisma.period.findMany({
     where: {
-      period_id: { in: result.map(r => r.period_id) }
+      id: { in: result.map(r => r.periodId) }
     },
     select: {
-      period_id: true,
+      id: true,
       period: true
     }
   });
 
-  const periodMap = Object.fromEntries(periods.map(p => [p.period_id, p.period]));
+  const periodMap = Object.fromEntries(periods.map(p => [p.id, p.period]));
 
   const response = result.map(item => ({
-    period_id: item.period_id,
-    period: periodMap[item.period_id] || "Unknown",
-    student_count: item._count.student_id,
+    period_id: item.periodId,
+    period: periodMap[item.periodId] || "Unknown",
+    student_count: item._count.userId,
   }));
 
   return NextResponse.json({ success: true, data: response });

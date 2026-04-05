@@ -15,8 +15,8 @@ export interface Period {
 
 interface File {
   file_id: number;
-  file_url: string;
-  file_name: string;
+  fileUrl: string;
+  fileName: string;
   type: string;
 }
 
@@ -185,8 +185,8 @@ export default function Upload() {
                             return (
                               <td key={key} className="px-6 py-4">
                                 {file ? (
-                                  <a href={file.file_url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                                    {file.file_name}
+                                  <a href={file.fileUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                    {file.fileName}
                                   </a>
                                 ) : (
                                   <span className="text-gray-500">Not Uploaded</span>

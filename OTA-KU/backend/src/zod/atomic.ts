@@ -118,18 +118,15 @@ export const NIMSchema = z
   })
   .openapi({ example: "13522005", description: "Nomor Induk Mahasiswa" });
 
-export function cloudinaryUrlSchema(description: string) {
+export function minioUrlSchema(description: string) {
   return z
     .string({
       required_error: `${description} harus diisi`,
       invalid_type_error: `${description} harus berupa string`,
     })
     .url({ message: `${description} harus berupa URL` })
-    .regex(/^https:\/\/res\.cloudinary\.com/, {
-      message: `${description} harus berupa URL dari cloudinary`,
-    })
     .openapi({
-      example: "https://res.cloudinary.com/your-image.pdf",
+      example: "http://localhost:9000/documents-bucket/your-file.pdf",
       description,
     });
 }

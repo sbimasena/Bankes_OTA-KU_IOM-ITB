@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const id = await prisma.student.findFirst({
+    const profile = await prisma.mahasiswaProfile.findFirst({
       where: {
         nim: nim,
       },
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    if (!id?.User.user_id) {
+    if (!profile?.User.id) {
       return NextResponse.json(
         { success: false, error: "ID Not found" },
         { status: 400 }
@@ -147,8 +147,8 @@ export async function POST(request: NextRequest) {
 
     const slotid = await prisma.interviewSlot.findFirst({
       where: {
-        period_id: period_id,
-        student_id: id?.User.user_id,
+        periodId: period_id,
+        studentId: profile.User.id,
       },
       select: {
         id: true,
@@ -162,11 +162,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const notes = await prisma.notes.update({
+    const notes = await prisma.interviewNote.update({
       where: {
-        slot_id_user_id: {
-          slot_id: slotid.id,
-          user_id: id.User.user_id,
+        slotId_userId: {
+          slotId: slotid.id,
+          userId: profile.User.id,
         },
       },
       data: {

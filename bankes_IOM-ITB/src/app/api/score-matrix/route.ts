@@ -56,25 +56,25 @@ const prisma = new PrismaClient();
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const student_id = parseInt(searchParams.get("student_id") || "", 10);
-    const period_id = parseInt(searchParams.get("period_id") || "", 10);
+    const userId = searchParams.get("userId") || "";
+    const periodId = parseInt(searchParams.get("periodId") || "", 10);
 
-    if (isNaN(student_id) || isNaN(period_id)) {
+    if (!userId || isNaN(periodId)) {
       return NextResponse.json(
-        { message: "student_id and period_id are required" },
+        { message: "userId and periodId are required" },
         { status: 400 }
       );
     }
 
     const scores = await prisma.scoreMatrix.findMany({
       where: {
-        student_id,
-        period_id,
+        userId,
+        periodId,
       },
       include: {
         Question: {
           select: {
-            question_id: true,
+            id: true,
             question: true,
           },
         },

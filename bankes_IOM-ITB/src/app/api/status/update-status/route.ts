@@ -1,17 +1,17 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { sendPushNotification } from "@/services/sendNotification";
-import { FileType } from "@prisma/client";
+import { StudentFileType } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 interface StudentUpdate {
-  student_id: number;
-  period_id: number;
+  userId: string;
+  periodId: number;
   Statuses: {
     passDitmawa: boolean;
     passIOM: boolean;
-    amount?: number; // Add this field
+    amount?: number;
   }[];
 }
 
@@ -194,45 +194,40 @@ export async function POST(request: Request) {
 
     const updatedStudents = await Promise.all(
       studentsToUpdate.map(async (student) => {
-        const { student_id, period_id, Statuses } = student;
+        const { userId, periodId, Statuses } = student;
 
-        const existingStudent = await prisma.student.findUnique({
-          where: { student_id },
+        const existingProfile = await prisma.mahasiswaProfile.findUnique({
+          where: { userId },
         });
 
-        if (!existingStudent) {
-          return { success: false, error: `Student with ID ${student_id} not found` };
+        if (!existingProfile) {
+          return { success: false, error: `Student with ID ${userId} not found` };
         }
 
-        const fileTypes = Object.values(FileType).map((key) => ({
-          title: key.replace(/_/g, " "),
-          key,
-        }));
-
-        const uploadedFiles = await prisma.file.findMany({
-          where: { student_id },
+        const uploadedFiles = await prisma.studentFile.findMany({
+          where: { userId },
         });
 
         const uploadedFileTypes = new Set(uploadedFiles.map((file) => file.type));
-        const requiredFileTypes = new Set(Object.values(FileType));
+        const requiredFileTypes = new Set(Object.values(StudentFileType));
 
         const allFilesUploaded = [...requiredFileTypes].every((type) =>
-          uploadedFileTypes.has(type as FileType)
+          uploadedFileTypes.has(type as StudentFileType)
         );
 
         if (!allFilesUploaded) {
           return NextResponse.json({
             success: false,
-            error: `Cannot update passIOM: All required files are not uploaded for student ID ${student_id}`,
+            error: `Cannot update passIOM: All required files are not uploaded for student ID ${userId}`,
           });
         }
 
-        const updatedStatus = await prisma.status.update({
-          where: { student_id_period_id: { student_id, period_id } },
+        const updatedStatus = await prisma.bankesStatus.update({
+          where: { userId_periodId: { userId, periodId } },
           data: {
             passDitmawa: Statuses[0].passDitmawa,
             passIOM: Statuses[0].passIOM,
-            amount: Statuses[0].amount !== undefined ? Statuses[0].amount : null, // Set amount from the request
+            amount: Statuses[0].amount !== undefined ? Statuses[0].amount : null,
           },
         });
 
@@ -242,14 +237,14 @@ export async function POST(request: Request) {
           const notificationTitle = updatedStatus.passIOM ? "Selamat, kamu lanjut untuk tahap berikutnya" : "Mohon maaf, anda belum berhak untuk lanjut ke tahap berikutnya";
           const amountInfo = updatedStatus.amount ? `Anda akan menerima bantuan sebesar Rp${updatedStatus.amount}.` : "";
           const notificationBody = `Telah diupdate status beasiswa kamu untuk periode sekarang. ${
-            updatedStatus.passDitmawa 
-              ? (updatedStatus.passIOM 
-                  ? `Silahkan pilih jadwal wawancara yang sesuai waktu Anda. ${amountInfo}` 
-                  : "Silahkan coba lagi di periode berikutnya.") 
+            updatedStatus.passDitmawa
+              ? (updatedStatus.passIOM
+                  ? `Silahkan pilih jadwal wawancara yang sesuai waktu Anda. ${amountInfo}`
+                  : "Silahkan coba lagi di periode berikutnya.")
               : "Terdapat kemungkinan kamu sudah punya beasiswa lain."
           }`;
-            const url = "/student/scholarship";
-            await sendPushNotification(student_id, notificationTitle, notificationBody, url);
+          const url = "/student/scholarship";
+          await sendPushNotification(userId, notificationTitle, notificationBody, url);
         }
 
         return updatedStatus;

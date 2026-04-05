@@ -10,46 +10,13 @@ import { useSession } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-
-interface InterviewParticipant {
-    id: number; // Add this property
-    user_id: number;
-    User: {
-      name: string;
-    };
-  }
-  
-interface InterviewSlot {
-  id: number;
-  title: string | null;
-  description: string | null;
-  start_time: string;
-  end_time: string;
-  user_id: number;
-  student_id: number | null;
-  User: {
-    name: string;
-  };
-  Participants: InterviewParticipant[];
-  Student?: {
-    User: {
-      name: string;
-    };
-  };
-}
+import type { InterviewSlot, IOMStaff } from "../types";
 
 interface StudentCalendarViewProps {
   slots: InterviewSlot[];
   myBookings: InterviewSlot[];
   handleBookSlot: (slot: InterviewSlot) => void;
   handleCancelBooking: (slotId: number) => void;
-}
-
-interface IOMStaff {
-  user_id: number;
-  name: string;
-  email: string;
 }
 
 
@@ -122,7 +89,7 @@ export default function StudentCalendarView({
   // Filter slots for current week and by selected staff
   const filteredSlots = useMemo(() => {
     return slots.filter(slot => {
-      const slotStart = new Date(slot.start_time);
+      const slotStart = new Date(slot.startTime);
       
       // Check if slot is within the current week
       const isInCurrentWeek = isWithinInterval(slotStart, {
@@ -132,8 +99,8 @@ export default function StudentCalendarView({
       
       // Filter by selected staff (owner or participant)
       if (selectedStaffId) {
-        const isOwnedBySelectedStaff = slot.user_id === parseInt(selectedStaffId);
-        const isParticipant = slot.Participants.some(p => p.user_id === parseInt(selectedStaffId));
+        const isOwnedBySelectedStaff = slot.createdById === selectedStaffId;
+        const isParticipant = slot.Participants.some(p => p.userId === selectedStaffId);
         
         return isInCurrentWeek && (isOwnedBySelectedStaff || isParticipant);
       }
@@ -165,7 +132,7 @@ export default function StudentCalendarView({
     
     // Place slots in appropriate day and time slot
     filteredSlots.forEach(slot => {
-      const slotStartTime = new Date(slot.start_time);
+      const slotStartTime = new Date(slot.startTime);
       const dayStr = format(slotStartTime, 'yyyy-MM-dd');
       
       // Get exact position based on hour and minutes
@@ -180,7 +147,7 @@ export default function StudentCalendarView({
       
       if (result.has(dayStr) && result.get(dayStr)?.has(slotHour)) {
         // Add slot with duration and position info
-        const slotEndTime = new Date(slot.end_time);
+        const slotEndTime = new Date(slot.endTime);
         const enhancedSlot = {
           ...slot,
           duration: Math.ceil((slotEndTime.getTime() - slotStartTime.getTime()) / (60 * 60 * 1000)), // Duration in hours
@@ -225,7 +192,7 @@ export default function StudentCalendarView({
             <SelectContent>
               <SelectItem value="all">Semua Pengurus</SelectItem>
               {iomStaff.map((staff) => (
-                <SelectItem key={staff.user_id} value={staff.user_id.toString()}>
+                <SelectItem key={staff.id} value={staff.id}>
                   {staff.name}
                 </SelectItem>
               ))}
@@ -287,10 +254,10 @@ export default function StudentCalendarView({
                       }`}
                     >
                       {slots.map((slot: any) => {
-                        const slotStartTime = new Date(slot.start_time);
-                        const slotEndTime = new Date(slot.end_time);
-                        const isMyBooking = slot.student_id === Number(session?.user?.id);
-                        const isBooked = slot.student_id !== null;
+                        const slotStartTime = new Date(slot.startTime);
+                        const slotEndTime = new Date(slot.endTime);
+                        const isMyBooking = slot.studentId === session?.user?.id;
+                        const isBooked = slot.studentId !== null;
                         
                         // Calculate exact duration in minutes
                         const durationMinutes = (slotEndTime.getTime() - slotStartTime.getTime()) / (60 * 1000);
@@ -360,16 +327,16 @@ export default function StudentCalendarView({
                 <div className="space-y-2">
                   <p className="font-medium">{selectedSlot.title || "Slot Wawancara"}</p>
                   <p className="text-sm">
-                    {format(new Date(selectedSlot.start_time), "EEEE, d MMMM yyyy", { locale: id })}
+                    {format(new Date(selectedSlot.startTime), "EEEE, d MMMM yyyy", { locale: id })}
                   </p>
                   <p className="text-sm">
-                    {format(new Date(selectedSlot.start_time), "HH:mm")} - {format(new Date(selectedSlot.end_time), "HH:mm")}
+                    {format(new Date(selectedSlot.startTime), "HH:mm")} - {format(new Date(selectedSlot.endTime), "HH:mm")}
                   </p>
-                  {selectedSlot.student_id ? (
+                  {selectedSlot.studentId ? (
                     <div className="flex items-center">
                       <User className="h-4 w-4 mr-2 text-blue-500" />
                       <span>
-                        {selectedSlot.student_id === Number(session?.user?.id) 
+                        {selectedSlot.studentId === session?.user?.id 
                           ? "Booked by: You" 
                           : "Slot already booked"}
                       </span>
@@ -401,7 +368,7 @@ export default function StudentCalendarView({
                 </div>
                 
                 {/* Action buttons based on slot status */}
-                {selectedSlot.student_id === Number(session?.user?.id) ? (
+                {selectedSlot.studentId === session?.user?.id ? (
                   // I booked this slot - show cancel button
                   <Button
                     variant="outline" 
@@ -414,7 +381,7 @@ export default function StudentCalendarView({
                     <X className="h-4 w-4 mr-1" />
                     Cancel Booking
                   </Button>
-                ) : !selectedSlot.student_id ? (
+                ) : !selectedSlot.studentId ? (
                   // Slot is available - show book button
                   <Button
                     variant="outline" 

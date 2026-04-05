@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 
-import { fakultasEnum, jurusanEnum } from "../db/schema.js";
+import { Fakultas, Jurusan } from "@prisma/client";
 import {
   EmailSchema,
   NIMSchema,
@@ -8,7 +8,7 @@ import {
   PasswordSchema,
   PhoneNumberSchema,
   ProfilePDFSchema,
-  cloudinaryUrlSchema,
+  minioUrlSchema,
 } from "./atomic.js";
 
 // Mahasiswa Registration
@@ -27,7 +27,60 @@ export const MahasiswaRegistrationSchema = z.object({
     .openapi({ example: "John Doe", description: "Nama mahasiswa" }),
   nim: NIMSchema,
   major: z
-    .enum(jurusanEnum.enumValues, {
+    .enum([
+      "Matematika",
+      "Fisika",
+      "Astronomi",
+      "Mikrobiologi",
+      "Kimia",
+      "Biologi",
+      "Sains dan Teknologi Farmasi",
+      "Aktuaria",
+      "Rekayasa Hayati",
+      "Rekayasa Pertanian",
+      "Rekayasa Kehutanan",
+      "Farmasi Klinik dan Komunitas",
+      "Teknologi Pasca Panen",
+      "Teknik Geologi",
+      "Teknik Pertambangan",
+      "Teknik Perminyakan",
+      "Teknik Geofisika",
+      "Teknik Metalurgi",
+      "Meteorologi",
+      "Oseanografi",
+      "Teknik Kimia",
+      "Teknik Mesin",
+      "Teknik Elektro",
+      "Teknik Fisika",
+      "Teknik Industri",
+      "Teknik Informatika",
+      "Aeronotika dan Astronotika",
+      "Teknik Material",
+      "Teknik Pangan",
+      "Manajemen Rekayasa Industri",
+      "Teknik Bioenergi dan Kemurgi",
+      "Teknik Sipil",
+      "Teknik Geodesi dan Geomatika",
+      "Arsitektur",
+      "Teknik Lingkungan",
+      "Perencanaan Wilayah dan Kota",
+      "Teknik Kelautan",
+      "Rekayasa Infrastruktur Lingkungan",
+      "Teknik dan Pengelolaan Sumber Daya Air",
+      "Seni Rupa",
+      "Desain",
+      "Kriya",
+      "Desain Interior",
+      "Desain Komunikasi Visual",
+      "Desain Produk",
+      "Teknik Tenaga Listrik",
+      "Teknik Telekomunikasi",
+      "Sistem Teknologi dan Informasi",
+      "Teknik Biomedis",
+      "Manajemen",
+      "Kewirausahaan",
+      "TPB",
+    ] as [string, ...string[]], {
       required_error: "Jurusan harus dipilih",
       invalid_type_error: "Jurusan tidak valid",
     })
@@ -36,7 +89,22 @@ export const MahasiswaRegistrationSchema = z.object({
       description: "Jurusan mahasiswa",
     }),
   faculty: z
-    .enum(fakultasEnum.enumValues, {
+    .enum([
+      "FMIPA",
+      "SITH-S",
+      "SF",
+      "FITB",
+      "FTTM",
+      "STEI-R",
+      "FTSL",
+      "FTI",
+      "FSRD",
+      "FTMD",
+      "STEI-K",
+      "SBM",
+      "SITH-R",
+      "SAPPK",
+    ] as [string, ...string[]], {
       required_error: "Fakultas harus dipilih",
       invalid_type_error: "Fakultas tidak valid",
     })
@@ -82,15 +150,15 @@ export const MahasiswaRegistrationSchema = z.object({
     })
     .min(3, { message: "Deskripsi terlalu pendek" })
     .openapi({ example: "Mahasiswa baru", description: "Deskripsi mahasiswa" }),
-  file: cloudinaryUrlSchema("File Essay Mahasiswa"),
-  kk: cloudinaryUrlSchema("Kartu Keluarga"),
-  ktm: cloudinaryUrlSchema("Kartu Tanda Mahasiswa"),
-  waliRecommendationLetter: cloudinaryUrlSchema("Surat Rekomendasi Wali"),
-  transcript: cloudinaryUrlSchema("Transkrip Nilai"),
-  salaryReport: cloudinaryUrlSchema("Slip Gaji Orang Tua"),
-  pbb: cloudinaryUrlSchema("Bukti Pembayaran PBB"),
-  electricityBill: cloudinaryUrlSchema("Tagihan Listrik"),
-  ditmawaRecommendationLetter: cloudinaryUrlSchema("Surat Rekomendasi Ditmawa"),
+  file: minioUrlSchema("File Essay Mahasiswa"),
+  kk: minioUrlSchema("Kartu Keluarga"),
+  ktm: minioUrlSchema("Kartu Tanda Mahasiswa"),
+  waliRecommendationLetter: minioUrlSchema("Surat Rekomendasi Wali"),
+  transcript: minioUrlSchema("Transkrip Nilai"),
+  salaryReport: minioUrlSchema("Slip Gaji Orang Tua"),
+  pbb: minioUrlSchema("Bukti Pembayaran PBB"),
+  electricityBill: minioUrlSchema("Tagihan Listrik"),
+  ditmawaRecommendationLetter: minioUrlSchema("Surat Rekomendasi Ditmawa"),
 });
 
 export const MahasiswaRegistrationFormSchema = z.object({
@@ -105,7 +173,60 @@ export const MahasiswaRegistrationFormSchema = z.object({
   phoneNumber: PhoneNumberSchema,
   nim: NIMSchema,
   major: z
-    .enum(jurusanEnum.enumValues, {
+    .enum([
+      "Matematika",
+      "Fisika",
+      "Astronomi",
+      "Mikrobiologi",
+      "Kimia",
+      "Biologi",
+      "Sains dan Teknologi Farmasi",
+      "Aktuaria",
+      "Rekayasa Hayati",
+      "Rekayasa Pertanian",
+      "Rekayasa Kehutanan",
+      "Farmasi Klinik dan Komunitas",
+      "Teknologi Pasca Panen",
+      "Teknik Geologi",
+      "Teknik Pertambangan",
+      "Teknik Perminyakan",
+      "Teknik Geofisika",
+      "Teknik Metalurgi",
+      "Meteorologi",
+      "Oseanografi",
+      "Teknik Kimia",
+      "Teknik Mesin",
+      "Teknik Elektro",
+      "Teknik Fisika",
+      "Teknik Industri",
+      "Teknik Informatika",
+      "Aeronotika dan Astronotika",
+      "Teknik Material",
+      "Teknik Pangan",
+      "Manajemen Rekayasa Industri",
+      "Teknik Bioenergi dan Kemurgi",
+      "Teknik Sipil",
+      "Teknik Geodesi dan Geomatika",
+      "Arsitektur",
+      "Teknik Lingkungan",
+      "Perencanaan Wilayah dan Kota",
+      "Teknik Kelautan",
+      "Rekayasa Infrastruktur Lingkungan",
+      "Teknik dan Pengelolaan Sumber Daya Air",
+      "Seni Rupa",
+      "Desain",
+      "Kriya",
+      "Desain Interior",
+      "Desain Komunikasi Visual",
+      "Desain Produk",
+      "Teknik Tenaga Listrik",
+      "Teknik Telekomunikasi",
+      "Sistem Teknologi dan Informasi",
+      "Teknik Biomedis",
+      "Manajemen",
+      "Kewirausahaan",
+      "TPB",
+    ] as [string, ...string[]], {
       required_error: "Jurusan harus dipilih",
       invalid_type_error: "Jurusan tidak valid",
     })
@@ -114,7 +235,22 @@ export const MahasiswaRegistrationFormSchema = z.object({
       description: "Jurusan mahasiswa",
     }),
   faculty: z
-    .enum(fakultasEnum.enumValues, {
+    .enum([
+      "FMIPA",
+      "SITH-S",
+      "SF",
+      "FITB",
+      "FTTM",
+      "STEI-R",
+      "FTSL",
+      "FTI",
+      "FSRD",
+      "FTMD",
+      "STEI-K",
+      "SBM",
+      "SITH-R",
+      "SAPPK",
+    ] as [string, ...string[]], {
       required_error: "Fakultas harus dipilih",
       invalid_type_error: "Fakultas tidak valid",
     })
@@ -187,7 +323,60 @@ export const MahasiswaProfileFormSchema = z.object({
   phoneNumber: PhoneNumberSchema,
   nim: NIMSchema,
   major: z
-    .enum(jurusanEnum.enumValues, {
+    .enum([
+      "Matematika",
+      "Fisika",
+      "Astronomi",
+      "Mikrobiologi",
+      "Kimia",
+      "Biologi",
+      "Sains dan Teknologi Farmasi",
+      "Aktuaria",
+      "Rekayasa Hayati",
+      "Rekayasa Pertanian",
+      "Rekayasa Kehutanan",
+      "Farmasi Klinik dan Komunitas",
+      "Teknologi Pasca Panen",
+      "Teknik Geologi",
+      "Teknik Pertambangan",
+      "Teknik Perminyakan",
+      "Teknik Geofisika",
+      "Teknik Metalurgi",
+      "Meteorologi",
+      "Oseanografi",
+      "Teknik Kimia",
+      "Teknik Mesin",
+      "Teknik Elektro",
+      "Teknik Fisika",
+      "Teknik Industri",
+      "Teknik Informatika",
+      "Aeronotika dan Astronotika",
+      "Teknik Material",
+      "Teknik Pangan",
+      "Manajemen Rekayasa Industri",
+      "Teknik Bioenergi dan Kemurgi",
+      "Teknik Sipil",
+      "Teknik Geodesi dan Geomatika",
+      "Arsitektur",
+      "Teknik Lingkungan",
+      "Perencanaan Wilayah dan Kota",
+      "Teknik Kelautan",
+      "Rekayasa Infrastruktur Lingkungan",
+      "Teknik dan Pengelolaan Sumber Daya Air",
+      "Seni Rupa",
+      "Desain",
+      "Kriya",
+      "Desain Interior",
+      "Desain Komunikasi Visual",
+      "Desain Produk",
+      "Teknik Tenaga Listrik",
+      "Teknik Telekomunikasi",
+      "Sistem Teknologi dan Informasi",
+      "Teknik Biomedis",
+      "Manajemen",
+      "Kewirausahaan",
+      "TPB",
+    ] as [string, ...string[]], {
       required_error: "Jurusan harus dipilih",
       invalid_type_error: "Jurusan tidak valid",
     })
@@ -196,7 +385,22 @@ export const MahasiswaProfileFormSchema = z.object({
       description: "Jurusan mahasiswa",
     }),
   faculty: z
-    .enum(fakultasEnum.enumValues, {
+    .enum([
+      "FMIPA",
+      "SITH-S",
+      "SF",
+      "FITB",
+      "FTTM",
+      "STEI-R",
+      "FTSL",
+      "FTI",
+      "FSRD",
+      "FTMD",
+      "STEI-K",
+      "SBM",
+      "SITH-R",
+      "SAPPK",
+    ] as [string, ...string[]], {
       required_error: "Fakultas harus dipilih",
       invalid_type_error: "Fakultas tidak valid",
     })
@@ -580,37 +784,37 @@ export const ProfileMahasiswaResponse = z.object({
     file: z
       .string()
       .optional()
-      .openapi({ example: "https://res.cloudinary.com/example/file.pdf" }),
+      .openapi({ example: "http://localhost:9000/documents-bucket/file.pdf" }),
     kk: z
       .string()
       .optional()
-      .openapi({ example: "https://res.cloudinary.com/example/kk.pdf" }),
+      .openapi({ example: "http://localhost:9000/documents-bucket/kk.pdf" }),
     ktm: z
       .string()
       .optional()
-      .openapi({ example: "https://res.cloudinary.com/example/ktm.pdf" }),
+      .openapi({ example: "http://localhost:9000/documents-bucket/ktm.pdf" }),
     waliRecommendationLetter: z
       .string()
       .optional()
-      .openapi({ example: "https://res.cloudinary.com/example/wali.pdf" }),
+      .openapi({ example: "http://localhost:9000/documents-bucket/wali.pdf" }),
     transcript: z.string().optional().openapi({
-      example: "https://res.cloudinary.com/example/transcript.pdf",
+      example: "http://localhost:9000/documents-bucket/transcript.pdf",
     }),
     salaryReport: z
       .string()
       .optional()
-      .openapi({ example: "https://res.cloudinary.com/example/salary.pdf" }),
+      .openapi({ example: "http://localhost:9000/documents-bucket/salary.pdf" }),
     pbb: z
       .string()
       .optional()
-      .openapi({ example: "https://res.cloudinary.com/example/pbb.pdf" }),
+      .openapi({ example: "http://localhost:9000/documents-bucket/pbb.pdf" }),
     electricityBill: z.string().optional().openapi({
-      example: "https://res.cloudinary.com/example/electricity.pdf",
+      example: "http://localhost:9000/documents-bucket/electricity.pdf",
     }),
     ditmawaRecommendationLetter: z
       .string()
       .optional()
-      .openapi({ example: "https://res.cloudinary.com/example/ditmawa.pdf" }),
+      .openapi({ example: "http://localhost:9000/documents-bucket/ditmawa.pdf" }),
     createdAt: z
       .string()
       .optional()

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const user_id = parseInt(session.user.id);
+  const user_id = session.user.id;
   const { period_id } = await request.json();
   const pid = Number(period_id);
 
@@ -28,48 +28,28 @@ export async function POST(request: Request) {
   }
 
   try {
-    const whereClause =
-      session.user.role === "Pewawancara"
-        ? {
-            slot: {
-              period_id: pid,
-              user_id: user_id,
-              student_id: {
-                not: null,
-              },
-            },
-            user_id: {
-              equals: prisma.interviewSlot.fields.student_id,
-            },
-          }
-        : {
-            slot: {
-              period_id: pid,
-            },
-          };
-
-    const notes = await prisma.notes.findMany({
+    const notes = await prisma.interviewNote.findMany({
       where: session.user.role === "Pewawancara"
         ? {
-            slot: {
-              period_id: pid,
-              user_id: user_id,
+            Slot: {
+              periodId: pid,
+              createdById: user_id,
             },
           }
         : {
-            slot: {
-              period_id: pid,
+            Slot: {
+              periodId: pid,
             },
           },
       select: {
-        user_id: true,
+        userId: true,
         text: true,
-        student: {
+        Student: {
           select: {
             nim: true,
             User: {
               select: {
-                user_id: true,
+                id: true,
                 name: true,
               },
             },

@@ -6,11 +6,11 @@ import ScoringQuestionDialog from "./components/ScoringQuestionsDialog";
 import { Toaster, toast } from "sonner";
 
 interface Period {
-  period_id: number;
+  id: number;
   period: string;
-  start_date: Date;
-  end_date: Date;
-  is_current: boolean;
+  startDate: Date;
+  endDate: Date;
+  isCurrent: boolean;
 }
 
 interface Status {
@@ -19,30 +19,30 @@ interface Status {
 }
 
 interface Student {
-  student_id: number;
-  period_id: number;
+  userId: string;
+  periodId: number;
   passDitmawa: boolean;
   passIOM: boolean;
-  Student: {
+  MahasiswaProfile: {
     nim: string;
     User: {
-      user_id: number;
+      id: string;
       name: string;
     };
-    Statuses: Status[];
+    BankesStatuses: Status[];
   };
 }
 
 interface Question {
-  question_id: number;
+  id: number;
   question: string;
 }
 
 interface ScoreMatrixEntry {
-  student_id: number;
-  period_id: number;
-  question_id: number;
-  score_category: "KURANG" | "CUKUP" | "BAIK";
+  userId: string;
+  periodId: number;
+  questionId: number;
+  scoreCategory: "KURANG" | "CUKUP" | "BAIK";
   comment: string;
   Question: Question;
 }
@@ -65,7 +65,7 @@ export default function Scoring() {
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
 
 
-  const [currentStudent, setCurrentStudent] = useState<number | null>(null);
+  const [currentStudent, setCurrentStudent] = useState<string | null>(null);
   const [scoreMatrix, setScoreMatrix] = useState<ScoreMatrixEntry[]>([]);
 
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -87,7 +87,7 @@ export default function Scoring() {
 
   const fetchStudentsByPeriod = async (periodId: number) => {
     try {
-      const response = await fetch(`/api/student/scoring?period_id=${ periodId }`);
+      const response = await fetch(`/api/student/scoring?periodId=${ periodId }`);
   
       if (!response.ok) {
         throw new Error("Failed to fetch students");
@@ -134,7 +134,7 @@ export default function Scoring() {
   const fetchScoreMatrix = async (student: Student) => {
     try {
       const response = await fetch(
-        `/api/score-matrix?student_id=${student.student_id}&period_id=${student.period_id}`
+        `/api/score-matrix?userId=${student.userId}&periodId=${student.periodId}`
       );
   
       if (!response.ok) {
@@ -158,13 +158,13 @@ export default function Scoring() {
         // Existing code for fetching periods, students, etc.
         const fetchedPeriods = await fetchPeriods();
         if (fetchedPeriods) {
-          const currentPeriod = fetchedPeriods.find((period) => period.is_current);
+          const currentPeriod = fetchedPeriods.find((period) => period.isCurrent);
           setSelectedPeriod(currentPeriod || null);
           if (currentPeriod) {
-            const fetchedStudents = await fetchStudentsByPeriod(currentPeriod.period_id);
+            const fetchedStudents = await fetchStudentsByPeriod(currentPeriod.id);
             if (fetchedStudents && fetchedStudents.length > 0) {
               const defaultStudent = fetchedStudents[0];
-              setCurrentStudent(defaultStudent.student_id);
+              setCurrentStudent(defaultStudent.userId);
               
               // Fetch questions
               const questions = await fetchQuestions();
@@ -176,7 +176,7 @@ export default function Scoring() {
               
               // Fetch status to get amount
               try {
-                const statusResponse = await fetch(`/api/status/${defaultStudent.student_id}/${currentPeriod.period_id}`);
+                const statusResponse = await fetch(`/api/status/${defaultStudent.userId}/${currentPeriod.id}`);
                 if (statusResponse.ok) {
                   const statusData = await statusResponse.json();
                   setAidAmount(statusData.amount !== null ? statusData.amount.toString() : "0");
@@ -205,8 +205,8 @@ export default function Scoring() {
     const term = searchTerm.toLowerCase();
     const filtered = students.filter(
       (student) =>
-        student.Student.User.name.toLowerCase().includes(term) ||
-        student.Student.nim.toLowerCase().includes(term)
+        student.MahasiswaProfile.User.name.toLowerCase().includes(term) ||
+        student.MahasiswaProfile.nim.toLowerCase().includes(term)
     );
     setFilteredStudents(filtered);
     setCurrentPage(1); 
@@ -216,9 +216,9 @@ export default function Scoring() {
     try {
       setLoading(true);
       const selectedId = event.target.value;
-      const selected = periods.find((period) => period.period_id === parseInt(selectedId, 10));
+      const selected = periods.find((period) => period.id === parseInt(selectedId, 10));
       setSelectedPeriod(selected || null);
-      fetchStudentsByPeriod(Number(selected?.period_id));
+      fetchStudentsByPeriod(Number(selected?.id));
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -228,7 +228,7 @@ export default function Scoring() {
   
   // Update the handleStudentClick function to fetch the status record as well
   const handleStudentClick = async (student: Student) => {
-    const studentId = student.student_id;
+    const studentId = student.userId;
     setCurrentStudent(studentId);
     setLoading(true);
     
@@ -238,7 +238,7 @@ export default function Scoring() {
       setScoreMatrix(scoreMatrixResponse);
       
       // Fetch the student's status to get the amount
-      const statusResponse = await fetch(`/api/status/${studentId}/${selectedPeriod?.period_id}`);
+      const statusResponse = await fetch(`/api/status/${studentId}/${selectedPeriod?.id}`);
       if (statusResponse.ok) {
         const statusData = await statusResponse.json();
         // Set the amount from the status record, defaulting to "0" if it's null
@@ -257,44 +257,44 @@ export default function Scoring() {
   };
 
   const handleScoreChange = (
-    question_id: number,
-    field: "score_category" | "comment",
+    questionId: number,
+    field: "scoreCategory" | "comment",
     value: string
   ) => {
     setScoreMatrix((prev) => {
-      const entryIndex = prev.findIndex((sm) => sm.question_id === question_id);
-  
+      const entryIndex = prev.findIndex((sm) => sm.questionId === questionId);
+
       if (entryIndex > -1) {
         return prev.map((entry) => {
-          if (entry.question_id === question_id) {
+          if (entry.questionId === questionId) {
             return {
               ...entry,
               [field]: value,
-              score_category:
-                field === "score_category"
+              scoreCategory:
+                field === "scoreCategory"
                   ? (value as "KURANG" | "CUKUP" | "BAIK")
-                  : entry.score_category,
+                  : entry.scoreCategory,
               comment: field === "comment" ? value : entry.comment,
             };
           }
           return entry;
         });
       } else {
-        const question = questions.find((q) => q.question_id === question_id);
+        const question = questions.find((q) => q.id === questionId);
         if (!question || !currentStudent || !selectedPeriod) return prev;
-  
+
         const newEntry: ScoreMatrixEntry = {
-          student_id: currentStudent,
-          period_id: selectedPeriod.period_id,
-          question_id,
-          score_category:
-            field === "score_category"
+          userId: currentStudent,
+          periodId: selectedPeriod.id,
+          questionId,
+          scoreCategory:
+            field === "scoreCategory"
               ? (value as "KURANG" | "CUKUP" | "BAIK")
               : "KURANG",
           comment: field === "comment" ? value : "",
           Question: question,
         };
-  
+
         return [...prev, newEntry];
       }
     });
@@ -331,8 +331,8 @@ export default function Scoring() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify([{
-          student_id: currentStudent,
-          period_id: selectedPeriod.period_id,
+          userId: currentStudent,
+          periodId: selectedPeriod.id,
           Statuses: [{ 
             passDitmawa: true, 
             passIOM: true,
@@ -392,13 +392,13 @@ export default function Scoring() {
                       </label>
                       <select
                         className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-slate-700 font-medium"
-                        value={selectedPeriod?.period_id || ""}
+                        value={selectedPeriod?.id || ""}
                         onChange={handlePeriodChange}
                       >
                         <option value="">Pilih Periode</option>
                         {periods.map((period) => (
-                          <option key={period.period_id} value={period.period_id}>
-                            {period.period} {period.is_current ? "(Aktif)" : ""}
+                          <option key={period.id} value={period.id}>
+                            {period.period} {period.isCurrent ? "(Aktif)" : ""}
                           </option>
                         ))}
                       </select>
@@ -453,7 +453,7 @@ export default function Scoring() {
                               </thead>
                               <tbody className="divide-y divide-slate-100">
                                 {currentStudents.map((student, index) => {
-                                  const isSelected = student.Student.User.user_id === currentStudent;
+                                  const isSelected = student.MahasiswaProfile.User.id === currentStudent;
 
                                   return (
                                     <tr
@@ -469,12 +469,12 @@ export default function Scoring() {
                                     >
                                       <td className="px-4 py-4 text-sm font-medium">
                                         <div className="truncate">
-                                          {student.Student.nim}
+                                          {student.MahasiswaProfile.nim}
                                         </div>
                                       </td>
                                       <td className="px-4 py-4 text-sm">
                                         <div className="truncate">
-                                          {student.Student.User.name}
+                                          {student.MahasiswaProfile.User.name}
                                         </div>
                                       </td>
                                     </tr>
@@ -556,9 +556,9 @@ export default function Scoring() {
                             <div className="p-6 max-h-[600px] overflow-y-auto">
                               <div className="space-y-8">
                                 {questions.map((q, questionIndex) => {
-                                  const entry = scoreMatrix.find((sm) => sm.question_id === q.question_id);
+                                  const entry = scoreMatrix.find((sm) => sm.questionId === q.id);
                                   return (
-                                    <div key={q.question_id} className="group">
+                                    <div key={q.id} className="group">
                                       <div className="mb-4">
                                         <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 text-sm font-bold rounded-full mr-3">
                                           {questionIndex + 1}
@@ -576,21 +576,21 @@ export default function Scoring() {
                                           <label 
                                             key={option.value}
                                             className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
-                                              entry?.score_category === option.value
+                                              entry?.scoreCategory === option.value
                                                 ? `border-${option.color}-500 bg-${option.color}-50 shadow-md`
                                                 : "border-slate-200 hover:border-slate-300 hover:shadow-sm"
                                             }`}
                                           >
                                             <input
                                               type="radio"
-                                              name={`question-${q.question_id}`}
+                                              name={`question-${q.id}`}
                                               value={option.value}
-                                              checked={entry?.score_category === option.value}
-                                              onChange={() => handleScoreChange(q.question_id, "score_category", option.value)}
+                                              checked={entry?.scoreCategory === option.value}
+                                              onChange={() => handleScoreChange(q.id, "scoreCategory", option.value)}
                                               className={`w-4 h-4 mr-3 text-${option.color}-600 focus:ring-${option.color}-500`}
                                             />
                                             <span className={`font-medium ${
-                                              entry?.score_category === option.value 
+                                              entry?.scoreCategory === option.value 
                                                 ? `text-${option.color}-700` 
                                                 : "text-slate-700"
                                             }`}>
@@ -602,14 +602,14 @@ export default function Scoring() {
                                       
                                       {/* Comment Field */}
                                       <div>
-                                        <label htmlFor={`comment-${q.question_id}`} className="block text-sm font-semibold text-slate-700 mb-2">
+                                        <label htmlFor={`comment-${q.id}`} className="block text-sm font-semibold text-slate-700 mb-2">
                                           Keterangan
                                         </label>
                                         <textarea
-                                          id={`comment-${q.question_id}`}
+                                          id={`comment-${q.id}`}
                                           rows={3}
                                           defaultValue={entry?.comment || ''}
-                                          onChange={(e) => handleScoreChange(q.question_id, "comment", e.target.value)}
+                                          onChange={(e) => handleScoreChange(q.id, "comment", e.target.value)}
                                           className="w-full px-4 py-3 border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
                                           placeholder="Berikan keterangan atau catatan tambahan..."
                                         />

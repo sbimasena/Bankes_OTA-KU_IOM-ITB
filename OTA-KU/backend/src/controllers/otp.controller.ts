@@ -1,9 +1,7 @@
-import { eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
 
 import { env } from "../config/env.config.js";
-import { db } from "../db/drizzle.js";
-import { accountTable, otpTable } from "../db/schema.js";
+import { prisma } from "../db/prisma.js";
 import { kodeOTPEmail } from "../lib/email/kode-otp.js";
 import { generateOTP } from "../lib/otp.js";
 import { getOtpExpiredDateRoute, sendOtpRoute } from "../routes/otp.route.js";
@@ -21,13 +19,12 @@ otpProtectedRouter.openapi(sendOtpRoute, async (c) => {
   const { email } = zodParseResult;
 
   try {
-    const user = await db
-      .select()
-      .from(accountTable)
-      .innerJoin(otpTable, eq(otpTable.accountId, accountTable.id))
-      .where(eq(accountTable.email, email));
+    const user = await prisma.user.findFirst({
+      where: { email },
+      include: { OTPs: true },
+    });
 
-    if (!user.length) {
+    if (!user || user.OTPs.length === 0) {
       return c.json(
         {
           success: false,
@@ -39,10 +36,10 @@ otpProtectedRouter.openapi(sendOtpRoute, async (c) => {
     }
 
     const code = generateOTP();
-    await db
-      .update(otpTable)
-      .set({ code, expiredAt: new Date(Date.now() + 1000 * 60 * 15) })
-      .where(eq(otpTable.accountId, user[0].account.id));
+    await prisma.oTP.updateMany({
+      where: { userId: user.id },
+      data: { code, expiredAt: new Date(Date.now() + 1000 * 60 * 15) },
+    });
 
     //REFERENCE: buat notif
     //createTransport block gada yang diubah
@@ -100,13 +97,12 @@ otpProtectedRouter.openapi(getOtpExpiredDateRoute, async (c) => {
   const user = c.var.user;
 
   try {
-    const otp = await db
-      .select()
-      .from(otpTable)
-      .where(eq(otpTable.accountId, user.id))
-      .limit(1);
+    const otp = await prisma.oTP.findFirst({
+      where: { userId: user.id },
+      orderBy: { expiredAt: "desc" },
+    });
 
-    if (!otp.length) {
+    if (!otp) {
       return c.json(
         {
           success: false,
@@ -117,7 +113,7 @@ otpProtectedRouter.openapi(getOtpExpiredDateRoute, async (c) => {
       );
     }
 
-    const expiredAt = otp[0].expiredAt.toISOString();
+    const expiredAt = otp.expiredAt.toISOString();
     return c.json(
       {
         success: true,

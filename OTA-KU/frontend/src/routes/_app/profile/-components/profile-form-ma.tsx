@@ -681,7 +681,7 @@ const ProfileFormMA: React.FC<ProfileFormProps> = ({
                           <FormItem
                             className={cn(
                               name === "ditmawaRecommendationLetter" &&
-                                "col-span-1 md:col-span-2",
+                              "col-span-1 md:col-span-2",
                             )}
                           >
                             <FormLabel className="text-primary text-sm">
@@ -694,15 +694,14 @@ const ProfileFormMA: React.FC<ProfileFormProps> = ({
                             </FormLabel>
                             <FormControl>
                               <div
-                                className={`flex flex-col items-center justify-center rounded-md border-2 ${
-                                  !isEditable
+                                className={`flex flex-col items-center justify-center rounded-md border-2 ${!isEditable
                                     ? "cursor-not-allowed border-gray-200 bg-gray-50"
                                     : fileNames[name] === "Dragging..."
                                       ? "border-primary bg-primary/5 border-dashed"
                                       : hasExistingFile
                                         ? "border-dashed border-green-500/50 bg-green-50/20"
                                         : "border-muted-foreground/25 hover:border-muted-foreground/50 border-dashed"
-                                } p-6 transition-all`}
+                                  } p-6 transition-all`}
                                 onDragOver={handleDragOver}
                                 onDragLeave={handleDragLeave}
                                 onDrop={handleDrop}
@@ -722,13 +721,12 @@ const ProfileFormMA: React.FC<ProfileFormProps> = ({
                                 />
                                 <div className="flex flex-col items-center gap-2 text-center">
                                   <FileUp
-                                    className={`h-8 w-8 ${
-                                      !isEditable
+                                    className={`h-8 w-8 ${!isEditable
                                         ? "text-gray-400"
                                         : hasExistingFile
                                           ? "text-green-500"
                                           : "text-muted-foreground"
-                                    }`}
+                                      }`}
                                   />
 
                                   {/* Display status message without showing the filename for uploaded files */}

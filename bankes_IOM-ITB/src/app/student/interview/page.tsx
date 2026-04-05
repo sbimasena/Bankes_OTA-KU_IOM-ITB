@@ -15,35 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import StudentCalendarView from "./components/StudentCalendarView";
-
-
-// Types
-interface InterviewParticipant {
-  id: number; // Add this property
-  user_id: number;
-  User: {
-    name: string;
-  };
-}
-
-interface InterviewSlot {
-  id: number;
-  title: string | null;
-  description: string | null;
-  start_time: string;
-  end_time: string;
-  user_id: number;
-  student_id: number | null;
-  User: {
-    name: string;
-  };
-  Participants: InterviewParticipant[];
-  Student?: {
-    User: {
-      name: string;
-    };
-  };
-}
+import type { InterviewSlot } from "./types";
 
 export default function StudentInterviewPage() {
   const { data: session } = useSession();
@@ -67,7 +39,7 @@ export default function StudentInterviewPage() {
   useEffect(() => {
     if (!slots || !session?.user?.id) return;
     const bookings = slots.filter(
-      (slot: InterviewSlot) => slot.student_id === Number(session.user.id)
+      (slot: InterviewSlot) => slot.studentId === session.user.id
     );
     setMyBookings(bookings);
   }, [slots, session]);
@@ -85,9 +57,20 @@ export default function StudentInterviewPage() {
         throw new Error("Failed to fetch current period");
       }
       const periodData = await periodRes.json();
-      const currentPeriodId = periodData.period_id;
+      const currentPeriodId = periodData?.period_id ?? periodData?.id;
 
-      const statusRes = await fetch(`/api/status/${user.user_id}/${currentPeriodId}`);
+      if (!currentPeriodId) {
+        setErrorMessage("Tidak ada periode aktif.");
+        return;
+      }
+
+      const statusRes = await fetch(`/api/status/${user.id}/${currentPeriodId}`);
+      if (statusRes.status === 404) {
+        setCanInterview(false);
+        setErrorMessage("Anda belum terdaftar pada periode ini.");
+        return;
+      }
+
       if (!statusRes.ok) throw new Error("Failed to fetch status");
       const statusData = await statusRes.json();
       
@@ -113,7 +96,7 @@ export default function StudentInterviewPage() {
       if (session?.user?.id) {
         const bookings = data.data.filter(
           (slot: InterviewSlot) =>
-            slot.student_id === Number(session.user.id)
+            slot.studentId === session.user.id
         );
         setMyBookings(bookings);
       }
@@ -171,7 +154,7 @@ export default function StudentInterviewPage() {
           // Update the slot in the slots list
           setSlots(prevSlots => 
             prevSlots.map(slot => 
-              slot.id === slotId ? { ...slot, student_id: null, booked_at: null } : slot
+              slot.id === slotId ? { ...slot, studentId: null, bookedAt: null } : slot
             )
           );
           
@@ -197,7 +180,7 @@ export default function StudentInterviewPage() {
 
   // Filter slots
   const filteredSlots = slots.filter(slot => {
-    const slotDate = new Date(slot.start_time);
+    const slotDate = new Date(slot.startTime);
     const today = new Date();
     
     if (filter === "upcoming") {
@@ -250,8 +233,8 @@ export default function StudentInterviewPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredSlots.map((slot) => {
-                    const isMyBooking = slot.student_id === Number(session?.user?.id);
-                    const isBooked = slot.student_id !== null;
+                    const isMyBooking = slot.studentId === session?.user?.id;
+                    const isBooked = slot.studentId !== null;
                     
                     return (
                       <Card key={slot.id} className={`p-4 w-full rounded-md border ${
@@ -275,11 +258,11 @@ export default function StudentInterviewPage() {
                         
                         <p className="text-sm flex items-center mb-1">
                           <CalendarIcon className="h-4 w-4 mr-2 text-gray-500" />
-                          {format(new Date(slot.start_time), "EEEE, d MMMM yyyy", { locale: id })}
+                          {format(new Date(slot.startTime), "EEEE, d MMMM yyyy", { locale: id })}
                         </p>
                         <p className="text-sm flex items-center mb-1">
                           <Clock className="h-4 w-4 mr-2 text-gray-500" />
-                          {format(new Date(slot.start_time), "HH:mm")} - {format(new Date(slot.end_time), "HH:mm")}
+                          {format(new Date(slot.startTime), "HH:mm")} - {format(new Date(slot.endTime), "HH:mm")}
                         </p>
                         <p className="text-sm flex items-center mb-3">
                           <User className="h-4 w-4 mr-2 text-gray-500" />
@@ -346,11 +329,11 @@ export default function StudentInterviewPage() {
                           <div className="mt-2 space-y-1">
                             <p className="text-sm flex items-center">
                               <CalendarIcon className="h-4 w-4 mr-2 text-gray-500" />
-                              {format(new Date(booking.start_time), "EEEE, d MMMM yyyy", { locale: id })}
+                                {format(new Date(booking.startTime), "EEEE, d MMMM yyyy", { locale: id })}
                             </p>
                             <p className="text-sm flex items-center font-medium">
                               <Clock className="h-4 w-4 mr-2 text-gray-500" />
-                              {format(new Date(booking.start_time), "HH:mm")} - {format(new Date(booking.end_time), "HH:mm")}
+                                {format(new Date(booking.startTime), "HH:mm")} - {format(new Date(booking.endTime), "HH:mm")}
                             </p>
                             <p className="text-sm flex items-center">
                               <User className="h-4 w-4 mr-2 text-gray-500" />
@@ -452,10 +435,10 @@ export default function StudentInterviewPage() {
                   <Card className="p-4">
                     <h3 className="font-medium">{selectedSlot.title || "Slot Wawancara"}</h3>
                     <p className="text-sm mt-1">
-                      <span className="text-gray-500">Tanggal:</span> {format(new Date(selectedSlot.start_time), "EEEE, d MMMM yyyy", { locale: id })}
+                      <span className="text-gray-500">Tanggal:</span> {format(new Date(selectedSlot.startTime), "EEEE, d MMMM yyyy", { locale: id })}
                     </p>
                     <p className="text-sm">
-                      <span className="text-gray-500">Waktu:</span> {format(new Date(selectedSlot.start_time), "HH:mm")} - {format(new Date(selectedSlot.end_time), "HH:mm")}
+                      <span className="text-gray-500">Waktu:</span> {format(new Date(selectedSlot.startTime), "HH:mm")} - {format(new Date(selectedSlot.endTime), "HH:mm")}
                     </p>
                     <p className="text-sm">
                       <span className="text-gray-500">Pengurus IOM:</span> {selectedSlot.User.name}

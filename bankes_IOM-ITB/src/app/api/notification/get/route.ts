@@ -6,12 +6,12 @@ import { authOptions } from "../../auth/[...nextauth]/authOptions";
 const prisma = new PrismaClient();
 
 interface IOM_Notification {
-  notification_id: number;
+  id: number;
   header: string;
   body: string;
   url: string | null;
-  has_read: boolean;
-  created_at: Date;
+  hasRead: boolean;
+  createdAt: Date;
 }
 
 /**
@@ -56,18 +56,18 @@ export async function GET() {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const studentId = Number(session.user.id);
+  const userId = session.user.id;
 
   const notifications = await prisma.notification.findMany({
-    where: { user_id: studentId },
-    orderBy: { created_at: "desc" },
+    where: { userId },
+    orderBy: { createdAt: "desc" },
     select: {
-      notification_id: true,
+      id: true,
       header: true,
       body: true,
       url: true,
-      has_read: true,
-      created_at: true,
+      hasRead: true,
+      createdAt: true,
     },
   }) as IOM_Notification[];
 

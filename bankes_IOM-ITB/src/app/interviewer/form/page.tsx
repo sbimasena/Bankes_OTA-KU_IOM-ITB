@@ -239,7 +239,7 @@ export default function Form() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          period_id: selectedPeriod?.period_id,
+          period_id: selectedPeriod?.id,
           nim: selectedStudent?.student.nim,
           formData: body,
         }),
@@ -307,8 +307,8 @@ export default function Form() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          period_id: selectedPeriod?.period_id ,
-          user_id: student.user_id
+          period_id: selectedPeriod?.id ,
+          user_id: student.userId
         }),
       });
 
@@ -431,7 +431,7 @@ export default function Form() {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                               {students.map((student, index) => {
-                                const isSelected = student.user_id === selectedStudent?.user_id;
+                                const isSelected = student.userId === selectedStudent?.userId;
 
                                 return (
                                   <tr

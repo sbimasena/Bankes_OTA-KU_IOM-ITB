@@ -1,3 +1,11 @@
+// =============================================================================
+// Unified Prisma Schema — Bankes IOM-ITB + OTA-KU
+// NOTE: This file is a copy of /prisma/schema.prisma with the output directive
+// removed so that `prisma generate` in the Dockerfile outputs to the default
+// node_modules location (accessible via `import { PrismaClient } from "@prisma/client"`).
+// Keep this file in sync with the root /prisma/schema.prisma.
+// =============================================================================
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,57 +15,157 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  user_id  Int     @id @default(autoincrement())
-  name     String
-  email    String  @unique
-  password String?
-  role     Role
+// =============================================================================
+// ENUMS
+// =============================================================================
 
-  Students               Student[]
-  NotificationEndpoints  NotificationEndpoint[]
-  Notifications          Notification[]
-  ParticipatedInterviews InterviewParticipant[]
-  InterviewSlots         InterviewSlot[]
+enum Role {
+  Admin        @map("admin")
+  Mahasiswa    @map("mahasiswa")
+  Guest        @map("guest")
+  Pengurus_IOM @map("pengurus")
+  Pewawancara  @map("pewawancara")
+  OrangTuaAsuh @map("ota")
+  Bankes       @map("bankes")
 }
 
-model Student {
-  student_id Int    @id @default(autoincrement())
-  nim        String
-  faculty    String
-  major      String
-
-  Files          File[]
-  Statuses       Status[]
-  InterviewSlots InterviewSlot[]
-
-  User        User          @relation(fields: [student_id], references: [user_id], onDelete: Cascade)
-  notes       Notes[]
-  ScoreMatrix ScoreMatrix[]
+enum VerificationStatus {
+  verified
+  unverified
 }
 
-model File {
-  file_id    Int      @id @default(autoincrement())
-  student_id Int
-  file_url   String
-  file_name  String
-  type       FileType
-
-  Student Student @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
+enum ApplicationStatus {
+  accepted
+  rejected
+  pending
+  unregistered
+  reapply
+  outdated
 }
 
-model Status {
-  student_id    Int
-  period_id     Int
-  passDitmawa   Boolean
-  passIOM       Boolean
-  passInterview Boolean
-  amount        Int?
+enum Provider {
+  credentials
+  azure
+}
 
-  Student Student @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
-  Period  Period  @relation(fields: [period_id], references: [period_id], onDelete: Cascade)
+enum Jurusan {
+  Matematika
+  Fisika
+  Astronomi
+  Mikrobiologi
+  Kimia
+  Biologi
+  Sains_dan_Teknologi_Farmasi
+  Aktuaria
+  Rekayasa_Hayati
+  Rekayasa_Pertanian
+  Rekayasa_Kehutanan
+  Farmasi_Klinik_dan_Komunitas
+  Teknologi_Pasca_Panen
+  Teknik_Geologi
+  Teknik_Pertambangan
+  Teknik_Perminyakan
+  Teknik_Geofisika
+  Teknik_Metalurgi
+  Meteorologi
+  Oseanografi
+  Teknik_Kimia
+  Teknik_Mesin
+  Teknik_Elektro
+  Teknik_Fisika
+  Teknik_Industri
+  Teknik_Informatika
+  Aeronotika_dan_Astronotika
+  Teknik_Material
+  Teknik_Pangan
+  Manajemen_Rekayasa_Industri
+  Teknik_Bioenergi_dan_Kemurgi
+  Teknik_Sipil
+  Teknik_Geodesi_dan_Geomatika
+  Arsitektur
+  Teknik_Lingkungan
+  Perencanaan_Wilayah_dan_Kota
+  Teknik_Kelautan
+  Rekayasa_Infrastruktur_Lingkungan
+  Teknik_dan_Pengelolaan_Sumber_Daya_Air
+  Seni_Rupa
+  Desain
+  Kriya
+  Desain_Interior
+  Desain_Komunikasi_Visual
+  Desain_Produk
+  Teknik_Tenaga_Listrik
+  Teknik_Telekomunikasi
+  Sistem_Teknologi_dan_Informasi
+  Teknik_Biomedis
+  Manajemen
+  Kewirausahaan
+  TPB
+}
 
-  @@id([student_id, period_id])
+enum Fakultas {
+  FMIPA
+  SITH_S @map("SITH-S")
+  SF
+  FITB
+  FTTM
+  STEI_R @map("STEI-R")
+  FTSL
+  FTI
+  FSRD
+  FTMD
+  STEI_K @map("STEI-K")
+  SBM
+  SITH_R @map("SITH-R")
+  SAPPK
+}
+
+enum StudentFileType {
+  KTP
+  CV
+  Transkrip_Nilai
+  Essay
+  STNK
+  SIM
+  KK
+  KTM
+  Wali_Recommendation_Letter
+  Transcript
+  Salary_Report
+  PBB
+  Electricity_Bill
+  Ditmawa_Recommendation_Letter
+  Profile_Photo
+}
+
+enum Linkage {
+  otm
+  dosen
+  alumni
+  lainnya
+  none
+}
+
+enum MahasiswaStatus {
+  active
+  inactive
+}
+
+enum ConnectionStatus {
+  accepted
+  rejected
+  pending
+}
+
+enum TransactionStatus {
+  pending
+  paid
+  unpaid
+}
+
+enum TransferStatus {
+  paid
+  unpaid
 }
 
 enum ScoreCategory {
@@ -66,118 +174,324 @@ enum ScoreCategory {
   BAIK
 }
 
-model Questions {
-  question_id   Int            @id @default(autoincrement())
-  question      String
+// =============================================================================
+// SHARED MODELS
+// =============================================================================
+
+model User {
+  id                 String             @id @default(uuid()) @db.Uuid
+  email              String             @unique @db.VarChar(255)
+  phoneNumber        String?            @unique @db.VarChar(32)
+  password           String?            @db.VarChar(255)
+  name               String?
+  role               Role
+  provider           Provider           @default(credentials)
+  verificationStatus VerificationStatus @default(unverified)
+  applicationStatus  ApplicationStatus  @default(unregistered)
+  oid                String?            @db.VarChar(255)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  MahasiswaProfile MahasiswaProfile?
+  OtaProfile       OtaProfile?
+  AdminProfile     AdminProfile?
+
+  Notifications          Notification[]
+  PushSubscriptions      PushSubscription[]
+  ParticipatedInterviews InterviewParticipant[]
+  InterviewSlots         InterviewSlot[]
+
+  OTPs               OTP[]
+  TemporaryPasswords TemporaryPassword[]
+
+  @@map("users")
+}
+
+model MahasiswaProfile {
+  userId  String    @id @db.Uuid
+  nim     String    @unique @db.VarChar(8)
+  name    String?   @db.VarChar(255)
+  faculty Fakultas?
+  major   Jurusan?
+
+  cityOfOrigin     String?  @db.VarChar(255)
+  highschoolAlumni String?  @db.VarChar(255)
+  religion         String?  @db.VarChar(50)
+  gender           String?  @db.VarChar(1)
+  gpa              Decimal? @db.Decimal(3, 2)
+  description      String?
+
+  bill            Int             @default(0)
+  notes           String?
+  adminOnlyNotes  String?
+  mahasiswaStatus MahasiswaStatus @default(inactive)
+  dueNextUpdateAt DateTime        @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  StudentFiles StudentFile[]
+
+  BankesStatuses BankesStatus[]
+  InterviewSlots InterviewSlot[]
+  InterviewNotes InterviewNote[]
+  ScoreMatrices  ScoreMatrix[]
+
+  Connections  Connection[]  @relation("MahasiswaConnections")
+  Transactions Transaction[] @relation("MahasiswaTransactions")
+
+  @@map("mahasiswa_profile")
+}
+
+model StudentFile {
+  id         String          @id @default(uuid()) @db.Uuid
+  userId     String          @db.Uuid
+  fileUrl    String
+  fileName   String
+  type       StudentFileType
+  bucketName String          @default("documents-bucket")
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  MahasiswaProfile MahasiswaProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@map("student_file")
+}
+
+model PushSubscription {
+  userId    String   @db.Uuid
+  endpoint  String
+  keys      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, endpoint])
+  @@map("push_subscription")
+}
+
+// =============================================================================
+// OTA-SPECIFIC MODELS
+// =============================================================================
+
+model OtaProfile {
+  userId              String   @id @db.Uuid
+  name                String   @db.VarChar(255)
+  job                 String   @db.VarChar(255)
+  address             String   @db.VarChar(255)
+  linkage             Linkage
+  funds               Int
+  maxCapacity         Int
+  startDate           DateTime
+  maxSemester         Int
+  transferDate        Int
+  criteria            String
+  isDetailVisible     Boolean  @default(false)
+  allowAdminSelection Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  User         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Connections  Connection[]  @relation("OtaConnections")
+  Transactions Transaction[] @relation("OtaTransactions")
+
+  @@map("ota_profile")
+}
+
+model AdminProfile {
+  userId String @id @db.Uuid
+  name   String @db.VarChar(255)
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin_profile")
+}
+
+model Connection {
+  mahasiswaId               String           @db.Uuid
+  otaId                     String           @db.Uuid
+  connectionStatus          ConnectionStatus @default(pending)
+  requestTerminateOta       Boolean          @default(false)
+  requestTerminateMahasiswa Boolean          @default(false)
+  requestTerminationNoteOta String?
+  requestTerminationNoteMa  String?
+  paidFor                   Int
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
+
+  MahasiswaProfile MahasiswaProfile @relation("MahasiswaConnections", fields: [mahasiswaId], references: [userId], onDelete: Cascade)
+  OtaProfile       OtaProfile       @relation("OtaConnections", fields: [otaId], references: [userId], onDelete: Cascade)
+  Transactions     Transaction[]
+
+  @@id([mahasiswaId, otaId])
+  @@map("connection")
+}
+
+model Transaction {
+  id                 String            @id @default(uuid()) @db.Uuid
+  mahasiswaId        String            @db.Uuid
+  otaId              String            @db.Uuid
+  bill               Int
+  amountPaid         Int               @default(0)
+  paidAt             DateTime?
+  dueDate            DateTime
+  transactionStatus  TransactionStatus @default(unpaid)
+  transferStatus     TransferStatus    @default(unpaid)
+  transactionReceipt String?
+  paidFor            Int               @default(0)
+  rejectionNote      String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  MahasiswaProfile MahasiswaProfile @relation("MahasiswaTransactions", fields: [mahasiswaId], references: [userId], onDelete: Cascade)
+  OtaProfile       OtaProfile       @relation("OtaTransactions", fields: [otaId], references: [userId], onDelete: Cascade)
+  Connection       Connection       @relation(fields: [mahasiswaId, otaId], references: [mahasiswaId, otaId])
+
+  @@map("transaction")
+}
+
+model OTP {
+  userId    String   @db.Uuid
+  code      String   @db.VarChar(6)
+  expiredAt DateTime
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, code])
+  @@map("otp")
+}
+
+model TemporaryPassword {
+  userId    String   @db.Uuid
+  password  String   @db.VarChar(255)
+  expiredAt DateTime
+  used      Boolean  @default(false)
+
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, password])
+  @@map("temporary_password")
+}
+
+// =============================================================================
+// BANKES-SPECIFIC MODELS
+// =============================================================================
+
+model Period {
+  id        Int      @id @default(autoincrement())
+  period    String
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean
+  isOpen    Boolean
+
+  BankesStatuses BankesStatus[]
+  InterviewSlots InterviewSlot[]
+  ScoreMatrices  ScoreMatrix[]
+
+  @@map("period")
+}
+
+model BankesStatus {
+  userId        String  @db.Uuid
+  periodId      Int
+  passDitmawa   Boolean
+  passIOM       Boolean
+  passInterview Boolean
+  amount        Int?
+
+  MahasiswaProfile MahasiswaProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  Period           Period           @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  @@id([userId, periodId])
+  @@map("bankes_status")
+}
+
+model Question {
+  id       Int    @id @default(autoincrement())
+  question String
+
   ScoreMatrices ScoreMatrix[]
+
+  @@map("question")
 }
 
 model ScoreMatrix {
-  student_id     Int
-  period_id      Int
-  question_id    Int
-  score_category ScoreCategory
-  comment        String
+  userId        String        @db.Uuid
+  periodId      Int
+  questionId    Int
+  scoreCategory ScoreCategory
+  comment       String
 
-  Student  Student   @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
-  Period   Period    @relation(fields: [period_id], references: [period_id], onDelete: Cascade)
-  Question Questions @relation(fields: [question_id], references: [question_id], onDelete: Cascade)
+  MahasiswaProfile MahasiswaProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  Period           Period           @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  Question         Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
-  @@id([student_id, period_id, question_id])
-}
-
-model Period {
-  period_id    Int              @id @default(autoincrement())
-  period       String
-  start_date   DateTime
-  end_date     DateTime
-  is_current   Boolean
-  is_open      Boolean
-
-  Statuses      Status[]
-  InterviewSlots InterviewSlot[]
-  ScoreMatrix   ScoreMatrix[]
-}
-
-model Notes {
-  slot_id    Int
-  user_id    Int
-  text       String
-
-  slot    InterviewSlot @relation(fields: [slot_id], references: [id], onDelete: Cascade)
-  student Student       @relation(fields: [user_id], references: [student_id], onDelete: Cascade)
-
-  @@id([slot_id, user_id])
-}
-
-model InterviewParticipant {
-  id        Int      @id @default(autoincrement())
-  slot_id   Int
-  user_id   Int
-  joined_at DateTime @default(now())
-
-  Slot InterviewSlot @relation(fields: [slot_id], references: [id], onDelete: Cascade)
-  User User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-
-  @@unique([slot_id, user_id])
+  @@id([userId, periodId, questionId])
+  @@map("score_matrix")
 }
 
 model InterviewSlot {
   id          Int       @id @default(autoincrement())
   title       String?
   description String?
-  user_id     Int
-  period_id   Int
-  start_time  DateTime
-  end_time    DateTime
-  student_id  Int?
-  booked_at   DateTime?
+  createdById String    @db.Uuid
+  periodId    Int
+  startTime   DateTime
+  endTime     DateTime
+  studentId   String?   @db.Uuid
+  bookedAt    DateTime?
 
-  Student      Student?            @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
-  User         User                @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  Period       Period              @relation(fields: [period_id], references: [period_id], onDelete: Cascade)
+  CreatedBy    User                   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  Period       Period                 @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  Student      MahasiswaProfile?      @relation(fields: [studentId], references: [userId], onDelete: Cascade)
   Participants InterviewParticipant[]
-  notes        Notes[]
+  Notes        InterviewNote[]
+
+  @@map("interview_slot")
 }
 
-model NotificationEndpoint {
-  user_id   Int
-  endpoint  String
-  keys      Json
-  createdAt DateTime @default(now())
+model InterviewParticipant {
+  id       Int      @id @default(autoincrement())
+  slotId   Int
+  userId   String   @db.Uuid
+  joinedAt DateTime @default(now())
 
-  User User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  Slot InterviewSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  User User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([user_id, endpoint])
+  @@unique([slotId, userId])
+  @@map("interview_participant")
+}
+
+model InterviewNote {
+  slotId Int
+  userId String @db.Uuid
+
+  text String
+
+  Slot    InterviewSlot    @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  Student MahasiswaProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@id([slotId, userId])
+  @@map("interview_note")
 }
 
 model Notification {
-  notification_id Int      @id @default(autoincrement())
-  user_id         Int
-  header          String
-  body            String
-  url             String?
-  has_read        Boolean  @default(false)
-  created_at      DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  userId    String   @db.Uuid
+  header    String
+  body      String
+  url       String?
+  hasRead   Boolean  @default(false)
+  createdAt DateTime @default(now())
 
-  User User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([user_id])
-}
-
-enum FileType {
-  KTP
-  CV
-  Transkrip_Nilai
-  Essay
-  STNK
-  SIM
-}
-
-enum Role {
-  Admin
-  Mahasiswa
-  Guest
-  Pengurus_IOM
-  Pewawancara
+  @@index([userId])
+  @@map("notification")
 }

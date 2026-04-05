@@ -66,7 +66,7 @@ export async function GET() {
       const iomStaff = await prisma.user.findMany({
         where: { role: "Pengurus_IOM" },
         select: {
-          user_id: true,
+          id: true,
           name: true,
           email: true,
         },

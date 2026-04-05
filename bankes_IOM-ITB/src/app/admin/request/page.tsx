@@ -25,14 +25,10 @@ export default function AccountPage() {
 
       const data = await response.json();
 
-      data.forEach((user: User) => {
-        user.user_id = user.user_id.toString(); // Ensure user_id is a string
-      })
-
       setUsers(data); // Update the state with the fetched data
 
       const defaults: Record<string, string> = {};
-      data.forEach((u: User) => { defaults[u.user_id] = "Pewawancara"; });
+      data.forEach((u: User) => { defaults[u.id] = "Pewawancara"; });
       setRoleMap(defaults);
       
     } catch (error) {
@@ -104,13 +100,13 @@ export default function AccountPage() {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.user_id} className="border-b">
+                <tr key={user.id} className="border-b">
                   <td className="py-2">{user.name}</td>
                   <td className="py-2">{user.email}</td>
                   <td className="py-2">
                     <select
-                      value={roleMap[user.user_id]}
-                      onChange={(e) => handleRoleChange(user.user_id, e.target.value)}
+                      value={roleMap[user.id]}
+                      onChange={(e) => handleRoleChange(user.id, e.target.value)}
                       className="border rounded px-2 py-1"
                     >
                       <option value="Pengurus_IOM">Pengurus IOM</option>
@@ -120,11 +116,11 @@ export default function AccountPage() {
                   <td className="py-2 space-x-2">
                     <button
                       className="bg-red-500 text-white px-3 py-1 rounded"
-                      onClick={() => handleReject(user.user_id)}
+                      onClick={() => handleReject(user.id)}
                     >Tolak</button>
                     <button
                       className="bg-green-500 text-white px-3 py-1 rounded"
-                      onClick={() => handleAccept(user.user_id)}
+                      onClick={() => handleAccept(user.id)}
                     >Terima</button>
                   </td>
                 </tr>

@@ -91,14 +91,11 @@ export async function GET() {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = parseInt(session.user.id, 10);
-  if (isNaN(userId)) {
-    return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
-  }
+  const userId = session.user.id;
 
   try {
-    const student = await prisma.student.findUnique({
-      where: { student_id: userId },
+    const student = await prisma.mahasiswaProfile.findUnique({
+      where: { userId },
     });
 
     if (!student) {

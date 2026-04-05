@@ -9,22 +9,21 @@ export async function GET(
 ) {
   try {
     const { studentId, periodId } = await context.params;
-    
-    const studentIdNum = parseInt(studentId, 10);
+
     const periodIdNum = parseInt(periodId, 10);
-    
-    if (isNaN(studentIdNum) || isNaN(periodIdNum)) {
+
+    if (!studentId || isNaN(periodIdNum)) {
       return NextResponse.json(
         { success: false, error: "Invalid student ID or period ID" },
         { status: 400 }
       );
     }
-    
-    const status = await prisma.status.findUnique({
+
+    const status = await prisma.bankesStatus.findUnique({
       where: {
-        student_id_period_id: {
-          student_id: studentIdNum,
-          period_id: periodIdNum,
+        userId_periodId: {
+          userId: studentId,
+          periodId: periodIdNum,
         },
       },
     });

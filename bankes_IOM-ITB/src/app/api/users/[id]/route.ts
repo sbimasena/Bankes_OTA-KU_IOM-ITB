@@ -135,21 +135,20 @@ const prisma = new PrismaClient();
 
 export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
-    
+
   if (!session?.user || session.user.role !== "Admin") {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const params = (await context.params).id;
-  const userId = parseInt(params, 10);
+  const userId = (await context.params).id;
 
-  if (isNaN(userId)) {
+  if (!userId) {
     return NextResponse.json({ success: false, error: "Invalid user ID" }, { status: 400 });
   }
 
   try {
     await prisma.user.delete({
-      where: { user_id: userId },
+      where: { id: userId },
     });
 
     return NextResponse.json({ message: "User deleted successfully" });
@@ -164,15 +163,14 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
 
 export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
-    
+
   if (!session?.user || session.user.role !== "Admin") {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const params = (await context.params).id;
-  const userId = parseInt(params, 10);
+  const userId = (await context.params).id;
 
-  if (isNaN(userId)) {
+  if (!userId) {
     return NextResponse.json({ success: false, error: "Invalid user ID" }, { status: 400 });
   }
 
@@ -184,7 +182,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 
   try {
     await prisma.user.update({
-      where: { user_id: userId },
+      where: { id: userId },
       data: { role: role },
     });
     return NextResponse.json({ message: "User role updated successfully" });

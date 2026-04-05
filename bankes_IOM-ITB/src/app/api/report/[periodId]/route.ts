@@ -28,19 +28,19 @@ export async function GET(
 	  );
 	}
 	
-	const report = await prisma.status.findMany({
+	const report = await prisma.bankesStatus.findMany({
 		where: {
-			period_id: periodIdNum, // Untuk periode tertentu
+			periodId: periodIdNum, // Untuk periode tertentu
 			amount: {
 				not: 0, // Yang keterima saja, 0 berarti tidak dibiayai
 			},
 		},
 		select: {
 			amount: true,
-			Student: {
+			MahasiswaProfile: {
 				select: {
 					nim: true,
-					student_id: true,
+					userId: true,
 					faculty: true,
 					major: true,
 					User: {

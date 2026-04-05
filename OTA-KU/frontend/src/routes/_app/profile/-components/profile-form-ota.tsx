@@ -29,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { OrangTuaRegistrationSchema } from "@/lib/zod/profile";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
@@ -48,6 +48,7 @@ interface ProfileFormProps {
 const ProfileFormOTA: React.FC<ProfileFormProps> = ({ session }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [isEditingEnabled, setIsEditingEnabled] = useState(false);
+  const queryClient = useQueryClient();
 
   // Create form with zod validation
   const form = useForm<OrangTuaRegistrationFormValues>({
@@ -95,11 +96,11 @@ const ProfileFormOTA: React.FC<ProfileFormProps> = ({ session }) => {
               form.setValue(
                 "linkage",
                 otaDetails.linkage as
-                  | "otm"
-                  | "dosen"
-                  | "alumni"
-                  | "lainnya"
-                  | "none",
+                | "otm"
+                | "dosen"
+                | "alumni"
+                | "lainnya"
+                | "none",
               );
             if (otaDetails.funds) form.setValue("funds", otaDetails.funds);
             if (otaDetails.maxCapacity)
@@ -138,6 +139,10 @@ const ProfileFormOTA: React.FC<ProfileFormProps> = ({ session }) => {
       toast.dismiss(context);
       toast.success("Profil berhasil diperbarui", {
         description: "Data profil Anda telah disimpan",
+      });
+      // Invalidate profile query to refresh data
+      queryClient.invalidateQueries({
+        queryKey: ["otaProfile", session.id],
       });
     },
     onError: (error, _variables, context) => {
@@ -462,7 +467,9 @@ const ProfileFormOTA: React.FC<ProfileFormProps> = ({ session }) => {
                   type="button"
                   className="w-24 xl:w-40"
                   variant="outline"
-                  onClick={() => setIsEditingEnabled(false)}
+                  onClick={() => {
+                    setIsEditingEnabled(false);
+                  }}
                   disabled={form.formState.isSubmitting}
                 >
                   Batal

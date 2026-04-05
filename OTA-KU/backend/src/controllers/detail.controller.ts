@@ -1,12 +1,5 @@
-import { and, eq } from "drizzle-orm";
-
-import { db } from "../db/drizzle.js";
-import {
-  accountMahasiswaDetailTable,
-  accountOtaDetailTable,
-  accountTable,
-  connectionTable,
-} from "../db/schema.js";
+import { prisma } from "../db/prisma.js";
+import { extractFilesFromStudentFiles } from "../lib/file-upload-minio.js";
 import {
   getMahasiswaDetailRoute,
   getMahasiswaSayaDetailRoute,
@@ -15,7 +8,6 @@ import {
   getMahasiswaDetailForOTARoute,
 } from "../routes/detail.route.js";
 import { createAuthRouter, createRouter } from "./router-factory.js";
-import { create } from "domain";
 
 export const detailRouter = createRouter();
 export const detailProtectedRouter = createAuthRouter();
@@ -44,17 +36,12 @@ detailProtectedRouter.openapi(getMahasiswaDetailRoute, async (c) => {
   }
 
   try {
-    const mahasiswaDetail = await db
-      .select()
-      .from(accountTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(accountTable.id, accountMahasiswaDetailTable.accountId),
-      )
-      .where(eq(accountTable.id, id))
-      .limit(1);
+    const mahasiswaUser = await prisma.user.findFirst({
+      where: { id },
+      include: { MahasiswaProfile: { include: { StudentFiles: true } } },
+    });
 
-    if (mahasiswaDetail.length === 0) {
+    if (!mahasiswaUser || !mahasiswaUser.MahasiswaProfile) {
       return c.json(
         {
           success: false,
@@ -68,45 +55,43 @@ detailProtectedRouter.openapi(getMahasiswaDetailRoute, async (c) => {
       );
     }
 
-    const mahasiswa = mahasiswaDetail[0];
+    const profile = mahasiswaUser.MahasiswaProfile;
+    const files = extractFilesFromStudentFiles(profile.StudentFiles ?? []);
 
     return c.json(
       {
         success: true,
         message: "Detail mahasiswa berhasil diambil",
         body: {
-          id: mahasiswa.account.id,
-          email: mahasiswa.account.email,
-          type: mahasiswa.account.type,
-          phoneNumber: mahasiswa.account.phoneNumber!,
-          provider: mahasiswa.account.provider,
-          applicationStatus: mahasiswa.account.applicationStatus,
-          name: mahasiswa.account_mahasiswa_detail.name!,
-          nim: mahasiswa.account_mahasiswa_detail.nim!,
-          mahasiswaStatus: mahasiswa.account_mahasiswa_detail.mahasiswaStatus!,
-          description: mahasiswa.account_mahasiswa_detail.description!,
-          file: mahasiswa.account_mahasiswa_detail.file!,
-          major: mahasiswa.account_mahasiswa_detail.major!,
-          faculty: mahasiswa.account_mahasiswa_detail.faculty!,
-          cityOfOrigin: mahasiswa.account_mahasiswa_detail.cityOfOrigin!,
-          highschoolAlumni:
-            mahasiswa.account_mahasiswa_detail.highschoolAlumni!,
-          religion: mahasiswa.account_mahasiswa_detail.religion!,
-          gender: mahasiswa.account_mahasiswa_detail.gender!,
-          gpa: mahasiswa.account_mahasiswa_detail.gpa!,
-          kk: mahasiswa.account_mahasiswa_detail.kk!,
-          ktm: mahasiswa.account_mahasiswa_detail.ktm!,
-          waliRecommendationLetter:
-            mahasiswa.account_mahasiswa_detail.waliRecommendationLetter!,
-          transcript: mahasiswa.account_mahasiswa_detail.transcript!,
-          salaryReport: mahasiswa.account_mahasiswa_detail.salaryReport!,
-          pbb: mahasiswa.account_mahasiswa_detail.pbb!,
-          electricityBill: mahasiswa.account_mahasiswa_detail.electricityBill!,
-          ditmawaRecommendationLetter:
-            mahasiswa.account_mahasiswa_detail.ditmawaRecommendationLetter!,
-          bill: mahasiswa.account_mahasiswa_detail.bill!,
-          notes: mahasiswa.account_mahasiswa_detail.notes!,
-          adminOnlyNotes: mahasiswa.account_mahasiswa_detail.adminOnlyNotes!,
+          id: mahasiswaUser.id,
+          email: mahasiswaUser.email,
+          type: mahasiswaUser.role as unknown as "mahasiswa" | "ota" | "admin" | "bankes" | "pengurus",
+          phoneNumber: mahasiswaUser.phoneNumber!,
+          provider: mahasiswaUser.provider,
+          applicationStatus: mahasiswaUser.applicationStatus,
+          name: profile.name!,
+          nim: profile.nim!,
+          mahasiswaStatus: profile.mahasiswaStatus!,
+          description: profile.description!,
+          file: files.file!,
+          major: profile.major!,
+          faculty: profile.faculty!,
+          cityOfOrigin: profile.cityOfOrigin!,
+          highschoolAlumni: profile.highschoolAlumni!,
+          religion: profile.religion as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
+          gender: profile.gender as "M" | "F",
+          gpa: profile.gpa!,
+          kk: files.kk!,
+          ktm: files.ktm!,
+          waliRecommendationLetter: files.waliRecommendationLetter!,
+          transcript: files.transcript!,
+          salaryReport: files.salaryReport!,
+          pbb: files.pbb!,
+          electricityBill: files.electricityBill!,
+          ditmawaRecommendationLetter: files.ditmawaRecommendationLetter!,
+          bill: profile.bill,
+          notes: profile.notes!,
+          adminOnlyNotes: profile.adminOnlyNotes!,
         },
       },
       200,
@@ -143,39 +128,12 @@ detailProtectedRouter.openapi(getMahasiswaSayaDetailRoute, async (c) => {
   }
 
   try {
-    const mahasiswaDetail = await db
-      .select({
-        id: accountTable.id,
-        email: accountTable.email,
-        phoneNumber: accountTable.phoneNumber,
-        name: accountMahasiswaDetailTable.name,
-        nim: accountMahasiswaDetailTable.nim,
-        major: accountMahasiswaDetailTable.major,
-        faculty: accountMahasiswaDetailTable.faculty,
-        cityOfOrigin: accountMahasiswaDetailTable.cityOfOrigin,
-        highschoolAlumni: accountMahasiswaDetailTable.highschoolAlumni,
-        religion: accountMahasiswaDetailTable.religion,
-        gender: accountMahasiswaDetailTable.gender,
-        gpa: accountMahasiswaDetailTable.gpa,
-        notes: accountMahasiswaDetailTable.notes,
-        createdAt: accountMahasiswaDetailTable.createdAt,
-      })
-      .from(accountTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(accountTable.id, accountMahasiswaDetailTable.accountId),
-      )
-      .innerJoin(
-        connectionTable,
-        and(
-          eq(connectionTable.mahasiswaId, accountTable.id),
-          eq(connectionTable.otaId, user.id),
-        ),
-      )
-      .where(eq(accountTable.id, id))
-      .limit(1);
+    const connection = await prisma.connection.findFirst({
+      where: { mahasiswaId: id, otaId: user.id },
+      include: { MahasiswaProfile: { include: { User: true } } },
+    });
 
-    if (mahasiswaDetail.length === 0) {
+    if (!connection || !connection.MahasiswaProfile) {
       return c.json(
         {
           success: false,
@@ -189,27 +147,28 @@ detailProtectedRouter.openapi(getMahasiswaSayaDetailRoute, async (c) => {
       );
     }
 
-    const mahasiswa = mahasiswaDetail[0];
+    const profile = connection.MahasiswaProfile;
+    const mahasiswaUser = profile.User;
 
     return c.json(
       {
         success: true,
         message: "Detail mahasiswa berhasil diambil",
         body: {
-          id: mahasiswa.id,
-          email: mahasiswa.email,
-          phoneNumber: mahasiswa.phoneNumber!,
-          name: mahasiswa.name!,
-          nim: mahasiswa.nim!,
-          major: mahasiswa.major!,
-          faculty: mahasiswa.faculty!,
-          cityOfOrigin: mahasiswa.cityOfOrigin!,
-          highschoolAlumni: mahasiswa.highschoolAlumni!,
-          religion: mahasiswa.religion!,
-          gender: mahasiswa.gender!,
-          gpa: mahasiswa.gpa!,
-          notes: mahasiswa.notes!,
-          createdAt: mahasiswa.createdAt.toISOString(),
+          id: mahasiswaUser.id,
+          email: mahasiswaUser.email,
+          phoneNumber: mahasiswaUser.phoneNumber!,
+          name: profile.name!,
+          nim: profile.nim!,
+          major: profile.major!,
+          faculty: profile.faculty!,
+          cityOfOrigin: profile.cityOfOrigin!,
+          highschoolAlumni: profile.highschoolAlumni!,
+          religion: profile.religion as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
+          gender: profile.gender as "M" | "F",
+          gpa: profile.gpa!,
+          notes: profile.notes!,
+          createdAt: profile.createdAt.toISOString(),
         },
       },
       200,
@@ -246,17 +205,12 @@ detailProtectedRouter.openapi(getMahasiswaDetailForOTARoute, async (c) => {
   }
 
   try {
-    const mahasiswaDetail = await db
-      .select()
-      .from(accountTable)
-      .innerJoin(
-        accountMahasiswaDetailTable,
-        eq(accountTable.id, accountMahasiswaDetailTable.accountId),
-      )
-      .where(eq(accountTable.id, id))
-      .limit(1);
+    const mahasiswaUser = await prisma.user.findFirst({
+      where: { id },
+      include: { MahasiswaProfile: true },
+    });
 
-    if (mahasiswaDetail.length === 0) {
+    if (!mahasiswaUser || !mahasiswaUser.MahasiswaProfile) {
       return c.json(
         {
           success: false,
@@ -270,28 +224,27 @@ detailProtectedRouter.openapi(getMahasiswaDetailForOTARoute, async (c) => {
       );
     }
 
-    const mahasiswa = mahasiswaDetail[0];
+    const profile = mahasiswaUser.MahasiswaProfile;
 
     return c.json(
       {
         success: true,
         message: "Detail mahasiswa berhasil diambil",
         body: {
-          id: mahasiswa.account.id,
-          email: mahasiswa.account.email,
-          phoneNumber: mahasiswa.account.phoneNumber!,
-          name: mahasiswa.account_mahasiswa_detail.name!,
-          nim: mahasiswa.account_mahasiswa_detail.nim!,
-          major: mahasiswa.account_mahasiswa_detail.major!,
-          faculty: mahasiswa.account_mahasiswa_detail.faculty!,
-          cityOfOrigin: mahasiswa.account_mahasiswa_detail.cityOfOrigin!,
-          highschoolAlumni:
-            mahasiswa.account_mahasiswa_detail.highschoolAlumni!,
-          religion: mahasiswa.account_mahasiswa_detail.religion!,
-          gender: mahasiswa.account_mahasiswa_detail.gender!,
-          gpa: mahasiswa.account_mahasiswa_detail.gpa!,
-          notes: mahasiswa.account_mahasiswa_detail.notes!,
-          createdAt: mahasiswa.account_mahasiswa_detail.createdAt.toISOString(),
+          id: mahasiswaUser.id,
+          email: mahasiswaUser.email,
+          phoneNumber: mahasiswaUser.phoneNumber!,
+          name: profile.name!,
+          nim: profile.nim!,
+          major: profile.major!,
+          faculty: profile.faculty!,
+          cityOfOrigin: profile.cityOfOrigin!,
+          highschoolAlumni: profile.highschoolAlumni!,
+          religion: profile.religion as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
+          gender: profile.gender as "M" | "F",
+          gpa: profile.gpa!,
+          notes: profile.notes!,
+          createdAt: profile.createdAt.toISOString(),
         },
       },
       200,
@@ -333,17 +286,12 @@ detailProtectedRouter.openapi(getOtaDetailRoute, async (c) => {
   }
 
   try {
-    const otaDetail = await db
-      .select()
-      .from(accountTable)
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(accountTable.id, accountOtaDetailTable.accountId),
-      )
-      .where(eq(accountTable.id, id))
-      .limit(1);
+    const otaUser = await prisma.user.findFirst({
+      where: { id },
+      include: { OtaProfile: true },
+    });
 
-    if (otaDetail.length === 0) {
+    if (!otaUser || !otaUser.OtaProfile) {
       return c.json(
         {
           success: false,
@@ -357,30 +305,30 @@ detailProtectedRouter.openapi(getOtaDetailRoute, async (c) => {
       );
     }
 
-    const ota = otaDetail[0];
+    const profile = otaUser.OtaProfile;
 
     return c.json(
       {
         success: true,
         message: "Detail orang tua asuh berhasil diambil",
         body: {
-          id: ota.account.id,
-          email: ota.account.email,
-          type: ota.account.type,
-          phoneNumber: ota.account.phoneNumber!,
-          provider: ota.account.provider,
-          applicationStatus: ota.account.applicationStatus,
-          name: ota.account_ota_detail.name!,
-          job: ota.account_ota_detail.job!,
-          address: ota.account_ota_detail.address!,
-          linkage: ota.account_ota_detail.linkage,
-          funds: ota.account_ota_detail.funds,
-          maxCapacity: ota.account_ota_detail.maxCapacity,
-          startDate: ota.account_ota_detail.startDate.toISOString(),
-          maxSemester: ota.account_ota_detail.maxSemester,
-          transferDate: ota.account_ota_detail.transferDate,
-          criteria: ota.account_ota_detail.criteria,
-          allowAdminSelection: ota.account_ota_detail.allowAdminSelection,
+          id: otaUser.id,
+          email: otaUser.email,
+          type: otaUser.role as unknown as "mahasiswa" | "ota" | "admin" | "bankes" | "pengurus",
+          phoneNumber: otaUser.phoneNumber!,
+          provider: otaUser.provider,
+          applicationStatus: otaUser.applicationStatus,
+          name: profile.name!,
+          job: profile.job!,
+          address: profile.address!,
+          linkage: profile.linkage,
+          funds: profile.funds,
+          maxCapacity: profile.maxCapacity,
+          startDate: profile.startDate.toISOString(),
+          maxSemester: profile.maxSemester,
+          transferDate: profile.transferDate,
+          criteria: profile.criteria,
+          allowAdminSelection: profile.allowAdminSelection,
         },
       },
       200,
@@ -416,30 +364,12 @@ detailProtectedRouter.openapi(getMyOtaDetailRoute, async (c) => {
   }
 
   try {
-    const otaDetail = await db
-      .select({
-        id: accountTable.id,
-        email: accountTable.email,
-        phoneNumber: accountTable.phoneNumber,
-        name: accountOtaDetailTable.name,
-        transferDate: accountOtaDetailTable.transferDate,
-        isDetailVisible: accountOtaDetailTable.isDetailVisible,
-        createdAt: accountOtaDetailTable.createdAt,
-      })
-      .from(accountTable)
-      .innerJoin(
-        accountOtaDetailTable,
-        eq(accountTable.id, accountOtaDetailTable.accountId),
-      )
-      .innerJoin(connectionTable, eq(connectionTable.mahasiswaId, user.id))
-      .where(
-        and(
-          eq(connectionTable.connectionStatus, "accepted"),
-          eq(connectionTable.otaId, accountTable.id),
-        ),
-      );
+    const connection = await prisma.connection.findFirst({
+      where: { mahasiswaId: user.id, connectionStatus: "accepted" },
+      include: { OtaProfile: { include: { User: true } } },
+    });
 
-    if (otaDetail.length === 0) {
+    if (!connection || !connection.OtaProfile) {
       return c.json(
         {
           success: false,
@@ -450,20 +380,21 @@ detailProtectedRouter.openapi(getMyOtaDetailRoute, async (c) => {
       );
     }
 
-    const ota = otaDetail[0];
+    const profile = connection.OtaProfile;
+    const otaUser = profile.User;
 
     return c.json(
       {
         success: true,
         message: "Detail orang tua asuh berhasil diambil",
         body: {
-          id: ota.id,
-          email: ota.email,
-          phoneNumber: ota.phoneNumber!,
-          name: ota.name!,
-          transferDate: ota.transferDate,
-          isDetailVisible: ota.isDetailVisible,
-          createdAt: ota.createdAt.toISOString(),
+          id: otaUser.id,
+          email: otaUser.email,
+          phoneNumber: otaUser.phoneNumber!,
+          name: profile.name!,
+          transferDate: profile.transferDate,
+          isDetailVisible: profile.isDetailVisible,
+          createdAt: profile.createdAt.toISOString(),
         },
       },
       200,
