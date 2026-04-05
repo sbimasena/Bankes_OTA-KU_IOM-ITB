@@ -9,6 +9,24 @@ import ProfileCard from "./profile-card";
 import ChangePasswordForm from "./profile-change-password";
 import ProfileFormOTA from "./profile-form-ota";
 
+const normalizeLinkage = (
+  linkage?: string,
+): "alumni" | "otm" | "dosen" | "lainnya" | "none" | undefined => {
+  if (!linkage) return undefined;
+
+  if (
+    linkage === "alumni" ||
+    linkage === "otm" ||
+    linkage === "dosen" ||
+    linkage === "lainnya" ||
+    linkage === "none"
+  ) {
+    return linkage;
+  }
+
+  return "none";
+};
+
 function ProfileOta({
   session,
   applicationStatus,
@@ -64,7 +82,7 @@ function ProfileOta({
               phone={
                 profileData?.body?.phone_number || session.phoneNumber || "-"
               }
-              linkage={profileData?.body?.linkage}
+              linkage={normalizeLinkage(profileData?.body?.linkage)}
               joinDate={profileData?.body?.join_date || "Belum tersedia"}
               status={false}
               daysRemaining={0}
