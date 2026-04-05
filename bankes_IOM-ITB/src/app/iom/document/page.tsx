@@ -73,62 +73,54 @@ export default function Upload() {
   };
 
   useEffect(() => {
-    const fetchFileTypes = async () => {
-      try {
-        const response = await axios.get("/api/files/file-types");
-        if (response.data.success) {
-          setFileTypes(response.data.data);
-        } else {
-          toast.error(response.data.error || "Failed to load file types.");
-        }
-      } catch (error) {
-        console.error("Error fetching file types:", error);
-        toast.error("An error occurred while loading file types.");
-      }
-    };
-
-    fetchFileTypes();
-  }, []);
-
-  useEffect(() => {
-    async function fetchPeriodsAndStudentFiles() {
+    async function fetchInitialData() {
       try {
         setLoading(true);
-        const periodResponse = await fetch("/api/periods");
-        if (!periodResponse.ok) {
-          throw new Error("Failed to fetch periods");
+
+        // file-types dan periods tidak saling bergantung, jalankan paralel
+        const [fileTypesRes, periodsRes] = await Promise.all([
+          axios.get("/api/files/file-types"),
+          fetch("/api/periods"),
+        ]);
+
+        if (fileTypesRes.data.success) {
+          setFileTypes(fileTypesRes.data.data);
+        } else {
+          toast.error(fileTypesRes.data.error || "Failed to load file types.");
         }
-        const periodsData: Period[] = await periodResponse.json();
+
+        if (!periodsRes.ok) throw new Error("Failed to fetch periods");
+        const periodsData: Period[] = await periodsRes.json();
         setPeriods(periodsData);
-        const currentPeriod = periodsData.find((period: Period) => period.is_current);
+
+        const currentPeriod = periodsData.find((p) => p.is_current);
         setSelectedPeriod(currentPeriod || null);
+
         if (!currentPeriod?.period_id) {
           setStudents([]);
           return;
         }
+
+        // files/fetch bergantung pada period_id, jadi tetap sequential
         const fileResponse = await fetch("/api/files/fetch", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ period_id: currentPeriod.period_id }),
         });
-        if (!fileResponse.ok) {
-          throw new Error("Failed to fetch student files");
-        }
+        if (!fileResponse.ok) throw new Error("Failed to fetch student files");
         const fileData = await fileResponse.json();
         if (fileData.success) {
           setStudents(fileData.data);
-        } else {
-          console.error("Error fetching student files:", fileData.error);
         }
       } catch (error) {
         console.error("Error:", error);
+        toast.error("An error occurred while loading data.");
       } finally {
         setLoading(false);
       }
     }
-    fetchPeriodsAndStudentFiles();
+
+    fetchInitialData();
   }, []);
 
   const handlePeriodChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
