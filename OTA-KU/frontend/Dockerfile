@@ -4,9 +4,9 @@ WORKDIR /app
 
 RUN apk add --no-cache curl
 
-COPY package.json .
+COPY package.json package-lock.json ./
 
-RUN npm install --force
+RUN npm ci --legacy-peer-deps
 
 RUN npm i -g serve
 
