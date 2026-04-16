@@ -123,8 +123,8 @@ export default function AccountPage() {
   };
 
   const filtered = users.filter(u => {
-    const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          u.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (u.name ?? "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (u.email ?? "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === "all" || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
