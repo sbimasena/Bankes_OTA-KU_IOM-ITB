@@ -33,6 +33,14 @@ const EnvSchema = z.object({
   VAPID_PUBLIC_KEY: z.string(),
   VAPID_PRIVATE_KEY: z.string(),
   TEST_EMAIL: z.string().email(),
+  PAYMENT_PROVIDER: z.enum(["none", "midtrans"]).default("none"),
+  MIDTRANS_SERVER_KEY: z.string().default(""),
+  MIDTRANS_CLIENT_KEY: z.string().default(""),
+  MIDTRANS_MERCHANT_ID: z.string().default(""),
+  MIDTRANS_IS_PRODUCTION: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 const result = EnvSchema.safeParse(process.env);

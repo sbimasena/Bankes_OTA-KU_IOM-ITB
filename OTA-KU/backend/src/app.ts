@@ -55,9 +55,18 @@ app.use(
 
 app.use(
   "/api/*",
-  csrf({
-    origin: env.ALLOWED_ORIGINS,
-  }),
+  async (c, next) => {
+    if (c.req.path === "/api/payment/webhook/midtrans") {
+      await next();
+      return;
+    }
+
+    const csrfMiddleware = csrf({
+      origin: env.ALLOWED_ORIGINS,
+    });
+
+    await csrfMiddleware(c, next);
+  },
 );
 
 // Base routes
