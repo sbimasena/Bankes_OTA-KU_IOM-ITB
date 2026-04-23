@@ -4,6 +4,10 @@ import { AuthorizationErrorResponse } from "../types/response.js";
 import {
   CreateGroupResponse,
   CreateGroupSchema,
+  GroupConnectByAdminSchema,
+  GroupConnectListQuerySchema,
+  GroupConnectVerifySchema,
+  GroupConnectionListResponse,
   GroupDetailResponse,
   GroupIdParamSchema,
   GroupListQuerySchema,
@@ -12,7 +16,11 @@ import {
   GroupSuccessResponse,
   InvitationIdParamSchema,
   InviteMemberSchema,
+  ProposalIdParamSchema,
+  ProposalListResponse,
+  ProposeStudentSchema,
   RespondInvitationSchema,
+  VoteProposalSchema,
 } from "../zod/group.js";
 import {
   ForbiddenResponse,
@@ -234,6 +242,272 @@ export const activateGroupRoute = createRoute({
     },
     404: {
       description: "Grup tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+// ── Task 3: Student Selection Routes ────────────────────────────────────────
+
+export const proposeStudentRoute = createRoute({
+  operationId: "proposeStudent",
+  tags: ["Group"],
+  method: "post",
+  path: "/:id/propose-student",
+  description:
+    "Mengusulkan mahasiswa untuk disponsori oleh grup. Grup harus aktif. Bisa dilakukan anggota atau admin.",
+  request: {
+    params: GroupIdParamSchema,
+    body: {
+      content: { "multipart/form-data": { schema: ProposeStudentSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Proposal berhasil dibuat",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    400: {
+      description: "Grup belum aktif, mahasiswa tidak eligible, atau proposal sudah ada",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Grup atau mahasiswa tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const listProposalsRoute = createRoute({
+  operationId: "listGroupProposals",
+  tags: ["Group"],
+  method: "get",
+  path: "/:id/proposals",
+  description: "Daftar proposal mahasiswa untuk sebuah grup beserta status voting.",
+  request: { params: GroupIdParamSchema },
+  responses: {
+    200: {
+      description: "Daftar proposal berhasil diambil",
+      content: { "application/json": { schema: ProposalListResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Grup tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const voteProposalRoute = createRoute({
+  operationId: "voteGroupProposal",
+  tags: ["Group"],
+  method: "post",
+  path: "/proposal/:id/vote",
+  description:
+    "Vote setuju/tidak pada proposal mahasiswa. Menyertakan pledge kontribusi bulanan. " +
+    "Jika semua anggota vote setuju dan total pledge >= 800k, proposal otomatis diteruskan ke admin.",
+  request: {
+    params: ProposalIdParamSchema,
+    body: {
+      content: { "multipart/form-data": { schema: VoteProposalSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Vote berhasil disimpan",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    400: {
+      description: "Proposal sudah tidak open atau vote tidak valid",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Bukan anggota grup ini",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Proposal tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const listPendingGroupConnectionsRoute = createRoute({
+  operationId: "listPendingGroupConnections",
+  tags: ["Group"],
+  method: "get",
+  path: "/connect/list/pending",
+  description: "Daftar group connection yang menunggu persetujuan admin.",
+  request: { query: GroupConnectListQuerySchema },
+  responses: {
+    200: {
+      description: "Daftar pending group connection berhasil diambil",
+      content: { "application/json": { schema: GroupConnectionListResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const listAllGroupConnectionsRoute = createRoute({
+  operationId: "listAllGroupConnections",
+  tags: ["Group"],
+  method: "get",
+  path: "/connect/list/all",
+  description: "Daftar semua group connection.",
+  request: { query: GroupConnectListQuerySchema },
+  responses: {
+    200: {
+      description: "Daftar semua group connection berhasil diambil",
+      content: { "application/json": { schema: GroupConnectionListResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const verifyGroupConnectionAccRoute = createRoute({
+  operationId: "verifyGroupConnectionAccept",
+  tags: ["Group"],
+  method: "post",
+  path: "/connect/verify-accept",
+  description:
+    "Admin menyetujui group connection. Membuat kontribusi per anggota dan transaksi pertama.",
+  request: {
+    body: {
+      content: { "multipart/form-data": { schema: GroupConnectVerifySchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Group connection berhasil disetujui",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    400: {
+      description: "Group connection tidak dalam status pending",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Group connection tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const verifyGroupConnectionRejectRoute = createRoute({
+  operationId: "verifyGroupConnectionReject",
+  tags: ["Group"],
+  method: "post",
+  path: "/connect/verify-reject",
+  description: "Admin menolak group connection dan mengembalikan mahasiswa ke status inactive.",
+  request: {
+    body: {
+      content: { "multipart/form-data": { schema: GroupConnectVerifySchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Group connection berhasil ditolak",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    400: {
+      description: "Group connection tidak dalam status pending",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Group connection tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const connectGroupByAdminRoute = createRoute({
+  operationId: "connectGroupByAdmin",
+  tags: ["Group"],
+  method: "post",
+  path: "/connect/by-admin",
+  description:
+    "Admin langsung menghubungkan grup dengan mahasiswa (bypass proposal). " +
+    "Kontribusi otomatis diambil dari field funds tiap anggota. Total harus >= 800.000.",
+  request: {
+    body: {
+      content: { "multipart/form-data": { schema: GroupConnectByAdminSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Grup berhasil dihubungkan dengan mahasiswa",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    400: {
+      description: "Grup belum aktif, mahasiswa tidak eligible, atau total funds < 800k",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Grup atau mahasiswa tidak ditemukan",
       content: { "application/json": { schema: NotFoundResponse } },
     },
     500: {
