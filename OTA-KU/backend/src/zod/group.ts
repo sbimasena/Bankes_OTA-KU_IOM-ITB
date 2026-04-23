@@ -244,6 +244,91 @@ export const GroupConnectionListResponse = z.object({
   }),
 });
 
+// === Task 5: My Groups, My Invitations & Termination Schemas ===
+
+export const MyGroupListResponse = z.object({
+  success: z.boolean().openapi({ example: true }),
+  message: z.string().openapi({ example: "Daftar grup berhasil diambil" }),
+  body: z.object({
+    data: z.array(
+      z.object({
+        groupId: z.string().uuid(),
+        groupName: z.string(),
+        groupStatus: z.enum(["forming", "active"]),
+        memberCount: z.number(),
+        activeConnectionCount: z.number(),
+        joinedAt: z.string().datetime(),
+      }),
+    ),
+  }),
+});
+
+export const MyInvitationListResponse = z.object({
+  success: z.boolean().openapi({ example: true }),
+  message: z.string().openapi({ example: "Daftar undangan berhasil diambil" }),
+  body: z.object({
+    data: z.array(
+      z.object({
+        invitationId: z.string().uuid(),
+        groupId: z.string().uuid(),
+        groupName: z.string(),
+        groupStatus: z.enum(["forming", "active"]),
+        invitedByName: z.string().nullable(),
+        createdAt: z.string().datetime(),
+      }),
+    ),
+  }),
+});
+
+export const RequestGroupTerminateSchema = z.object({
+  groupConnectionId: z.string().uuid().openapi({
+    description: "ID GroupConnection yang ingin diterminasi",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  }),
+  requestTerminationNote: z.string().optional().openapi({
+    description: "Catatan alasan terminasi",
+    example: "Anggota tidak mampu melanjutkan kontribusi",
+  }),
+});
+
+export const ValidateGroupTerminateSchema = z.object({
+  groupConnectionId: z.string().uuid().openapi({
+    description: "ID GroupConnection yang divalidasi terminasinya",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  }),
+});
+
+export const GroupTerminateListQuerySchema = z.object({
+  q: z.string().optional().openapi({
+    description: "Cari berdasarkan nama mahasiswa, NIM, atau nama grup",
+    example: "Budi",
+  }),
+  page: z.coerce.number().optional().openapi({ description: "Halaman pagination", example: 1 }),
+});
+
+export const GroupTerminateListResponse = z.object({
+  success: z.boolean().openapi({ example: true }),
+  message: z.string().openapi({ example: "Daftar request terminasi berhasil diambil" }),
+  body: z.object({
+    data: z.array(
+      z.object({
+        groupConnectionId: z.string().uuid(),
+        groupId: z.string().uuid(),
+        groupName: z.string(),
+        mahasiswaId: z.string().uuid(),
+        mahasiswaName: z.string(),
+        mahasiswaNim: z.string(),
+        requestTerminateGroup: z.boolean(),
+        requestTerminationNoteGroup: z.string().nullable(),
+        requestTerminateMahasiswa: z.boolean(),
+        requestTerminationNoteMa: z.string().nullable(),
+        createdAt: z.string().datetime(),
+      }),
+    ),
+    totalData: z.number(),
+  }),
+});
+
 // === Task 4: Transaction Schemas ===
 
 export const GroupTransactionListOtaQuerySchema = z.object({

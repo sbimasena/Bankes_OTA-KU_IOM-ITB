@@ -16,6 +16,8 @@ import {
   GroupMemberParamSchema,
   GroupMemberTransactionListResponse,
   GroupSuccessResponse,
+  GroupTerminateListQuerySchema,
+  GroupTerminateListResponse,
   GroupTransactionAdminListResponse,
   GroupTransactionListAdminQuerySchema,
   GroupTransactionListOtaQuerySchema,
@@ -23,10 +25,14 @@ import {
   GroupVerifyMemberPaymentSchema,
   InvitationIdParamSchema,
   InviteMemberSchema,
+  MyGroupListResponse,
+  MyInvitationListResponse,
   ProposalIdParamSchema,
   ProposalListResponse,
   ProposeStudentSchema,
+  RequestGroupTerminateSchema,
   RespondInvitationSchema,
+  ValidateGroupTerminateSchema,
   VoteProposalSchema,
 } from "../zod/group.js";
 import {
@@ -515,6 +521,185 @@ export const connectGroupByAdminRoute = createRoute({
     },
     404: {
       description: "Grup atau mahasiswa tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+// ── Task 5: My Groups, Invitations & Termination Routes ─────────────────────
+
+export const listMyGroupsRoute = createRoute({
+  operationId: "listMyGroups",
+  tags: ["Group"],
+  method: "get",
+  path: "/my",
+  description: "Daftar grup yang diikuti oleh OTA yang sedang login.",
+  responses: {
+    200: {
+      description: "Daftar grup berhasil diambil",
+      content: { "application/json": { schema: MyGroupListResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const listMyInvitationsRoute = createRoute({
+  operationId: "listMyInvitations",
+  tags: ["Group"],
+  method: "get",
+  path: "/invitations/my",
+  description: "Daftar undangan grup yang belum direspons oleh OTA yang sedang login.",
+  responses: {
+    200: {
+      description: "Daftar undangan berhasil diambil",
+      content: { "application/json": { schema: MyInvitationListResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const requestGroupTerminateRoute = createRoute({
+  operationId: "requestGroupTerminate",
+  tags: ["Group"],
+  method: "post",
+  path: "/terminate/request",
+  description:
+    "Anggota grup atau admin mengajukan permintaan terminasi hubungan asuh grup dengan mahasiswa.",
+  request: {
+    body: {
+      content: { "multipart/form-data": { schema: RequestGroupTerminateSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Permintaan terminasi berhasil diajukan",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    400: {
+      description: "GroupConnection tidak dalam status accepted atau request sudah ada",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "GroupConnection tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const listGroupTerminateRoute = createRoute({
+  operationId: "listGroupTerminate",
+  tags: ["Group"],
+  method: "get",
+  path: "/terminate/list",
+  description: "Daftar GroupConnection yang memiliki request terminasi aktif. Hanya admin/bankes/pengurus.",
+  request: { query: GroupTerminateListQuerySchema },
+  responses: {
+    200: {
+      description: "Daftar request terminasi berhasil diambil",
+      content: { "application/json": { schema: GroupTerminateListResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const validateGroupTerminateRoute = createRoute({
+  operationId: "validateGroupTerminate",
+  tags: ["Group"],
+  method: "post",
+  path: "/terminate/validate",
+  description:
+    "Admin menyetujui terminasi hubungan asuh grup. " +
+    "GroupConnection dihapus, mahasiswa kembali ke inactive, transaksi terbuka ditutup.",
+  request: {
+    body: {
+      content: { "multipart/form-data": { schema: ValidateGroupTerminateSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Terminasi berhasil disetujui",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    400: {
+      description: "Tidak ada request terminasi aktif pada GroupConnection ini",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "GroupConnection tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const rejectGroupTerminateRoute = createRoute({
+  operationId: "rejectGroupTerminate",
+  tags: ["Group"],
+  method: "post",
+  path: "/terminate/reject",
+  description: "Admin menolak request terminasi — mengembalikan GroupConnection ke status normal.",
+  request: {
+    body: {
+      content: { "multipart/form-data": { schema: ValidateGroupTerminateSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Request terminasi berhasil ditolak",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "GroupConnection tidak ditemukan",
       content: { "application/json": { schema: NotFoundResponse } },
     },
     500: {

@@ -11,14 +11,20 @@ import {
   inviteMemberRoute,
   listAllGroupConnectionsRoute,
   listGroupsRoute,
+  listGroupTerminateRoute,
   listGroupTransactionAdminRoute,
   listGroupTransactionOtaRoute,
+  listMyGroupsRoute,
+  listMyInvitationsRoute,
   listPendingGroupConnectionsRoute,
   listProposalsRoute,
   proposeStudentRoute,
+  rejectGroupTerminateRoute,
   removeMemberRoute,
+  requestGroupTerminateRoute,
   respondInvitationRoute,
   uploadGroupReceiptRoute,
+  validateGroupTerminateRoute,
   verifyGroupConnectionAccRoute,
   verifyGroupConnectionRejectRoute,
   verifyGroupMemberPaymentRoute,
@@ -31,13 +37,16 @@ import {
   GroupConnectListQuerySchema,
   GroupConnectVerifySchema,
   GroupListQuerySchema,
+  GroupTerminateListQuerySchema,
   GroupTransactionListAdminQuerySchema,
   GroupTransactionListOtaQuerySchema,
   GroupUploadReceiptSchema,
   GroupVerifyMemberPaymentSchema,
   InviteMemberSchema,
   ProposeStudentSchema,
+  RequestGroupTerminateSchema,
   RespondInvitationSchema,
+  ValidateGroupTerminateSchema,
   VoteProposalSchema,
 } from "../zod/group.js";
 import { createAuthRouter } from "./router-factory.js";
@@ -1208,6 +1217,354 @@ groupProtectedRouter.openapi(connectGroupByAdminRoute, async (c) => {
       { success: true, message: "Grup berhasil dihubungkan dengan mahasiswa" },
       200,
     );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// ── Task 5: My Groups, Invitations & Termination Handlers ────────────────────
+
+// GET /group/my
+groupProtectedRouter.openapi(listMyGroupsRoute, async (c) => {
+  const user = c.var.user;
+
+  if (user.type !== "ota") {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  try {
+    const memberships = await prisma.otaGroupMember.findMany({
+      where: { otaId: user.id },
+      include: {
+        Group: {
+          include: {
+            _count: {
+              select: {
+                Members: true,
+                Connections: { where: { connectionStatus: "accepted" } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { joinedAt: "desc" },
+    });
+
+    return c.json(
+      {
+        success: true,
+        message: "Daftar grup berhasil diambil",
+        body: {
+          data: memberships.map((m) => ({
+            groupId: m.groupId,
+            groupName: m.Group.name,
+            groupStatus: m.Group.status,
+            memberCount: m.Group._count.Members,
+            activeConnectionCount: m.Group._count.Connections,
+            joinedAt: m.joinedAt.toISOString(),
+          })),
+        },
+      },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// GET /group/invitations/my
+groupProtectedRouter.openapi(listMyInvitationsRoute, async (c) => {
+  const user = c.var.user;
+
+  if (user.type !== "ota") {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  try {
+    const invitations = await prisma.groupInvitation.findMany({
+      where: { invitedOtaId: user.id, status: "pending" },
+      include: {
+        Group: { select: { name: true, status: true } },
+        InvitedBy: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return c.json(
+      {
+        success: true,
+        message: "Daftar undangan berhasil diambil",
+        body: {
+          data: invitations.map((inv) => ({
+            invitationId: inv.id,
+            groupId: inv.groupId,
+            groupName: inv.Group.name,
+            groupStatus: inv.Group.status,
+            invitedByName: inv.InvitedBy?.name ?? null,
+            createdAt: inv.createdAt.toISOString(),
+          })),
+        },
+      } as any,
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// POST /group/terminate/request
+groupProtectedRouter.openapi(requestGroupTerminateRoute, async (c) => {
+  const user = c.var.user;
+
+  if (user.type !== "ota" && !isAdminRole(user.type)) {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  const body = await c.req.formData();
+  const { groupConnectionId, requestTerminationNote } = RequestGroupTerminateSchema.parse(
+    Object.fromEntries(body.entries()),
+  );
+
+  try {
+    const conn = await prisma.groupConnection.findUnique({
+      where: { id: groupConnectionId },
+      include: { Group: { include: { Members: { select: { otaId: true } } } } },
+    });
+
+    if (!conn) {
+      return c.json({ success: false, message: "GroupConnection tidak ditemukan", error: {} }, 404);
+    }
+
+    if (conn.connectionStatus !== "accepted") {
+      return c.json(
+        { success: false, message: "Hanya koneksi aktif yang bisa diterminasi", error: { code: "NOT_ACCEPTED" } },
+        400,
+      );
+    }
+
+    // OTA harus anggota grup
+    if (user.type === "ota") {
+      const isMember = conn.Group.Members.some((m) => m.otaId === user.id);
+      if (!isMember) {
+        return c.json(
+          { success: false, message: "Anda bukan anggota grup ini", error: { code: "NOT_MEMBER" } },
+          403,
+        );
+      }
+    }
+
+    if (conn.requestTerminateGroup) {
+      return c.json(
+        { success: false, message: "Request terminasi dari grup sudah ada", error: { code: "ALREADY_REQUESTED" } },
+        400,
+      );
+    }
+
+    await prisma.groupConnection.update({
+      where: { id: groupConnectionId },
+      data: {
+        requestTerminateGroup: true,
+        requestTerminationNoteGroup: requestTerminationNote ?? null,
+      },
+    });
+
+    return c.json({ success: true, message: "Permintaan terminasi berhasil diajukan" }, 200);
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// GET /group/terminate/list
+groupProtectedRouter.openapi(listGroupTerminateRoute, async (c) => {
+  const user = c.var.user;
+
+  if (!isAdminRole(user.type)) {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  const { q, page } = GroupTerminateListQuerySchema.parse(c.req.query());
+  const pageNumber = (!page || page < 1) ? 1 : page;
+  const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
+
+  try {
+    const searchFilter = q
+      ? {
+          OR: [
+            { Mahasiswa: { name: { contains: q, mode: "insensitive" as const } } },
+            { Mahasiswa: { nim: { contains: q, mode: "insensitive" as const } } },
+            { Group: { name: { contains: q, mode: "insensitive" as const } } },
+          ],
+        }
+      : {};
+
+    const where = {
+      OR: [{ requestTerminateGroup: true }, { requestTerminateMahasiswa: true }],
+      ...searchFilter,
+    };
+
+    const [connections, totalData] = await Promise.all([
+      prisma.groupConnection.findMany({
+        where,
+        include: {
+          Group: { select: { name: true } },
+          Mahasiswa: { select: { name: true, nim: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+        skip: offset,
+        take: LIST_PAGE_SIZE,
+      }),
+      prisma.groupConnection.count({ where }),
+    ]);
+
+    return c.json(
+      {
+        success: true,
+        message: "Daftar request terminasi berhasil diambil",
+        body: {
+          data: connections.map((c) => ({
+            groupConnectionId: c.id,
+            groupId: c.groupId,
+            groupName: c.Group.name,
+            mahasiswaId: c.mahasiswaId,
+            mahasiswaName: c.Mahasiswa.name ?? "",
+            mahasiswaNim: c.Mahasiswa.nim,
+            requestTerminateGroup: c.requestTerminateGroup,
+            requestTerminationNoteGroup: c.requestTerminationNoteGroup ?? null,
+            requestTerminateMahasiswa: c.requestTerminateMahasiswa,
+            requestTerminationNoteMa: c.requestTerminationNoteMa ?? null,
+            createdAt: c.createdAt.toISOString(),
+          })),
+          totalData,
+        },
+      },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// POST /group/terminate/validate
+groupProtectedRouter.openapi(validateGroupTerminateRoute, async (c) => {
+  const user = c.var.user;
+
+  if (!isAdminRole(user.type)) {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  const body = await c.req.formData();
+  const { groupConnectionId } = ValidateGroupTerminateSchema.parse(
+    Object.fromEntries(body.entries()),
+  );
+
+  try {
+    const conn = await prisma.groupConnection.findUnique({
+      where: { id: groupConnectionId },
+    });
+
+    if (!conn) {
+      return c.json({ success: false, message: "GroupConnection tidak ditemukan", error: {} }, 404);
+    }
+
+    if (!conn.requestTerminateGroup && !conn.requestTerminateMahasiswa) {
+      return c.json(
+        { success: false, message: "Tidak ada request terminasi aktif pada koneksi ini", error: { code: "NO_REQUEST" } },
+        400,
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Close all unpaid group transactions (mark as paid to clear outstanding debt)
+      const openGroupTxs = await tx.groupTransaction.findMany({
+        where: { groupConnectionId, transactionStatus: { not: "paid" } },
+        select: { id: true },
+      });
+
+      if (openGroupTxs.length > 0) {
+        const txIds = openGroupTxs.map((t) => t.id);
+        await tx.groupTransaction.updateMany({
+          where: { id: { in: txIds } },
+          data: { transactionStatus: "paid", transferStatus: "paid" },
+        });
+        await tx.groupMemberTransaction.updateMany({
+          where: { groupTransactionId: { in: txIds } },
+          data: { paymentStatus: "paid" },
+        });
+      }
+
+      // Reset mahasiswaStatus to inactive
+      await tx.mahasiswaProfile.update({
+        where: { userId: conn.mahasiswaId },
+        data: { mahasiswaStatus: "inactive" },
+      });
+
+      // Delete the connection (follows same pattern as individual termination)
+      await tx.groupConnection.delete({ where: { id: groupConnectionId } });
+    });
+
+    return c.json({ success: true, message: "Terminasi hubungan asuh grup berhasil disetujui" }, 200);
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// POST /group/terminate/reject
+groupProtectedRouter.openapi(rejectGroupTerminateRoute, async (c) => {
+  const user = c.var.user;
+
+  if (!isAdminRole(user.type)) {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  const body = await c.req.formData();
+  const { groupConnectionId } = ValidateGroupTerminateSchema.parse(
+    Object.fromEntries(body.entries()),
+  );
+
+  try {
+    const conn = await prisma.groupConnection.findUnique({
+      where: { id: groupConnectionId },
+    });
+
+    if (!conn) {
+      return c.json({ success: false, message: "GroupConnection tidak ditemukan", error: {} }, 404);
+    }
+
+    await prisma.groupConnection.update({
+      where: { id: groupConnectionId },
+      data: {
+        requestTerminateGroup: false,
+        requestTerminationNoteGroup: null,
+        requestTerminateMahasiswa: false,
+        requestTerminationNoteMa: null,
+      },
+    });
+
+    return c.json({ success: true, message: "Request terminasi berhasil ditolak" }, 200);
   } catch (error) {
     console.error(error);
     return c.json({ success: false, message: "Internal server error", error }, 500);
