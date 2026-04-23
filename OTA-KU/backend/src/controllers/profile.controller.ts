@@ -519,8 +519,8 @@ profileProtectedRouter.openapi(editProfileOrangTuaRoute, async (c) => {
         name,
         transferDate,
         startDate: startDate ? new Date(startDate) : undefined,
-        isDetailVisible: isDetailVisible === "true" || isDetailVisible === true,
-        allowAdminSelection: allowAdminSelection === "true" || allowAdminSelection === true,
+        isDetailVisible: isDetailVisible === "true",
+        allowAdminSelection: allowAdminSelection === "true",
       },
     });
 
