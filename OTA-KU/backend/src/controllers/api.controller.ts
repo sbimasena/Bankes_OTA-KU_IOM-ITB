@@ -3,6 +3,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { authProtectedRouter, authRouter } from "./auth.controller.js";
 import { connectProtectedRouter, connectRouter } from "./connect.controller.js";
 import { detailProtectedRouter, detailRouter } from "./detail.controller.js";
+import { groupProtectedRouter } from "./group.controller.js";
 import { listProtectedRouter, listRouter } from "./list.controller.js";
 import { otpProtectedRouter, otpRouter } from "./otp.controller.js";
 import { passwordProtectedRouter } from "./password.controller.js";
@@ -33,7 +34,7 @@ protectedApiRouter.route("/terminate", terminateProtectedRouter);
 protectedApiRouter.route("/password", passwordProtectedRouter);
 protectedApiRouter.route("/transaction", transactionProtectedRouter);
 protectedApiRouter.route("/push", pushProtectedRouter);
-protectedApiRouter.route("/transaction", transactionProtectedRouter);
+protectedApiRouter.route("/group", groupProtectedRouter);
 
 export const apiRouter = new OpenAPIHono();
 apiRouter.route("/", unprotectedApiRouter);
