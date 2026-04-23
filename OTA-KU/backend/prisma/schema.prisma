@@ -166,6 +166,26 @@ enum TransferStatus {
   unpaid
 }
 
+enum OtaGroupStatus {
+  forming
+  active
+}
+
+enum GroupInvitationStatus {
+  pending
+  accepted
+  rejected
+  cancelled
+}
+
+enum ProposalStatus {
+  open
+  failed
+  passed
+  approved
+  rejected
+}
+
 enum ScoreCategory {
   KURANG
   CUKUP
@@ -201,6 +221,8 @@ model User {
 
   OTPs               OTP[]
   TemporaryPasswords TemporaryPassword[]
+
+  CreatedGroups OtaGroup[]
 
   @@map("users")
 }
@@ -239,6 +261,10 @@ model MahasiswaProfile {
 
   Connections  Connection[]  @relation("MahasiswaConnections")
   Transactions Transaction[] @relation("MahasiswaTransactions")
+
+  GroupConnections  GroupConnection[]
+  GroupTransactions GroupTransaction[]
+  GroupProposals    GroupStudentProposal[]
 
   @@map("mahasiswa_profile")
 }
@@ -296,6 +322,14 @@ model OtaProfile {
   User         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   Connections  Connection[]  @relation("OtaConnections")
   Transactions Transaction[] @relation("OtaTransactions")
+
+  GroupMemberships         OtaGroupMember[]
+  SentInvitations          GroupInvitation[]          @relation("SentInvitations")
+  ReceivedInvitations      GroupInvitation[]          @relation("ReceivedInvitations")
+  ProposalVotes            GroupStudentProposalVote[]
+  ProposedStudents         GroupStudentProposal[]     @relation("ProposedByOta")
+  GroupMemberContributions GroupMemberContribution[]
+  GroupMemberTransactions  GroupMemberTransaction[]
 
   @@map("ota_profile")
 }
@@ -373,6 +407,169 @@ model TemporaryPassword {
 
   @@id([userId, password])
   @@map("temporary_password")
+}
+
+// =============================================================================
+// OTA GROUP MODELS
+// =============================================================================
+
+model OtaGroup {
+  id           String         @id @default(uuid()) @db.Uuid
+  name         String         @db.VarChar(255)
+  description  String?
+  status       OtaGroupStatus @default(forming)
+  criteria     String?
+  transferDate Int?
+  createdById  String         @db.Uuid
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  CreatedBy    User                   @relation(fields: [createdById], references: [id])
+  Members      OtaGroupMember[]
+  Invitations  GroupInvitation[]
+  Proposals    GroupStudentProposal[]
+  Connections  GroupConnection[]
+  Transactions GroupTransaction[]
+
+  @@map("ota_group")
+}
+
+model OtaGroupMember {
+  groupId  String   @db.Uuid
+  otaId    String   @db.Uuid
+  joinedAt DateTime @default(now())
+
+  Group OtaGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  Ota   OtaProfile @relation(fields: [otaId], references: [userId], onDelete: Cascade)
+
+  @@id([groupId, otaId])
+  @@map("ota_group_member")
+}
+
+model GroupInvitation {
+  id             String                @id @default(uuid()) @db.Uuid
+  groupId        String                @db.Uuid
+  invitedOtaId   String                @db.Uuid
+  invitedByOtaId String?               @db.Uuid
+  status         GroupInvitationStatus @default(pending)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  Group      OtaGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  InvitedOta OtaProfile  @relation("ReceivedInvitations", fields: [invitedOtaId], references: [userId], onDelete: Cascade)
+  InvitedBy  OtaProfile? @relation("SentInvitations", fields: [invitedByOtaId], references: [userId], onDelete: SetNull)
+
+  @@map("group_invitation")
+}
+
+model GroupStudentProposal {
+  id           String         @id @default(uuid()) @db.Uuid
+  groupId      String         @db.Uuid
+  mahasiswaId  String         @db.Uuid
+  proposedById String?        @db.Uuid
+  status       ProposalStatus @default(open)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  Group      OtaGroup         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  Mahasiswa  MahasiswaProfile @relation(fields: [mahasiswaId], references: [userId], onDelete: Cascade)
+  ProposedBy OtaProfile?      @relation("ProposedByOta", fields: [proposedById], references: [userId], onDelete: SetNull)
+  Votes      GroupStudentProposalVote[]
+  Connection GroupConnection?
+
+  @@map("group_student_proposal")
+}
+
+model GroupStudentProposalVote {
+  proposalId   String   @db.Uuid
+  otaId        String   @db.Uuid
+  approve      Boolean
+  pledgeAmount Int
+  votedAt      DateTime @default(now())
+
+  Proposal GroupStudentProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  Ota      OtaProfile           @relation(fields: [otaId], references: [userId], onDelete: Cascade)
+
+  @@id([proposalId, otaId])
+  @@map("group_student_proposal_vote")
+}
+
+model GroupConnection {
+  id                          String           @id @default(uuid()) @db.Uuid
+  mahasiswaId                 String           @db.Uuid
+  groupId                     String           @db.Uuid
+  proposalId                  String?          @unique @db.Uuid
+  connectionStatus            ConnectionStatus @default(pending)
+  requestTerminateGroup       Boolean          @default(false)
+  requestTerminateMahasiswa   Boolean          @default(false)
+  requestTerminationNoteGroup String?
+  requestTerminationNoteMa    String?
+  paidFor                     Int              @default(0)
+  createdAt                   DateTime         @default(now())
+  updatedAt                   DateTime         @updatedAt
+
+  Mahasiswa           MahasiswaProfile          @relation(fields: [mahasiswaId], references: [userId], onDelete: Cascade)
+  Group               OtaGroup                  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  Proposal            GroupStudentProposal?     @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  MemberContributions GroupMemberContribution[]
+  Transactions        GroupTransaction[]
+
+  @@unique([mahasiswaId, groupId])
+  @@map("group_connection")
+}
+
+model GroupMemberContribution {
+  groupConnectionId String @db.Uuid
+  otaId             String @db.Uuid
+  amount            Int
+
+  GroupConnection GroupConnection @relation(fields: [groupConnectionId], references: [id], onDelete: Cascade)
+  Ota             OtaProfile      @relation(fields: [otaId], references: [userId], onDelete: Cascade)
+
+  @@id([groupConnectionId, otaId])
+  @@map("group_member_contribution")
+}
+
+model GroupTransaction {
+  id                String            @id @default(uuid()) @db.Uuid
+  mahasiswaId       String            @db.Uuid
+  groupId           String            @db.Uuid
+  groupConnectionId String            @db.Uuid
+  bill              Int
+  paidFor           Int               @default(0)
+  dueDate           DateTime
+  transactionStatus TransactionStatus @default(unpaid)
+  transferStatus    TransferStatus    @default(unpaid)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  Mahasiswa       MahasiswaProfile         @relation(fields: [mahasiswaId], references: [userId], onDelete: Cascade)
+  Group           OtaGroup                 @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  GroupConnection GroupConnection          @relation(fields: [groupConnectionId], references: [id], onDelete: Cascade)
+  MemberPayments  GroupMemberTransaction[]
+
+  @@map("group_transaction")
+}
+
+model GroupMemberTransaction {
+  id                 String            @id @default(uuid()) @db.Uuid
+  groupTransactionId String            @db.Uuid
+  otaId              String            @db.Uuid
+  expectedAmount     Int
+  amountPaid         Int               @default(0)
+  transactionReceipt String?
+  paymentStatus      TransactionStatus @default(unpaid)
+  transferStatus     TransferStatus    @default(unpaid)
+  rejectionNote      String?
+  paidAt             DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  GroupTransaction GroupTransaction @relation(fields: [groupTransactionId], references: [id], onDelete: Cascade)
+  Ota              OtaProfile       @relation(fields: [otaId], references: [userId], onDelete: Cascade)
+
+  @@unique([groupTransactionId, otaId])
+  @@map("group_member_transaction")
 }
 
 // =============================================================================
