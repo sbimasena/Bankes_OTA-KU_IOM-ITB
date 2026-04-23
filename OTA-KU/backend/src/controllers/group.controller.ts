@@ -1,7 +1,9 @@
 import { addMonths, setDate } from "date-fns";
 
 import { prisma } from "../db/prisma.js";
+import { uploadFileToMinio } from "../lib/file-upload-minio.js";
 import {
+  acceptGroupTransferStatusRoute,
   activateGroupRoute,
   connectGroupByAdminRoute,
   createGroupRoute,
@@ -9,21 +11,30 @@ import {
   inviteMemberRoute,
   listAllGroupConnectionsRoute,
   listGroupsRoute,
+  listGroupTransactionAdminRoute,
+  listGroupTransactionOtaRoute,
   listPendingGroupConnectionsRoute,
   listProposalsRoute,
   proposeStudentRoute,
   removeMemberRoute,
   respondInvitationRoute,
+  uploadGroupReceiptRoute,
   verifyGroupConnectionAccRoute,
   verifyGroupConnectionRejectRoute,
+  verifyGroupMemberPaymentRoute,
   voteProposalRoute,
 } from "../routes/group.route.js";
 import {
   CreateGroupSchema,
+  GroupAcceptTransferStatusSchema,
   GroupConnectByAdminSchema,
   GroupConnectListQuerySchema,
   GroupConnectVerifySchema,
   GroupListQuerySchema,
+  GroupTransactionListAdminQuerySchema,
+  GroupTransactionListOtaQuerySchema,
+  GroupUploadReceiptSchema,
+  GroupVerifyMemberPaymentSchema,
   InviteMemberSchema,
   ProposeStudentSchema,
   RespondInvitationSchema,
@@ -1195,6 +1206,411 @@ groupProtectedRouter.openapi(connectGroupByAdminRoute, async (c) => {
 
     return c.json(
       { success: true, message: "Grup berhasil dihubungkan dengan mahasiswa" },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// ── Task 4: Transaction Handlers ─────────────────────────────────────────────
+
+// GET /group/transaction/list/ota
+groupProtectedRouter.openapi(listGroupTransactionOtaRoute, async (c) => {
+  const user = c.var.user;
+
+  if (user.type !== "ota") {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  const { year, month, page } = GroupTransactionListOtaQuerySchema.parse(c.req.query());
+  const pageNumber = (!page || page < 1) ? 1 : page;
+  const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
+
+  try {
+    const yearFilter = year
+      ? { dueDate: { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) } }
+      : {};
+
+    const [allRows, allForYears] = await Promise.all([
+      prisma.groupMemberTransaction.findMany({
+        where: {
+          otaId: user.id,
+          GroupTransaction: yearFilter,
+        },
+        include: {
+          GroupTransaction: {
+            include: {
+              Group: { select: { name: true } },
+              Mahasiswa: { select: { name: true, nim: true } },
+            },
+          },
+        },
+        orderBy: { GroupTransaction: { dueDate: "desc" } },
+      }),
+      prisma.groupMemberTransaction.findMany({
+        where: { otaId: user.id },
+        include: { GroupTransaction: { select: { dueDate: true } } },
+      }),
+    ]);
+
+    const years = [...new Set(allForYears.map((t) => t.GroupTransaction.dueDate.getFullYear()))].sort(
+      (a, b) => b - a,
+    );
+
+    const filtered = month
+      ? allRows.filter((t) => t.GroupTransaction.dueDate.getMonth() + 1 === month)
+      : allRows;
+
+    const totalData = filtered.length;
+    const paginated = filtered.slice(offset, offset + LIST_PAGE_SIZE);
+
+    return c.json(
+      {
+        success: true,
+        message: "Daftar transaksi grup berhasil diambil",
+        body: {
+          data: paginated.map((t) => ({
+            id: t.id,
+            groupTransactionId: t.groupTransactionId,
+            groupId: t.GroupTransaction.groupId,
+            groupName: t.GroupTransaction.Group.name,
+            mahasiswaId: t.GroupTransaction.mahasiswaId,
+            mahasiswaName: t.GroupTransaction.Mahasiswa.name ?? "",
+            mahasiswaNim: t.GroupTransaction.Mahasiswa.nim,
+            expectedAmount: t.expectedAmount,
+            amountPaid: t.amountPaid,
+            paymentStatus: t.paymentStatus,
+            transactionReceipt: t.transactionReceipt ?? null,
+            rejectionNote: t.rejectionNote ?? null,
+            dueDate: t.GroupTransaction.dueDate.toISOString(),
+            createdAt: t.createdAt.toISOString(),
+          })),
+          years,
+          totalData,
+        },
+      },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// GET /group/transaction/list/admin
+groupProtectedRouter.openapi(listGroupTransactionAdminRoute, async (c) => {
+  const user = c.var.user;
+
+  if (!isAdminRole(user.type)) {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  const { q, status, year, month, page } = GroupTransactionListAdminQuerySchema.parse(c.req.query());
+  const pageNumber = (!page || page < 1) ? 1 : page;
+  const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
+
+  try {
+    const where: any = {};
+    if (status) where.transactionStatus = status;
+    if (year) {
+      where.dueDate = { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) };
+    }
+
+    const allRows = await prisma.groupTransaction.findMany({
+      where,
+      include: {
+        Group: { select: { name: true } },
+        Mahasiswa: { select: { name: true, nim: true } },
+        MemberPayments: {
+          include: { Ota: { select: { name: true } } },
+        },
+      },
+      orderBy: { dueDate: "desc" },
+    });
+
+    const monthFiltered = month
+      ? allRows.filter((t) => t.dueDate.getMonth() + 1 === month)
+      : allRows;
+
+    const qFiltered = q
+      ? monthFiltered.filter((t) => {
+          const qLower = q.toLowerCase();
+          return (
+            t.Group.name.toLowerCase().includes(qLower) ||
+            (t.Mahasiswa.name ?? "").toLowerCase().includes(qLower) ||
+            t.Mahasiswa.nim.toLowerCase().includes(qLower)
+          );
+        })
+      : monthFiltered;
+
+    const totalData = qFiltered.length;
+    const paginated = qFiltered.slice(offset, offset + LIST_PAGE_SIZE);
+
+    return c.json(
+      {
+        success: true,
+        message: "Daftar transaksi grup berhasil diambil",
+        body: {
+          data: paginated.map((t) => ({
+            id: t.id,
+            groupId: t.groupId,
+            groupName: t.Group.name,
+            mahasiswaId: t.mahasiswaId,
+            mahasiswaName: t.Mahasiswa.name ?? "",
+            mahasiswaNim: t.Mahasiswa.nim,
+            bill: t.bill,
+            transactionStatus: t.transactionStatus,
+            transferStatus: t.transferStatus,
+            dueDate: t.dueDate.toISOString(),
+            memberPayments: t.MemberPayments.map((mp) => ({
+              id: mp.id,
+              otaId: mp.otaId,
+              otaName: mp.Ota.name ?? "",
+              expectedAmount: mp.expectedAmount,
+              amountPaid: mp.amountPaid,
+              paymentStatus: mp.paymentStatus,
+              transactionReceipt: mp.transactionReceipt ?? null,
+              rejectionNote: mp.rejectionNote ?? null,
+              paidAt: mp.paidAt?.toISOString() ?? null,
+            })),
+            createdAt: t.createdAt.toISOString(),
+          })),
+          totalData,
+        },
+      },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// POST /group/transaction/upload-receipt
+groupProtectedRouter.openapi(uploadGroupReceiptRoute, async (c) => {
+  const user = c.var.user;
+
+  if (user.type !== "ota") {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  const body = await c.req.formData();
+  const { groupMemberTransactionId, receipt } = GroupUploadReceiptSchema.parse(
+    Object.fromEntries(body.entries()),
+  );
+
+  try {
+    const memberTx = await prisma.groupMemberTransaction.findUnique({
+      where: { id: groupMemberTransactionId },
+    });
+
+    if (!memberTx || memberTx.otaId !== user.id) {
+      return c.json(
+        { success: false, message: "Transaksi tidak ditemukan atau bukan milik Anda", error: {} },
+        404,
+      );
+    }
+
+    if (memberTx.paymentStatus !== "unpaid") {
+      return c.json(
+        {
+          success: false,
+          message: "Bukti pembayaran hanya bisa diunggah saat status unpaid",
+          error: { code: "INVALID_STATUS" },
+        },
+        400,
+      );
+    }
+
+    const uploadResult = await uploadFileToMinio(receipt);
+    const receiptUrl = uploadResult?.secure_url ?? "";
+
+    await prisma.$transaction(async (tx) => {
+      await tx.groupMemberTransaction.update({
+        where: { id: groupMemberTransactionId },
+        data: { paymentStatus: "pending", transactionReceipt: receiptUrl },
+      });
+
+      // If all member transactions for this GroupTransaction are pending or paid,
+      // promote the GroupTransaction status to pending so admin can review
+      const allMemberTxs = await tx.groupMemberTransaction.findMany({
+        where: { groupTransactionId: memberTx.groupTransactionId },
+        select: { paymentStatus: true },
+      });
+
+      const allUploaded = allMemberTxs.every((m) => m.paymentStatus !== "unpaid");
+      if (allUploaded) {
+        await tx.groupTransaction.update({
+          where: { id: memberTx.groupTransactionId },
+          data: { transactionStatus: "pending" },
+        });
+      }
+    });
+
+    return c.json(
+      { success: true, message: "Bukti pembayaran berhasil diunggah" },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// POST /group/transaction/verify
+groupProtectedRouter.openapi(verifyGroupMemberPaymentRoute, async (c) => {
+  const user = c.var.user;
+
+  if (!isAdminRole(user.type)) {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  const body = await c.req.formData();
+  const { groupMemberTransactionId, action, rejectionNote } = GroupVerifyMemberPaymentSchema.parse(
+    Object.fromEntries(body.entries()),
+  );
+
+  try {
+    const memberTx = await prisma.groupMemberTransaction.findUnique({
+      where: { id: groupMemberTransactionId },
+    });
+
+    if (!memberTx) {
+      return c.json(
+        { success: false, message: "Transaksi tidak ditemukan", error: {} },
+        404,
+      );
+    }
+
+    if (memberTx.paymentStatus !== "pending") {
+      return c.json(
+        {
+          success: false,
+          message: "Hanya transaksi dengan status pending yang dapat diverifikasi",
+          error: { code: "INVALID_STATUS" },
+        },
+        400,
+      );
+    }
+
+    let resultMessage = "";
+
+    await prisma.$transaction(async (tx) => {
+      if (action === "accept") {
+        await tx.groupMemberTransaction.update({
+          where: { id: groupMemberTransactionId },
+          data: {
+            paymentStatus: "paid",
+            amountPaid: memberTx.expectedAmount,
+            paidAt: new Date(),
+            transactionReceipt: "",
+            rejectionNote: null,
+          },
+        });
+
+        // Check if ALL member transactions for this GroupTransaction are now paid
+        const allMemberTxs = await tx.groupMemberTransaction.findMany({
+          where: { groupTransactionId: memberTx.groupTransactionId },
+          select: { paymentStatus: true },
+        });
+
+        const allPaid = allMemberTxs.every((m) => m.paymentStatus === "paid");
+        if (allPaid) {
+          await tx.groupTransaction.update({
+            where: { id: memberTx.groupTransactionId },
+            data: { transactionStatus: "paid" },
+          });
+          resultMessage = "Pembayaran disetujui — semua anggota telah membayar, transaksi grup selesai";
+        } else {
+          resultMessage = "Pembayaran anggota berhasil disetujui";
+        }
+      } else {
+        await tx.groupMemberTransaction.update({
+          where: { id: groupMemberTransactionId },
+          data: {
+            paymentStatus: "unpaid",
+            transactionReceipt: "",
+            rejectionNote: rejectionNote ?? null,
+          },
+        });
+
+        // Reset GroupTransaction status back to unpaid if it was pending
+        await tx.groupTransaction.updateMany({
+          where: { id: memberTx.groupTransactionId, transactionStatus: "pending" },
+          data: { transactionStatus: "unpaid" },
+        });
+
+        resultMessage = "Pembayaran anggota berhasil ditolak";
+      }
+    });
+
+    return c.json({ success: true, message: resultMessage }, 200);
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// POST /group/transaction/accept-transfer-status
+groupProtectedRouter.openapi(acceptGroupTransferStatusRoute, async (c) => {
+  const user = c.var.user;
+
+  if (!isAdminRole(user.type)) {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  const body = await c.req.formData();
+  const { groupTransactionId } = GroupAcceptTransferStatusSchema.parse(
+    Object.fromEntries(body.entries()),
+  );
+
+  try {
+    const groupTx = await prisma.groupTransaction.findUnique({
+      where: { id: groupTransactionId },
+    });
+
+    if (!groupTx) {
+      return c.json(
+        { success: false, message: "GroupTransaction tidak ditemukan", error: {} },
+        404,
+      );
+    }
+
+    if (groupTx.transactionStatus !== "paid") {
+      return c.json(
+        {
+          success: false,
+          message: "Transfer hanya bisa dikonfirmasi setelah semua anggota selesai diverifikasi",
+          error: { code: "NOT_FULLY_PAID" },
+        },
+        400,
+      );
+    }
+
+    await prisma.groupTransaction.update({
+      where: { id: groupTransactionId },
+      data: { transferStatus: "paid" },
+    });
+
+    return c.json(
+      { success: true, message: "Transfer status grup berhasil dikonfirmasi" },
       200,
     );
   } catch (error) {

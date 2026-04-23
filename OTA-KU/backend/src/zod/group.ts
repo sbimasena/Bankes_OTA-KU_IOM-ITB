@@ -243,3 +243,120 @@ export const GroupConnectionListResponse = z.object({
     totalData: z.number(),
   }),
 });
+
+// === Task 4: Transaction Schemas ===
+
+export const GroupTransactionListOtaQuerySchema = z.object({
+  year: z.coerce.number().optional().openapi({ description: "Filter tahun", example: 2025 }),
+  month: z.coerce.number().min(1).max(12).optional().openapi({ description: "Filter bulan (1-12)", example: 4 }),
+  page: z.coerce.number().optional().openapi({ description: "Halaman pagination", example: 1 }),
+});
+
+export const GroupTransactionListAdminQuerySchema = z.object({
+  q: z.string().optional().openapi({
+    description: "Cari berdasarkan nama mahasiswa, NIM, atau nama grup",
+    example: "Budi",
+  }),
+  status: z.enum(["unpaid", "pending", "paid"]).optional().openapi({
+    description: "Filter status transaksi grup",
+    example: "pending",
+  }),
+  year: z.coerce.number().optional().openapi({ description: "Filter tahun", example: 2025 }),
+  month: z.coerce.number().min(1).max(12).optional().openapi({ description: "Filter bulan (1-12)", example: 4 }),
+  page: z.coerce.number().optional().openapi({ description: "Halaman pagination", example: 1 }),
+});
+
+export const GroupUploadReceiptSchema = z.object({
+  groupMemberTransactionId: z.string().uuid().openapi({
+    description: "ID GroupMemberTransaction milik OTA yang sedang login",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  }),
+  receipt: z.instanceof(File).openapi({ description: "Bukti pembayaran (gambar)" }),
+});
+
+export const GroupVerifyMemberPaymentSchema = z.object({
+  groupMemberTransactionId: z.string().uuid().openapi({
+    description: "ID GroupMemberTransaction yang diverifikasi",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  }),
+  action: z.enum(["accept", "reject"]).openapi({
+    description: "Terima atau tolak pembayaran anggota",
+    example: "accept",
+  }),
+  rejectionNote: z.string().optional().openapi({
+    description: "Catatan penolakan (wajib jika action = reject)",
+    example: "Bukti pembayaran tidak jelas",
+  }),
+});
+
+export const GroupAcceptTransferStatusSchema = z.object({
+  groupTransactionId: z.string().uuid().openapi({
+    description: "ID GroupTransaction yang sudah ditransfer ke mahasiswa",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  }),
+});
+
+// Task 4: Transaction Response Schemas
+
+export const GroupMemberTransactionListResponse = z.object({
+  success: z.boolean().openapi({ example: true }),
+  message: z.string().openapi({ example: "Daftar transaksi grup berhasil diambil" }),
+  body: z.object({
+    data: z.array(
+      z.object({
+        id: z.string().uuid(),
+        groupTransactionId: z.string().uuid(),
+        groupId: z.string().uuid(),
+        groupName: z.string(),
+        mahasiswaId: z.string().uuid(),
+        mahasiswaName: z.string(),
+        mahasiswaNim: z.string(),
+        expectedAmount: z.number(),
+        amountPaid: z.number(),
+        paymentStatus: z.enum(["unpaid", "pending", "paid"]),
+        transactionReceipt: z.string().nullable(),
+        rejectionNote: z.string().nullable(),
+        dueDate: z.string().datetime(),
+        createdAt: z.string().datetime(),
+      }),
+    ),
+    years: z.array(z.number()),
+    totalData: z.number(),
+  }),
+});
+
+export const GroupTransactionAdminListResponse = z.object({
+  success: z.boolean().openapi({ example: true }),
+  message: z.string().openapi({ example: "Daftar transaksi grup berhasil diambil" }),
+  body: z.object({
+    data: z.array(
+      z.object({
+        id: z.string().uuid(),
+        groupId: z.string().uuid(),
+        groupName: z.string(),
+        mahasiswaId: z.string().uuid(),
+        mahasiswaName: z.string(),
+        mahasiswaNim: z.string(),
+        bill: z.number(),
+        transactionStatus: z.enum(["unpaid", "pending", "paid"]),
+        transferStatus: z.enum(["unpaid", "paid"]),
+        dueDate: z.string().datetime(),
+        memberPayments: z.array(
+          z.object({
+            id: z.string().uuid(),
+            otaId: z.string().uuid(),
+            otaName: z.string(),
+            expectedAmount: z.number(),
+            amountPaid: z.number(),
+            paymentStatus: z.enum(["unpaid", "pending", "paid"]),
+            transactionReceipt: z.string().nullable(),
+            rejectionNote: z.string().nullable(),
+            paidAt: z.string().datetime().nullable(),
+          }),
+        ),
+        createdAt: z.string().datetime(),
+      }),
+    ),
+    totalData: z.number(),
+  }),
+});

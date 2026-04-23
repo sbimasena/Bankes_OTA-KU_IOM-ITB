@@ -4,6 +4,7 @@ import { AuthorizationErrorResponse } from "../types/response.js";
 import {
   CreateGroupResponse,
   CreateGroupSchema,
+  GroupAcceptTransferStatusSchema,
   GroupConnectByAdminSchema,
   GroupConnectListQuerySchema,
   GroupConnectVerifySchema,
@@ -13,7 +14,13 @@ import {
   GroupListQuerySchema,
   GroupListResponse,
   GroupMemberParamSchema,
+  GroupMemberTransactionListResponse,
   GroupSuccessResponse,
+  GroupTransactionAdminListResponse,
+  GroupTransactionListAdminQuerySchema,
+  GroupTransactionListOtaQuerySchema,
+  GroupUploadReceiptSchema,
+  GroupVerifyMemberPaymentSchema,
   InvitationIdParamSchema,
   InviteMemberSchema,
   ProposalIdParamSchema,
@@ -508,6 +515,168 @@ export const connectGroupByAdminRoute = createRoute({
     },
     404: {
       description: "Grup atau mahasiswa tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+// ── Task 4: Transaction Routes ───────────────────────────────────────────────
+
+export const listGroupTransactionOtaRoute = createRoute({
+  operationId: "listGroupTransactionOta",
+  tags: ["Group"],
+  method: "get",
+  path: "/transaction/list/ota",
+  description: "Daftar GroupMemberTransaction milik OTA yang sedang login.",
+  request: { query: GroupTransactionListOtaQuerySchema },
+  responses: {
+    200: {
+      description: "Daftar transaksi berhasil diambil",
+      content: { "application/json": { schema: GroupMemberTransactionListResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const listGroupTransactionAdminRoute = createRoute({
+  operationId: "listGroupTransactionAdmin",
+  tags: ["Group"],
+  method: "get",
+  path: "/transaction/list/admin",
+  description: "Daftar GroupTransaction beserta detail pembayaran tiap anggota. Hanya admin/bankes/pengurus.",
+  request: { query: GroupTransactionListAdminQuerySchema },
+  responses: {
+    200: {
+      description: "Daftar transaksi berhasil diambil",
+      content: { "application/json": { schema: GroupTransactionAdminListResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const uploadGroupReceiptRoute = createRoute({
+  operationId: "uploadGroupReceipt",
+  tags: ["Group"],
+  method: "post",
+  path: "/transaction/upload-receipt",
+  description:
+    "OTA mengunggah bukti pembayaran untuk GroupMemberTransaction miliknya. " +
+    "Jika semua anggota sudah upload, GroupTransaction.transactionStatus menjadi pending.",
+  request: {
+    body: {
+      content: { "multipart/form-data": { schema: GroupUploadReceiptSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Bukti pembayaran berhasil diunggah",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    400: {
+      description: "Transaksi tidak dalam status unpaid",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Transaksi tidak ditemukan atau bukan milik OTA ini",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const verifyGroupMemberPaymentRoute = createRoute({
+  operationId: "verifyGroupMemberPayment",
+  tags: ["Group"],
+  method: "post",
+  path: "/transaction/verify",
+  description:
+    "Admin menerima atau menolak bukti pembayaran anggota grup. " +
+    "Jika semua anggota diterima, GroupTransaction.transactionStatus menjadi paid.",
+  request: {
+    body: {
+      content: { "multipart/form-data": { schema: GroupVerifyMemberPaymentSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Verifikasi berhasil diproses",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    400: {
+      description: "Transaksi tidak dalam status pending",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Transaksi tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const acceptGroupTransferStatusRoute = createRoute({
+  operationId: "acceptGroupTransferStatus",
+  tags: ["Group"],
+  method: "post",
+  path: "/transaction/accept-transfer-status",
+  description: "Admin menandai bahwa IOM sudah mentransfer dana ke mahasiswa untuk GroupTransaction ini.",
+  request: {
+    body: {
+      content: { "multipart/form-data": { schema: GroupAcceptTransferStatusSchema } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Transfer status berhasil diperbarui",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    400: {
+      description: "GroupTransaction belum selesai diverifikasi (transactionStatus bukan paid)",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "GroupTransaction tidak ditemukan",
       content: { "application/json": { schema: NotFoundResponse } },
     },
     500: {
