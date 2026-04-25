@@ -1,0 +1,99 @@
+// src/types/group.ts
+
+export type OtaGroupStatus = 'forming' | 'active';
+export type ProposalStatus = 'open' | 'failed' | 'passed' | 'approved' | 'rejected';
+
+export interface ProposalVote {
+  otaId: string;
+  otaName: string;
+  approve: boolean;
+  pledgeAmount: number;
+}
+
+export interface GroupProposal {
+  id: string;
+  mahasiswaId: string;
+  mahasiswaName: string;
+  mahasiswaNim: string;
+  proposedById: string | null;
+  proposedByName: string | null;
+  status: ProposalStatus;
+  votes: ProposalVote[];
+  totalPledge: number;
+  memberCount: number;
+  createdAt: string;
+}
+
+export interface OtaGroup {
+  groupId: string;
+  groupName: string;
+  groupStatus: OtaGroupStatus;
+  memberCount: number;
+  activeConnectionCount: number;
+  joinedAt: string;
+}
+
+export interface GroupInvitation {
+  invitationId: string;
+  groupId: string;
+  groupName: string;
+  groupStatus: OtaGroupStatus;
+  invitedByName: string | null;
+  createdAt: string;
+}
+
+export interface CreateGroupPayload {
+  name: string;
+  description?: string;
+  criteria?: string;
+  transferDate?: number;
+  pledgeAmount: number;
+}
+
+export interface GroupMember {
+  otaId: string;
+  name: string;
+  pledgeAmount: number;
+  joinedAt: string;
+}
+
+export interface GroupDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  status: OtaGroupStatus;
+  criteria: string | null;
+  transferDate: number | null;
+  createdAt: string;
+  members: GroupMember[];
+  pendingInvitations: { invitationId: string; invitedOtaId: string; invitedOtaName: string }[];
+  activeConnectionCount: number;
+  totalPledge: number;
+}
+
+export interface AdminGroupItem {
+  id: string;
+  name: string;
+  status: OtaGroupStatus;
+  memberCount: number;
+  activeConnectionCount: number;
+  totalPledge: number;
+  createdAt: string;
+}
+
+export interface PendingConnection {
+  id: string;
+  mahasiswaId: string;
+  mahasiswaName: string;
+  mahasiswaNim: string;
+  groupId: string;
+  groupName: string;
+  connectionStatus: string;
+  paidFor: number;
+  createdAt: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  totalData: number;
+}

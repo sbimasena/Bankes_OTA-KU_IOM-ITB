@@ -59,6 +59,10 @@ export const createGroupRoute = createRoute({
       description: "Grup berhasil dibuat",
       content: { "application/json": { schema: CreateGroupResponse } },
     },
+    400: {
+      description: "OTA sudah berada di grup lain",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
     401: AuthorizationErrorResponse,
     403: {
       description: "Forbidden",

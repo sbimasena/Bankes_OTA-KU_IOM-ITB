@@ -59,6 +59,12 @@ const adminRoutes = [
     path: "/daftar-tagihan",
   },
   {
+    id: "manajemen-grup",
+    label: "Manajemen Grup",
+    icon: "/icon/Type=people.svg",
+    path: "/manajemen-grup",
+  },
+  {
     id: "daftar-terminasi",
     label: "Daftar Terminasi",
     icon: "/icon/Type=remove-destructive.svg",
@@ -186,6 +192,12 @@ const getMenuItems = (role: string, applicationStatus?: string): MenuItem[] => {
           label: "Mahasiswa Asuh Saya",
           icon: "/icon/Type=people.svg",
           path: "/mahasiswa-asuh-saya",
+        },
+        {
+          id: "grup-asuh",
+          label: "Grup Asuh",
+          icon: "/icon/Type=connection.svg", // Menggunakan icon connection atau icon lain
+          path: "/groups",
         },
         {
           id: "status-transaksi",

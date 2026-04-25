@@ -54,20 +54,24 @@ import { createAuthRouter } from "./router-factory.js";
 export const groupProtectedRouter = createAuthRouter();
 
 const LIST_PAGE_SIZE = 10;
+const MAX_GROUP_MEMBERS = 8;
+const MAX_PLEDGE_AMOUNT = 800_000;
+const MIN_GROUP_CONTRIBUTION = 800_000;
 
 const isAdminRole = (type: string) =>
   type === "admin" || type === "bankes" || type === "pengurus";
+const isSystemAdmin = (type: string) => type === "admin";
 
 // POST /group/create
 groupProtectedRouter.openapi(createGroupRoute, async (c) => {
   const user = c.var.user;
 
-  if (user.type !== "ota" && !isAdminRole(user.type)) {
+  if (user.type !== "ota") {
     return c.json(
       {
         success: false,
         message: "Unauthorized",
-        error: { code: "UNAUTHORIZED", message: "Hanya OTA atau admin yang dapat membuat grup" },
+        error: { code: "UNAUTHORIZED", message: "Hanya OTA yang dapat membuat grup" },
       },
       403,
     );
@@ -75,27 +79,38 @@ groupProtectedRouter.openapi(createGroupRoute, async (c) => {
 
   const body = await c.req.formData();
   const data = Object.fromEntries(body.entries());
-  const { name, description, criteria, transferDate } = CreateGroupSchema.parse(data);
+  const { name, description, criteria, transferDate, pledgeAmount } = CreateGroupSchema.parse(data);
 
   try {
-    const group = await prisma.$transaction(async (tx) => {
-      const newGroup = await tx.otaGroup.create({
-        data: {
-          name,
-          description: description ?? null,
-          criteria: criteria ?? null,
-          transferDate: transferDate ?? null,
-          createdById: user.id,
+    const existingMembership = await prisma.otaGroupMember.findFirst({
+      where: { otaId: user.id },
+    });
+
+    if (existingMembership) {
+      return c.json(
+        {
+          success: false,
+          message: "OTA sudah tergabung di grup lain",
+          error: { code: "ALREADY_IN_GROUP" },
         },
-      });
+        400,
+      );
+    }
 
-      if (user.type === "ota") {
-        await tx.otaGroupMember.create({
-          data: { groupId: newGroup.id, otaId: user.id },
-        });
-      }
-
-      return newGroup;
+    const group = await prisma.otaGroup.create({
+      data: {
+        name,
+        description: description ?? null,
+        criteria: criteria ?? null,
+        transferDate: transferDate ?? null,
+        createdById: user.id,
+        Members: {
+          create: {
+            otaId: user.id,
+            pledgeAmount,
+          },
+        },
+      },
     });
 
     return c.json(
@@ -138,6 +153,7 @@ groupProtectedRouter.openapi(listGroupsRoute, async (c) => {
       prisma.otaGroup.findMany({
         where: nameFilter,
         include: {
+          Members: { select: { pledgeAmount: true } },
           _count: {
             select: {
               Members: true,
@@ -163,11 +179,108 @@ groupProtectedRouter.openapi(listGroupsRoute, async (c) => {
             status: g.status,
             memberCount: g._count.Members,
             activeConnectionCount: g._count.Connections,
+            totalPledge: g.Members.reduce((sum, m) => sum + m.pledgeAmount, 0),
             createdAt: g.createdAt.toISOString(),
           })),
           totalData,
         },
       },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// GET /group/my
+groupProtectedRouter.openapi(listMyGroupsRoute, async (c) => {
+  const user = c.var.user;
+
+  if (user.type !== "ota") {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  try {
+    const memberships = await prisma.otaGroupMember.findMany({
+      where: { otaId: user.id },
+      include: {
+        Group: {
+          include: {
+            _count: {
+              select: {
+                Members: true,
+                Connections: { where: { connectionStatus: "accepted" } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { joinedAt: "desc" },
+    });
+
+    return c.json(
+      {
+        success: true,
+        message: "Daftar grup berhasil diambil",
+        body: {
+          data: memberships.map((m) => ({
+            groupId: m.groupId,
+            groupName: m.Group.name,
+            groupStatus: m.Group.status,
+            memberCount: m.Group._count.Members,
+            activeConnectionCount: m.Group._count.Connections,
+            joinedAt: m.joinedAt.toISOString(),
+          })),
+        },
+      },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// GET /group/invitations/my
+groupProtectedRouter.openapi(listMyInvitationsRoute, async (c) => {
+  const user = c.var.user;
+
+  if (user.type !== "ota") {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  try {
+    const invitations = await prisma.groupInvitation.findMany({
+      where: { invitedOtaId: user.id, status: "pending" },
+      include: {
+        Group: { select: { name: true, status: true } },
+        InvitedBy: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return c.json(
+      {
+        success: true,
+        message: "Daftar undangan berhasil diambil",
+        body: {
+          data: invitations.map((inv) => ({
+            invitationId: inv.id,
+            groupId: inv.groupId,
+            groupName: inv.Group.name,
+            groupStatus: inv.Group.status,
+            invitedByName: inv.InvitedBy?.name ?? null,
+            createdAt: inv.createdAt.toISOString(),
+          })),
+        },
+      } as any,
       200,
     );
   } catch (error) {
@@ -245,6 +358,7 @@ groupProtectedRouter.openapi(getGroupDetailRoute, async (c) => {
           members: group.Members.map((m) => ({
             otaId: m.otaId,
             name: m.Ota.name ?? "",
+            pledgeAmount: m.pledgeAmount,
             joinedAt: m.joinedAt.toISOString(),
           })),
           pendingInvitations: group.Invitations.map((inv) => ({
@@ -253,6 +367,7 @@ groupProtectedRouter.openapi(getGroupDetailRoute, async (c) => {
             invitedOtaName: inv.InvitedOta.name ?? "",
           })),
           activeConnectionCount: group._count.Connections,
+          totalPledge: group.Members.reduce((sum, m) => sum + m.pledgeAmount, 0),
         },
       },
       200,
@@ -283,9 +398,16 @@ groupProtectedRouter.openapi(inviteMemberRoute, async (c) => {
   const { invitedOtaId } = InviteMemberSchema.parse(Object.fromEntries(body.entries()));
 
   try {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(invitedOtaId);
+
     const [group, invitedOta] = await Promise.all([
-      prisma.otaGroup.findUnique({ where: { id: groupId } }),
-      prisma.otaProfile.findUnique({ where: { userId: invitedOtaId } }),
+      prisma.otaGroup.findUnique({
+        where: { id: groupId },
+        include: { _count: { select: { Members: true } } },
+      }),
+      prisma.otaProfile.findFirst({ 
+        where: isUuid ? { userId: invitedOtaId } : { User: { email: invitedOtaId } } 
+      }),
     ]);
 
     if (!group) {
@@ -294,6 +416,17 @@ groupProtectedRouter.openapi(inviteMemberRoute, async (c) => {
 
     if (!invitedOta) {
       return c.json({ success: false, message: "OTA tidak ditemukan", error: {} }, 404);
+    }
+
+    if (group._count.Members >= MAX_GROUP_MEMBERS) {
+      return c.json(
+        {
+          success: false,
+          message: `Jumlah anggota grup sudah maksimum (${MAX_GROUP_MEMBERS})`,
+          error: { code: "GROUP_MEMBER_LIMIT_REACHED" },
+        },
+        400,
+      );
     }
 
     // OTA pengundang harus anggota grup
@@ -315,7 +448,7 @@ groupProtectedRouter.openapi(inviteMemberRoute, async (c) => {
 
     // Cek sudah anggota
     const alreadyMember = await prisma.otaGroupMember.findUnique({
-      where: { groupId_otaId: { groupId, otaId: invitedOtaId } },
+      where: { groupId_otaId: { groupId, otaId: invitedOta.userId } },
     });
     if (alreadyMember) {
       return c.json(
@@ -330,7 +463,7 @@ groupProtectedRouter.openapi(inviteMemberRoute, async (c) => {
 
     // Cek undangan pending
     const pendingInvitation = await prisma.groupInvitation.findFirst({
-      where: { groupId, invitedOtaId, status: "pending" },
+      where: { groupId, invitedOtaId: invitedOta.userId, status: "pending" },
     });
     if (pendingInvitation) {
       return c.json(
@@ -346,7 +479,7 @@ groupProtectedRouter.openapi(inviteMemberRoute, async (c) => {
     await prisma.groupInvitation.create({
       data: {
         groupId,
-        invitedOtaId,
+        invitedOtaId: invitedOta.userId,
         invitedByOtaId: user.type === "ota" ? user.id : null,
       },
     });
@@ -375,7 +508,7 @@ groupProtectedRouter.openapi(respondInvitationRoute, async (c) => {
   }
 
   const body = await c.req.formData();
-  const { response } = RespondInvitationSchema.parse(Object.fromEntries(body.entries()));
+  const { response, pledgeAmount } = RespondInvitationSchema.parse(Object.fromEntries(body.entries()));
 
   try {
     const invitation = await prisma.groupInvitation.findUnique({
@@ -408,6 +541,55 @@ groupProtectedRouter.openapi(respondInvitationRoute, async (c) => {
       );
     }
 
+    if (response === "accepted" && pledgeAmount === undefined) {
+      return c.json(
+        {
+          success: false,
+          message: "pledgeAmount wajib diisi saat menerima undangan",
+          error: { code: "PLEDGE_AMOUNT_REQUIRED" },
+        },
+        400,
+      );
+    }
+
+    if (response === "accepted") {
+      const [groupWithMemberCount, existingMembership] = await Promise.all([
+        prisma.otaGroup.findUnique({
+          where: { id: invitation.groupId },
+          include: { _count: { select: { Members: true } } },
+        }),
+        prisma.otaGroupMember.findFirst({
+          where: { otaId: invitation.invitedOtaId },
+        }),
+      ]);
+
+      if (!groupWithMemberCount) {
+        return c.json({ success: false, message: "Grup tidak ditemukan", error: {} }, 404);
+      }
+
+      if (groupWithMemberCount._count.Members >= MAX_GROUP_MEMBERS) {
+        return c.json(
+          {
+            success: false,
+            message: `Jumlah anggota grup sudah maksimum (${MAX_GROUP_MEMBERS})`,
+            error: { code: "GROUP_MEMBER_LIMIT_REACHED" },
+          },
+          400,
+        );
+      }
+
+      if (existingMembership) {
+        return c.json(
+          {
+            success: false,
+            message: "OTA sudah tergabung di grup lain",
+            error: { code: "ALREADY_IN_GROUP" },
+          },
+          400,
+        );
+      }
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.groupInvitation.update({
         where: { id: invitationId },
@@ -416,7 +598,11 @@ groupProtectedRouter.openapi(respondInvitationRoute, async (c) => {
 
       if (response === "accepted") {
         await tx.otaGroupMember.create({
-          data: { groupId: invitation.groupId, otaId: user.id },
+          data: {
+            groupId: invitation.groupId,
+            otaId: invitation.invitedOtaId,
+            pledgeAmount: pledgeAmount!,
+          },
         });
       }
     });
@@ -490,7 +676,10 @@ groupProtectedRouter.openapi(activateGroupRoute, async (c) => {
   try {
     const group = await prisma.otaGroup.findUnique({
       where: { id: groupId },
-      include: { _count: { select: { Members: true } } },
+      include: {
+        _count: { select: { Members: true } },
+        Members: { select: { pledgeAmount: true } },
+      },
     });
 
     if (!group) {
@@ -511,6 +700,18 @@ groupProtectedRouter.openapi(activateGroupRoute, async (c) => {
       );
     }
 
+    const totalPledge = group.Members.reduce((sum, member) => sum + member.pledgeAmount, 0);
+    if (totalPledge < MIN_GROUP_CONTRIBUTION) {
+      return c.json(
+        {
+          success: false,
+          message: `Total pledge grup saat ini Rp${totalPledge.toLocaleString("id-ID")}, minimum Rp${MIN_GROUP_CONTRIBUTION.toLocaleString("id-ID")} untuk aktivasi`,
+          error: { code: "INSUFFICIENT_GROUP_PLEDGE" },
+        },
+        400,
+      );
+    }
+
     await prisma.otaGroup.update({
       where: { id: groupId },
       data: { status: "active" },
@@ -525,8 +726,6 @@ groupProtectedRouter.openapi(activateGroupRoute, async (c) => {
 
 // ── Task 3: Student Selection Handlers ──────────────────────────────────────
 
-const MIN_GROUP_CONTRIBUTION = 800_000;
-
 // POST /group/:id/propose-student
 groupProtectedRouter.openapi(proposeStudentRoute, async (c) => {
   const user = c.var.user;
@@ -540,7 +739,7 @@ groupProtectedRouter.openapi(proposeStudentRoute, async (c) => {
   }
 
   const body = await c.req.formData();
-  const { mahasiswaId } = ProposeStudentSchema.parse(Object.fromEntries(body.entries()));
+  const { nim } = ProposeStudentSchema.parse(Object.fromEntries(body.entries()));
 
   try {
     const [group, mahasiswa] = await Promise.all([
@@ -548,8 +747,8 @@ groupProtectedRouter.openapi(proposeStudentRoute, async (c) => {
         where: { id: groupId },
         include: { _count: { select: { Members: true } } },
       }),
-      prisma.mahasiswaProfile.findUnique({
-        where: { userId: mahasiswaId },
+      prisma.mahasiswaProfile.findFirst({
+        where: { nim },
         include: { User: { select: { applicationStatus: true } } },
       }),
     ]);
@@ -582,39 +781,78 @@ groupProtectedRouter.openapi(proposeStudentRoute, async (c) => {
       }
     }
 
-    // Mahasiswa harus eligible: inactive + accepted
-    if (
-      mahasiswa.mahasiswaStatus !== "inactive" ||
-      mahasiswa.User.applicationStatus !== "accepted"
-    ) {
+    if (mahasiswa.mahasiswaStatus !== "inactive") {
       return c.json(
-        { success: false, message: "Mahasiswa tidak eligible (sudah aktif atau belum diterima)", error: { code: "NOT_ELIGIBLE" } },
+        { success: false, message: "Mahasiswa ini sudah memiliki grup asuh.", error: { code: "NOT_ELIGIBLE" } },
         400,
       );
     }
 
-    // Tidak boleh ada proposal open untuk pasangan (group, mahasiswa) yang sama
-    const existingOpenProposal = await prisma.groupStudentProposal.findFirst({
-      where: { groupId, mahasiswaId, status: "open" },
-    });
-    if (existingOpenProposal) {
+    if (mahasiswa.User.applicationStatus !== "accepted") {
       return c.json(
-        { success: false, message: "Sudah ada proposal yang sedang berjalan untuk mahasiswa ini", error: { code: "PROPOSAL_EXISTS" } },
+        { success: false, message: "Mahasiswa tidak eligible (status harus inactive dan applicationStatus accepted)", error: { code: "NOT_ELIGIBLE" } },
         400,
       );
     }
 
-    const proposal = await prisma.groupStudentProposal.create({
-      data: {
-        groupId,
-        mahasiswaId,
-        proposedById: user.type === "ota" ? user.id : null,
-        status: "open",
-      },
+    const [existingOpenOrPassedProposal, existingPendingOrAcceptedConnection] = await Promise.all([
+      prisma.groupStudentProposal.findFirst({
+        where: {
+          mahasiswaId: mahasiswa.userId,
+          status: { in: ["open", "passed"] },
+          groupId: { not: groupId },
+        },
+      }),
+      prisma.groupConnection.findFirst({
+        where: {
+          mahasiswaId: mahasiswa.userId,
+          connectionStatus: { in: ["pending", "accepted"] },
+          groupId: { not: groupId },
+        },
+      }),
+    ]);
+
+    if (existingOpenOrPassedProposal || existingPendingOrAcceptedConnection) {
+      return c.json(
+        {
+          success: false,
+          message: "Mahasiswa sedang diproses oleh grup lain",
+          error: { code: "STUDENT_ALREADY_IN_FIFS_PROCESS" },
+        },
+        400,
+      );
+    }
+
+    const proposal = await prisma.$transaction(async (tx) => {
+      const createdProposal = await tx.groupStudentProposal.create({
+        data: {
+          groupId,
+          mahasiswaId: mahasiswa.userId,
+          proposedById: user.type === "ota" ? user.id : null,
+          status: "passed",
+        },
+      });
+
+      await tx.groupConnection.create({
+        data: {
+          mahasiswaId: mahasiswa.userId,
+          groupId,
+          proposalId: createdProposal.id,
+          connectionStatus: "pending",
+          paidFor: 0,
+        },
+      });
+
+      await tx.mahasiswaProfile.update({
+        where: { userId: mahasiswa.userId },
+        data: { mahasiswaStatus: "active" },
+      });
+
+      return createdProposal;
     });
 
     return c.json(
-      { success: true, message: "Proposal berhasil dibuat", body: { proposalId: proposal.id } } as any,
+      { success: true, message: "Proposal berhasil diajukan dan menunggu persetujuan admin", body: { proposalId: proposal.id } } as any,
       200,
     );
   } catch (error) {
@@ -698,121 +936,14 @@ groupProtectedRouter.openapi(listProposalsRoute, async (c) => {
 
 // POST /group/proposal/:id/vote
 groupProtectedRouter.openapi(voteProposalRoute, async (c) => {
-  const user = c.var.user;
-  const proposalId = c.req.param("id");
-
-  if (user.type !== "ota") {
-    return c.json(
-      { success: false, message: "Hanya OTA yang dapat vote proposal", error: { code: "UNAUTHORIZED" } },
-      403,
-    );
-  }
-
-  const body = await c.req.formData();
-  const { approve, pledgeAmount } = VoteProposalSchema.parse(Object.fromEntries(body.entries()));
-
-  if (approve && pledgeAmount <= 0) {
-    return c.json(
-      { success: false, message: "Pledge amount harus > 0 jika vote setuju", error: { code: "INVALID_PLEDGE" } },
-      400,
-    );
-  }
-
-  try {
-    const proposal = await prisma.groupStudentProposal.findUnique({
-      where: { id: proposalId },
-    });
-
-    if (!proposal) {
-      return c.json({ success: false, message: "Proposal tidak ditemukan", error: {} }, 404);
-    }
-
-    if (proposal.status !== "open") {
-      return c.json(
-        { success: false, message: "Proposal sudah tidak dalam status open", error: { code: "PROPOSAL_NOT_OPEN" } },
-        400,
-      );
-    }
-
-    // Harus anggota grup
-    const isMember = await prisma.otaGroupMember.findUnique({
-      where: { groupId_otaId: { groupId: proposal.groupId, otaId: user.id } },
-    });
-    if (!isMember) {
-      return c.json(
-        { success: false, message: "Anda bukan anggota grup ini", error: { code: "NOT_MEMBER" } },
-        403,
-      );
-    }
-
-    let resultMessage = "Vote berhasil disimpan";
-
-    await prisma.$transaction(async (tx) => {
-      // Upsert vote
-      await tx.groupStudentProposalVote.upsert({
-        where: { proposalId_otaId: { proposalId, otaId: user.id } },
-        create: { proposalId, otaId: user.id, approve, pledgeAmount: approve ? pledgeAmount : 0 },
-        update: { approve, pledgeAmount: approve ? pledgeAmount : 0 },
-      });
-
-      // Ambil semua vote setelah upsert
-      const [allVotes, memberCount] = await Promise.all([
-        tx.groupStudentProposalVote.findMany({ where: { proposalId } }),
-        tx.otaGroupMember.count({ where: { groupId: proposal.groupId } }),
-      ]);
-
-      const hasVotedNo = allVotes.some((v) => !v.approve);
-
-      if (hasVotedNo) {
-        // Proposal gagal jika ada yang vote tidak
-        await tx.groupStudentProposal.update({
-          where: { id: proposalId },
-          data: { status: "failed" },
-        });
-        resultMessage = "Vote tidak setuju diterima — proposal telah gagal";
-        return;
-      }
-
-      // Semua yang sudah vote setuju, cek apakah semua anggota sudah vote
-      if (allVotes.length === memberCount) {
-        const totalPledge = allVotes.reduce((s, v) => s + v.pledgeAmount, 0);
-
-        if (totalPledge >= MIN_GROUP_CONTRIBUTION) {
-          // Proposal lolos: buat GroupConnection pending
-          await tx.groupStudentProposal.update({
-            where: { id: proposalId },
-            data: { status: "passed" },
-          });
-
-          await tx.groupConnection.create({
-            data: {
-              mahasiswaId: proposal.mahasiswaId,
-              groupId: proposal.groupId,
-              proposalId: proposal.id,
-              connectionStatus: "pending",
-              paidFor: 0,
-            },
-          });
-
-          // Set mahasiswa active agar tidak dipilih OTA/grup lain
-          await tx.mahasiswaProfile.update({
-            where: { userId: proposal.mahasiswaId },
-            data: { mahasiswaStatus: "active" },
-          });
-
-          resultMessage = "Vote setuju diterima — semua anggota setuju, proposal diteruskan ke admin";
-        } else {
-          // Semua vote setuju tapi total pledge belum cukup, tetap open
-          resultMessage = `Vote setuju diterima — total pledge saat ini Rp${totalPledge.toLocaleString("id-ID")}, belum mencapai minimum Rp800.000`;
-        }
-      }
-    });
-
-    return c.json({ success: true, message: resultMessage }, 200);
-  } catch (error) {
-    console.error(error);
-    return c.json({ success: false, message: "Internal server error", error }, 500);
-  }
+  return c.json(
+    {
+      success: false,
+      message: "Voting proposal dinonaktifkan pada mode pre-funded group",
+      error: { code: "VOTING_DISABLED" },
+    },
+    400,
+  );
 });
 
 // GET /group/connect/list/pending
@@ -974,7 +1105,7 @@ groupProtectedRouter.openapi(verifyGroupConnectionAccRoute, async (c) => {
         Proposal: { include: { Votes: true } },
         Group: {
           include: {
-            Members: { include: { Ota: { select: { funds: true } } } },
+            Members: { select: { otaId: true, pledgeAmount: true } },
           },
         },
       },
@@ -991,14 +1122,29 @@ groupProtectedRouter.openapi(verifyGroupConnectionAccRoute, async (c) => {
       );
     }
 
-    // Tentukan kontribusi per anggota
+    // Tentukan kontribusi per anggota.
+    // Pada mode pre-funded, proposal bisa tidak punya votes, sehingga fallback ke pledge anggota grup.
+    const proposalContributions = (groupConn.Proposal?.Votes ?? [])
+      .filter((v) => v.approve && v.pledgeAmount > 0)
+      .map((v) => ({ otaId: v.otaId, amount: v.pledgeAmount }));
+
+    const memberContributions = groupConn.Group.Members
+      .filter((m) => m.pledgeAmount > 0)
+      .map((m) => ({ otaId: m.otaId, amount: m.pledgeAmount }));
+
     const contributions: { otaId: string; amount: number }[] =
-      groupConn.Proposal
-        ? groupConn.Proposal.Votes.filter((v) => v.approve).map((v) => ({
-            otaId: v.otaId,
-            amount: v.pledgeAmount,
-          }))
-        : groupConn.Group.Members.map((m) => ({ otaId: m.otaId, amount: m.Ota.funds }));
+      proposalContributions.length > 0 ? proposalContributions : memberContributions;
+
+    if (contributions.length === 0) {
+      return c.json(
+        {
+          success: false,
+          message: "Belum ada data kontribusi grup untuk koneksi ini",
+          error: { code: "NO_GROUP_CONTRIBUTIONS" },
+        },
+        400,
+      );
+    }
 
     const totalBill = contributions.reduce((s, c) => s + c.amount, 0);
     const transferDate = groupConn.Group.transferDate ?? 1;
@@ -1009,6 +1155,13 @@ groupProtectedRouter.openapi(verifyGroupConnectionAccRoute, async (c) => {
         where: { id: groupConnectionId },
         data: { connectionStatus: "accepted" },
       });
+
+      if (groupConn.proposalId) {
+        await tx.groupStudentProposal.update({
+          where: { id: groupConn.proposalId },
+          data: { status: "approved" },
+        });
+      }
 
       await tx.groupMemberContribution.createMany({
         data: contributions.map((contrib) => ({
@@ -1121,7 +1274,7 @@ groupProtectedRouter.openapi(connectGroupByAdminRoute, async (c) => {
     const [group, mahasiswa] = await Promise.all([
       prisma.otaGroup.findUnique({
         where: { id: groupId },
-        include: { Members: { include: { Ota: { select: { funds: true } } } } },
+        include: { Members: { select: { otaId: true, pledgeAmount: true } } },
       }),
       prisma.mahasiswaProfile.findUnique({
         where: { userId: mahasiswaId },
@@ -1154,7 +1307,7 @@ groupProtectedRouter.openapi(connectGroupByAdminRoute, async (c) => {
       );
     }
 
-    const contributions = group.Members.map((m) => ({ otaId: m.otaId, amount: m.Ota.funds }));
+    const contributions = group.Members.map((m) => ({ otaId: m.otaId, amount: m.pledgeAmount }));
     const totalFunds = contributions.reduce((s, c) => s + c.amount, 0);
 
     if (totalFunds < MIN_GROUP_CONTRIBUTION) {
@@ -1224,102 +1377,6 @@ groupProtectedRouter.openapi(connectGroupByAdminRoute, async (c) => {
 });
 
 // ── Task 5: My Groups, Invitations & Termination Handlers ────────────────────
-
-// GET /group/my
-groupProtectedRouter.openapi(listMyGroupsRoute, async (c) => {
-  const user = c.var.user;
-
-  if (user.type !== "ota") {
-    return c.json(
-      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
-      403,
-    );
-  }
-
-  try {
-    const memberships = await prisma.otaGroupMember.findMany({
-      where: { otaId: user.id },
-      include: {
-        Group: {
-          include: {
-            _count: {
-              select: {
-                Members: true,
-                Connections: { where: { connectionStatus: "accepted" } },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { joinedAt: "desc" },
-    });
-
-    return c.json(
-      {
-        success: true,
-        message: "Daftar grup berhasil diambil",
-        body: {
-          data: memberships.map((m) => ({
-            groupId: m.groupId,
-            groupName: m.Group.name,
-            groupStatus: m.Group.status,
-            memberCount: m.Group._count.Members,
-            activeConnectionCount: m.Group._count.Connections,
-            joinedAt: m.joinedAt.toISOString(),
-          })),
-        },
-      },
-      200,
-    );
-  } catch (error) {
-    console.error(error);
-    return c.json({ success: false, message: "Internal server error", error }, 500);
-  }
-});
-
-// GET /group/invitations/my
-groupProtectedRouter.openapi(listMyInvitationsRoute, async (c) => {
-  const user = c.var.user;
-
-  if (user.type !== "ota") {
-    return c.json(
-      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
-      403,
-    );
-  }
-
-  try {
-    const invitations = await prisma.groupInvitation.findMany({
-      where: { invitedOtaId: user.id, status: "pending" },
-      include: {
-        Group: { select: { name: true, status: true } },
-        InvitedBy: { select: { name: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    return c.json(
-      {
-        success: true,
-        message: "Daftar undangan berhasil diambil",
-        body: {
-          data: invitations.map((inv) => ({
-            invitationId: inv.id,
-            groupId: inv.groupId,
-            groupName: inv.Group.name,
-            groupStatus: inv.Group.status,
-            invitedByName: inv.InvitedBy?.name ?? null,
-            createdAt: inv.createdAt.toISOString(),
-          })),
-        },
-      } as any,
-      200,
-    );
-  } catch (error) {
-    console.error(error);
-    return c.json({ success: false, message: "Internal server error", error }, 500);
-  }
-});
 
 // POST /group/terminate/request
 groupProtectedRouter.openapi(requestGroupTerminateRoute, async (c) => {

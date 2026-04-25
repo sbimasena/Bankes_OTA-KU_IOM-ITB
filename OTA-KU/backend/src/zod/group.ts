@@ -19,12 +19,16 @@ export const CreateGroupSchema = z.object({
     description: "Tanggal transfer bulanan (1-31)",
     example: 15,
   }),
+  pledgeAmount: z.coerce.number().min(1).max(800000).openapi({
+    description: "Nominal komitmen dana OTA pembuat grup (maksimum Rp800.000)",
+    example: 400000,
+  }),
 });
 
 export const InviteMemberSchema = z.object({
-  invitedOtaId: z.string().uuid().openapi({
-    description: "ID OTA yang diundang",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+  invitedOtaId: z.string().openapi({
+    description: "ID OTA atau Email OTA yang diundang",
+    example: "123e4567-e89b-12d3-a456-426614174000 atau email@example.com",
   }),
 });
 
@@ -32,6 +36,10 @@ export const RespondInvitationSchema = z.object({
   response: z.enum(["accepted", "rejected"]).openapi({
     description: "Respons undangan: accepted atau rejected",
     example: "accepted",
+  }),
+  pledgeAmount: z.coerce.number().min(1).max(800000).optional().openapi({
+    description: "Nominal komitmen dana OTA saat menerima undangan (wajib jika accepted)",
+    example: 250000,
   }),
 });
 
@@ -94,6 +102,7 @@ export const GroupListResponse = z.object({
         status: z.enum(["forming", "active"]),
         memberCount: z.number(),
         activeConnectionCount: z.number(),
+        totalPledge: z.number(),
         createdAt: z.string().datetime(),
       }),
     ),
@@ -116,6 +125,7 @@ export const GroupDetailResponse = z.object({
       z.object({
         otaId: z.string().uuid(),
         name: z.string(),
+        pledgeAmount: z.number(),
         joinedAt: z.string().datetime(),
       }),
     ),
@@ -127,6 +137,7 @@ export const GroupDetailResponse = z.object({
       }),
     ),
     activeConnectionCount: z.number(),
+    totalPledge: z.number(),
   }),
 });
 
@@ -138,14 +149,14 @@ export const GroupSuccessResponse = z.object({
 // === Task 3: Proposal & Connection Schemas ===
 
 export const ProposeStudentSchema = z.object({
-  mahasiswaId: z.string().uuid().openapi({
-    description: "ID mahasiswa yang diusulkan untuk disponsori",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+  nim: z.string().openapi({
+    description: "NIM mahasiswa yang diusulkan untuk disponsori",
+    example: "13519001",
   }),
 });
 
 export const VoteProposalSchema = z.object({
-  approve: z.enum(["true", "false"]).transform((v) => v === "true").openapi({
+  approve: z.enum(["true", "false"]).transform((v: string) => v === "true").openapi({
     description: "Setuju (true) atau tidak setuju (false)",
     example: "true",
   }),

@@ -498,9 +498,10 @@ model OtaGroup {
 
 // [OTA GROUP] Keanggotaan OTA dalam sebuah grup (many-to-many).
 model OtaGroupMember {
-  groupId  String   @db.Uuid
-  otaId    String   @db.Uuid
-  joinedAt DateTime @default(now())
+  groupId      String   @db.Uuid
+  otaId        String   @db.Uuid
+  pledgeAmount Int      @default(0)
+  joinedAt     DateTime @default(now())
 
   Group OtaGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   Ota   OtaProfile @relation(fields: [otaId], references: [userId], onDelete: Cascade)
