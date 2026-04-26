@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import * as midtransClient from "midtrans-client";
 
 type MidtransBank = "bni" | "bri" | "mandiri";
 
@@ -43,6 +44,20 @@ interface MidtransChargeResponse {
   status_message?: string;
 }
 
+interface MidtransStatusResponse {
+  order_id: string;
+  status_code: string;
+  transaction_status: string;
+  fraud_status?: string;
+  gross_amount: string;
+  payment_type?: string;
+  transaction_time?: string;
+  settlement_time?: string;
+  va_numbers?: Array<{ bank: string; va_number: string }>;
+  biller_code?: string;
+  bill_key?: string;
+}
+
 export function verifyMidtransSignature(input: {
   orderId: string;
   statusCode: string;
@@ -58,11 +73,13 @@ export function verifyMidtransSignature(input: {
 export async function createMidtransVaCharge(
   input: CreateVaChargeInput,
 ): Promise<MidtransVaChargeResult> {
-  const baseUrl = input.isProduction
-    ? "https://api.midtrans.com"
-    : "https://api.sandbox.midtrans.com";
+  const coreApi = new midtransClient.CoreApi({
+    isProduction: input.isProduction,
+    serverKey: input.serverKey,
+    clientKey: "",
+  });
 
-  const body = {
+  const result = (await coreApi.charge({
     payment_type: "bank_transfer",
     transaction_details: {
       order_id: input.orderId,
@@ -76,25 +93,7 @@ export async function createMidtransVaCharge(
     bank_transfer: {
       bank: input.bank,
     },
-  };
-
-  const auth = Buffer.from(`${input.serverKey}:`).toString("base64");
-  const response = await fetch(`${baseUrl}/v2/charge`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  const result = (await response.json()) as MidtransChargeResponse;
-  if (!response.ok) {
-    throw new Error(
-      `Midtrans charge failed: ${result.status_code ?? ""} ${result.status_message ?? "Unknown error"}`,
-    );
-  }
+  })) as MidtransChargeResponse;
 
   const vaNumber =
     result.va_numbers?.[0]?.va_number ?? result.permata_va_number ?? undefined;
@@ -112,4 +111,32 @@ export async function createMidtransVaCharge(
     billerCode: result.biller_code,
     billKey: result.bill_key,
   };
+}
+
+export async function getMidtransTransactionStatus(input: {
+  serverKey: string;
+  isProduction: boolean;
+  orderId: string;
+}): Promise<MidtransStatusResponse> {
+  const coreApi = new midtransClient.CoreApi({
+    isProduction: input.isProduction,
+    serverKey: input.serverKey,
+    clientKey: "",
+  });
+
+  return (await coreApi.transaction.status(input.orderId)) as MidtransStatusResponse;
+}
+
+export async function cancelMidtransTransaction(input: {
+  serverKey: string;
+  isProduction: boolean;
+  orderId: string;
+}): Promise<MidtransStatusResponse> {
+  const coreApi = new midtransClient.CoreApi({
+    isProduction: input.isProduction,
+    serverKey: input.serverKey,
+    clientKey: "",
+  });
+
+  return (await coreApi.transaction.cancel(input.orderId)) as MidtransStatusResponse;
 }

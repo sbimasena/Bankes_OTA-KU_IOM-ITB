@@ -1,13 +1,22 @@
 import { prisma } from "../db/prisma.js";
 import {
+  cancelMidtransTransaction,
   createMidtransVaCharge,
+  getMidtransTransactionStatus,
   verifyMidtransSignature,
 } from "../lib/midtrans.js";
 import {
+  cancelMidtransPaymentRoute,
   createVAPaymentRoute,
   midtransWebhookRoute,
+  verifyMidtransPaymentRoute,
 } from "../routes/payment.route.js";
-import { CreateVAPaymentSchema, MidtransWebhookSchema } from "../zod/payment.js";
+import {
+  CancelMidtransPaymentSchema,
+  CreateVAPaymentSchema,
+  MidtransWebhookSchema,
+  VerifyMidtransPaymentSchema,
+} from "../zod/payment.js";
 import { createAuthRouter, createRouter } from "./router-factory.js";
 import { env } from "../config/env.config.js";
 
@@ -17,6 +26,84 @@ export const paymentProtectedRouter = createAuthRouter();
 function extractTransactionIdFromOrderId(orderId: string): string | null {
   const match = orderId.match(/^TX-([0-9a-fA-F-]{36})-\d+$/);
   return match?.[1] ?? null;
+}
+
+function extractOrderIdFromTransactionReceipt(receipt: string | null): string | null {
+  if (!receipt) return null;
+
+  try {
+    const parsed = JSON.parse(receipt) as { orderId?: string };
+    return parsed.orderId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function mapMidtransStatusToTransactionStatus(
+  transactionStatus: string,
+  fraudStatus?: string,
+): "unpaid" | "pending" | "paid" {
+  const isPaidStatus =
+    transactionStatus === "settlement" ||
+    (transactionStatus === "capture" && fraudStatus === "accept");
+
+  if (isPaidStatus) return "paid";
+  if (
+    transactionStatus === "pending" ||
+    transactionStatus === "capture" ||
+    transactionStatus === "authorize"
+  ) {
+    return "pending";
+  }
+
+  return "unpaid";
+}
+
+async function applyMidtransStatusToTransaction(input: {
+  foundTransaction: { id: string; bill: number };
+  payload: {
+    order_id: string;
+    status_code?: string;
+    transaction_status: string;
+    fraud_status?: string;
+    gross_amount?: string;
+    payment_type?: string;
+    va_numbers?: Array<{ bank: string; va_number: string }>;
+    bill_key?: string;
+    biller_code?: string;
+    transaction_time?: string;
+    settlement_time?: string;
+  };
+}) {
+  const nextStatus = mapMidtransStatusToTransactionStatus(
+    input.payload.transaction_status,
+    input.payload.fraud_status,
+  );
+  const isPaidStatus = nextStatus === "paid";
+
+  await prisma.transaction.update({
+    where: { id: input.foundTransaction.id },
+    data: {
+      transactionStatus: nextStatus,
+      amountPaid: isPaidStatus ? input.foundTransaction.bill : 0,
+      paidAt: isPaidStatus ? new Date() : null,
+      transactionReceipt: JSON.stringify({
+        provider: "midtrans",
+        orderId: input.payload.order_id,
+        statusCode: input.payload.status_code ?? null,
+        transactionStatus: input.payload.transaction_status,
+        grossAmount: input.payload.gross_amount ?? null,
+        paymentType: input.payload.payment_type ?? null,
+        vaNumbers: input.payload.va_numbers ?? null,
+        billKey: input.payload.bill_key ?? null,
+        billerCode: input.payload.biller_code ?? null,
+        transactionTime: input.payload.transaction_time ?? null,
+        settlementTime: input.payload.settlement_time ?? null,
+      }),
+    },
+  });
+
+  return nextStatus;
 }
 
 paymentProtectedRouter.openapi(createVAPaymentRoute, async (c) => {
@@ -211,39 +298,9 @@ paymentRouter.openapi(midtransWebhookRoute, async (c) => {
       );
     }
 
-    const isPaidStatus =
-      payload.transaction_status === "settlement" ||
-      (payload.transaction_status === "capture" &&
-        payload.fraud_status === "accept");
-
-    const isPendingStatus = payload.transaction_status === "pending";
-
-    const nextStatus = isPaidStatus
-      ? "paid"
-      : isPendingStatus
-        ? "pending"
-        : "unpaid";
-
-    await prisma.transaction.update({
-      where: { id: foundTransaction.id },
-      data: {
-        transactionStatus: nextStatus,
-        amountPaid: isPaidStatus ? foundTransaction.bill : 0,
-        paidAt: isPaidStatus ? new Date() : null,
-        transactionReceipt: JSON.stringify({
-          provider: "midtrans",
-          orderId: payload.order_id,
-          statusCode: payload.status_code,
-          transactionStatus: payload.transaction_status,
-          grossAmount: payload.gross_amount,
-          paymentType: payload.payment_type,
-          vaNumbers: payload.va_numbers,
-          billKey: payload.bill_key,
-          billerCode: payload.biller_code,
-          transactionTime: payload.transaction_time,
-          settlementTime: payload.settlement_time,
-        }),
-      },
+    const nextStatus = await applyMidtransStatusToTransaction({
+      foundTransaction,
+      payload,
     });
 
     return c.json(
@@ -253,6 +310,218 @@ paymentRouter.openapi(midtransWebhookRoute, async (c) => {
         body: {
           transactionId: foundTransaction.id,
           status: nextStatus,
+        },
+      },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json(
+      {
+        success: false,
+        message: "Internal server error",
+        error: error,
+      },
+      500,
+    );
+  }
+});
+
+paymentProtectedRouter.openapi(verifyMidtransPaymentRoute, async (c) => {
+  const user = c.var.user;
+  const body = await c.req.formData();
+  const data = Object.fromEntries(body.entries());
+  const { transactionId } = VerifyMidtransPaymentSchema.parse(data);
+
+  if (user.type !== "ota") {
+    return c.json(
+      {
+        success: false,
+        message: "Forbidden",
+        error: {
+          code: "Forbidden",
+          message: "Hanya OTA yang dapat melakukan verifikasi pembayaran",
+        },
+      },
+      403,
+    );
+  }
+
+  if (env.PAYMENT_PROVIDER !== "midtrans" || !env.MIDTRANS_SERVER_KEY) {
+    return c.json(
+      {
+        success: false,
+        message: "Payment provider belum dikonfigurasi",
+        error: {},
+      },
+      500,
+    );
+  }
+
+  try {
+    const foundTransaction = await prisma.transaction.findFirst({
+      where: {
+        id: transactionId,
+        otaId: user.id,
+      },
+      select: {
+        id: true,
+        bill: true,
+        transactionReceipt: true,
+      },
+    });
+
+    if (!foundTransaction) {
+      return c.json(
+        {
+          success: false,
+          message: "Transaksi tidak ditemukan",
+          error: {},
+        },
+        404,
+      );
+    }
+
+    const orderId = extractOrderIdFromTransactionReceipt(
+      foundTransaction.transactionReceipt,
+    );
+    if (!orderId) {
+      return c.json(
+        {
+          success: false,
+          message: "Order ID Midtrans belum tersedia untuk transaksi ini",
+          error: {},
+        },
+        400,
+      );
+    }
+
+    const statusPayload = await getMidtransTransactionStatus({
+      serverKey: env.MIDTRANS_SERVER_KEY,
+      isProduction: env.MIDTRANS_IS_PRODUCTION,
+      orderId,
+    });
+
+    const nextStatus = await applyMidtransStatusToTransaction({
+      foundTransaction,
+      payload: statusPayload,
+    });
+
+    return c.json(
+      {
+        success: true,
+        message: "Status pembayaran berhasil disinkronkan",
+        body: {
+          transactionId: foundTransaction.id,
+          orderId,
+          status: nextStatus,
+          paymentType: statusPayload.payment_type ?? null,
+        },
+      },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json(
+      {
+        success: false,
+        message: "Internal server error",
+        error: error,
+      },
+      500,
+    );
+  }
+});
+
+paymentProtectedRouter.openapi(cancelMidtransPaymentRoute, async (c) => {
+  const user = c.var.user;
+  const body = await c.req.formData();
+  const data = Object.fromEntries(body.entries());
+  const { transactionId } = CancelMidtransPaymentSchema.parse(data);
+
+  if (user.type !== "ota") {
+    return c.json(
+      {
+        success: false,
+        message: "Forbidden",
+        error: {
+          code: "Forbidden",
+          message: "Hanya OTA yang dapat membatalkan pembayaran",
+        },
+      },
+      403,
+    );
+  }
+
+  if (env.PAYMENT_PROVIDER !== "midtrans" || !env.MIDTRANS_SERVER_KEY) {
+    return c.json(
+      {
+        success: false,
+        message: "Payment provider belum dikonfigurasi",
+        error: {},
+      },
+      500,
+    );
+  }
+
+  try {
+    const foundTransaction = await prisma.transaction.findFirst({
+      where: {
+        id: transactionId,
+        otaId: user.id,
+      },
+      select: {
+        id: true,
+        bill: true,
+        transactionReceipt: true,
+      },
+    });
+
+    if (!foundTransaction) {
+      return c.json(
+        {
+          success: false,
+          message: "Transaksi tidak ditemukan",
+          error: {},
+        },
+        404,
+      );
+    }
+
+    const orderId = extractOrderIdFromTransactionReceipt(
+      foundTransaction.transactionReceipt,
+    );
+    if (!orderId) {
+      return c.json(
+        {
+          success: false,
+          message: "Order ID Midtrans belum tersedia untuk transaksi ini",
+          error: {},
+        },
+        400,
+      );
+    }
+
+    const cancelPayload = await cancelMidtransTransaction({
+      serverKey: env.MIDTRANS_SERVER_KEY,
+      isProduction: env.MIDTRANS_IS_PRODUCTION,
+      orderId,
+    });
+
+    const nextStatus = await applyMidtransStatusToTransaction({
+      foundTransaction,
+      payload: cancelPayload,
+    });
+
+    return c.json(
+      {
+        success: true,
+        message: "Pembayaran berhasil dibatalkan/disinkronkan",
+        body: {
+          transactionId: foundTransaction.id,
+          orderId,
+          status: nextStatus,
+          paymentType: cancelPayload.payment_type ?? null,
         },
       },
       200,
