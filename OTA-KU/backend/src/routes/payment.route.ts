@@ -138,6 +138,14 @@ export const verifyMidtransPaymentRoute = createRoute({
         },
       },
     },
+    400: {
+      description: "Bad request",
+      content: {
+        "application/json": {
+          schema: InternalServerErrorResponse,
+        },
+      },
+    },
     401: AuthorizationErrorResponse,
     403: {
       description: "Forbidden",
@@ -183,6 +191,14 @@ export const cancelMidtransPaymentRoute = createRoute({
       content: {
         "application/json": {
           schema: CancelMidtransPaymentResponse,
+        },
+      },
+    },
+    400: {
+      description: "Bad request",
+      content: {
+        "application/json": {
+          schema: InternalServerErrorResponse,
         },
       },
     },

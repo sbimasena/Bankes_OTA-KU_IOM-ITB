@@ -2,6 +2,7 @@ import { prisma } from "../db/prisma.js";
 import {
   cancelMidtransTransaction,
   createMidtransVaCharge,
+  getMidtransErrorMessage,
   getMidtransTransactionStatus,
   verifyMidtransSignature,
 } from "../lib/midtrans.js";
@@ -24,8 +25,17 @@ export const paymentRouter = createRouter();
 export const paymentProtectedRouter = createAuthRouter();
 
 function extractTransactionIdFromOrderId(orderId: string): string | null {
-  const match = orderId.match(/^TX-([0-9a-fA-F-]{36})-\d+$/);
-  return match?.[1] ?? null;
+  const match = orderId.match(/^TX-([0-9a-fA-F]{32})$/);
+  if (!match?.[1]) return null;
+
+  const compact = match[1].toLowerCase();
+  return [
+    compact.slice(0, 8),
+    compact.slice(8, 12),
+    compact.slice(12, 16),
+    compact.slice(16, 20),
+    compact.slice(20),
+  ].join("-");
 }
 
 function extractOrderIdFromTransactionReceipt(receipt: string | null): string | null {
@@ -175,7 +185,7 @@ paymentProtectedRouter.openapi(createVAPaymentRoute, async (c) => {
   }
 
   try {
-    const orderId = `TX-${foundTransaction.id}-${Date.now()}`;
+    const orderId = `TX-${foundTransaction.id.replaceAll("-", "")}`;
     const charge = await createMidtransVaCharge({
       serverKey: env.MIDTRANS_SERVER_KEY,
       isProduction: env.MIDTRANS_IS_PRODUCTION,
@@ -226,12 +236,50 @@ paymentProtectedRouter.openapi(createVAPaymentRoute, async (c) => {
       200,
     );
   } catch (error) {
-    console.error(error);
+    console.error("createVAPayment error:", error);
+    const parsedError = error as {
+      statusCode?: number;
+      message?: string;
+      isNotFound?: boolean;
+    };
+    if (parsedError.statusCode === 400) {
+      return c.json(
+        {
+          success: false,
+          message: getMidtransErrorMessage(error),
+          error: {},
+        },
+        400,
+      );
+    }
+
+    if (parsedError.statusCode === 403) {
+      return c.json(
+        {
+          success: false,
+          message: getMidtransErrorMessage(error),
+          error: {},
+        },
+        403,
+      );
+    }
+
+    if (parsedError.statusCode === 404) {
+      return c.json(
+        {
+          success: false,
+          message: getMidtransErrorMessage(error),
+          error: {},
+        },
+        404,
+      );
+    }
+
     return c.json(
       {
         success: false,
         message: "Internal server error",
-        error: error,
+        error: {},
       },
       500,
     );
@@ -315,7 +363,7 @@ paymentRouter.openapi(midtransWebhookRoute, async (c) => {
       200,
     );
   } catch (error) {
-    console.error(error);
+    console.error("midtransWebhook error:", error);
     return c.json(
       {
         success: false,
@@ -421,12 +469,62 @@ paymentProtectedRouter.openapi(verifyMidtransPaymentRoute, async (c) => {
       200,
     );
   } catch (error) {
-    console.error(error);
+    console.error("verifyMidtransPayment error:", error);
+    const parsedError = error as {
+      statusCode?: number;
+      message?: string;
+      isNotFound?: boolean;
+    };
+
+    if (parsedError.isNotFound) {
+      return c.json(
+        {
+          success: false,
+          message: "Order Midtrans tidak ditemukan. VA mungkin belum dibuat atau sudah kedaluwarsa.",
+          error: {},
+        },
+        400,
+      );
+    }
+
+    if (parsedError.statusCode === 400) {
+      return c.json(
+        {
+          success: false,
+          message: getMidtransErrorMessage(error),
+          error: {},
+        },
+        400,
+      );
+    }
+
+    if (parsedError.statusCode === 403) {
+      return c.json(
+        {
+          success: false,
+          message: getMidtransErrorMessage(error),
+          error: {},
+        },
+        403,
+      );
+    }
+
+    if (parsedError.statusCode === 404) {
+      return c.json(
+        {
+          success: false,
+          message: getMidtransErrorMessage(error),
+          error: {},
+        },
+        404,
+      );
+    }
+
     return c.json(
       {
         success: false,
         message: "Internal server error",
-        error: error,
+        error: {},
       },
       500,
     );
@@ -527,12 +625,62 @@ paymentProtectedRouter.openapi(cancelMidtransPaymentRoute, async (c) => {
       200,
     );
   } catch (error) {
-    console.error(error);
+    console.error("cancelMidtransPayment error:", error);
+    const parsedError = error as {
+      statusCode?: number;
+      message?: string;
+      isNotFound?: boolean;
+    };
+
+    if (parsedError.isNotFound) {
+      return c.json(
+        {
+          success: false,
+          message: "Order Midtrans tidak ditemukan. Tidak ada sesi pembayaran aktif untuk dibatalkan.",
+          error: {},
+        },
+        400,
+      );
+    }
+
+    if (parsedError.statusCode === 400) {
+      return c.json(
+        {
+          success: false,
+          message: getMidtransErrorMessage(error),
+          error: {},
+        },
+        400,
+      );
+    }
+
+    if (parsedError.statusCode === 403) {
+      return c.json(
+        {
+          success: false,
+          message: getMidtransErrorMessage(error),
+          error: {},
+        },
+        403,
+      );
+    }
+
+    if (parsedError.statusCode === 404) {
+      return c.json(
+        {
+          success: false,
+          message: getMidtransErrorMessage(error),
+          error: {},
+        },
+        404,
+      );
+    }
+
     return c.json(
       {
         success: false,
         message: "Internal server error",
-        error: error,
+        error: {},
       },
       500,
     );

@@ -95,7 +95,7 @@ transactionProtectedRouter.openapi(listTransactionOTARoute, async (c) => {
         message: "Daftar transaction untuk OTA berhasil diambil",
         body: {
           data: transactions.map((transaction) => ({
-            id: transaction.mahasiswaId,
+            id: transaction.id,
             mahasiswa_id: transaction.mahasiswaId,
             name: transaction.MahasiswaProfile?.name ?? "",
             nim: transaction.MahasiswaProfile?.nim,

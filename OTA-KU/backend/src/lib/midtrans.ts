@@ -1,6 +1,22 @@
 import { createHash } from "crypto";
 import * as midtransClient from "midtrans-client";
 
+const midtrans =
+  ((midtransClient as unknown as { default?: { CoreApi: unknown } }).default ??
+    midtransClient) as unknown as {
+    CoreApi: new (input: {
+      isProduction: boolean;
+      serverKey: string;
+      clientKey: string;
+    }) => {
+      charge: (payload: unknown) => Promise<unknown>;
+      transaction: {
+        status: (orderId: string) => Promise<unknown>;
+        cancel: (orderId: string) => Promise<unknown>;
+      };
+    };
+  };
+
 type MidtransBank = "bni" | "bri" | "mandiri";
 
 interface CreateVaChargeInput {
@@ -58,6 +74,68 @@ interface MidtransStatusResponse {
   bill_key?: string;
 }
 
+function toSearchableText(value: unknown): string {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function extractMidtransError(input: unknown): {
+  statusCode: number;
+  message: string;
+  isNotFound: boolean;
+} {
+  const error = input as {
+    message?: string;
+    httpStatusCode?: number;
+    statusCode?: number;
+    status?: number;
+    ApiResponse?: { status_message?: string; status_code?: string | number };
+    rawHttpClientData?: { status?: number; statusText?: string; body?: unknown };
+  };
+
+  const statusCode = Number(
+    error?.httpStatusCode ??
+      error?.statusCode ??
+      error?.status ??
+      error?.ApiResponse?.status_code ??
+      error?.rawHttpClientData?.status ??
+      0,
+  );
+
+  const message =
+    error?.ApiResponse?.status_message ??
+    error?.rawHttpClientData?.statusText ??
+    error?.message ??
+    "Midtrans request failed";
+
+  const errorText = [
+    toSearchableText(error?.message),
+    toSearchableText(error?.ApiResponse),
+    toSearchableText(error?.rawHttpClientData),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const isNotFound =
+    statusCode === 404 ||
+    errorText.includes('"status_code":"404"') ||
+    errorText.includes('"status_code":404') ||
+    errorText.includes("HTTP status code: 404") ||
+    errorText.includes("requested resource is not found") ||
+    errorText.includes("Transaction doesn't exist");
+
+  return { statusCode, message, isNotFound };
+}
+
+export function getMidtransErrorMessage(error: unknown): string {
+  return extractMidtransError(error).message;
+}
+
 export function verifyMidtransSignature(input: {
   orderId: string;
   statusCode: string;
@@ -73,27 +151,50 @@ export function verifyMidtransSignature(input: {
 export async function createMidtransVaCharge(
   input: CreateVaChargeInput,
 ): Promise<MidtransVaChargeResult> {
-  const coreApi = new midtransClient.CoreApi({
+  const coreApi = new midtrans.CoreApi({
     isProduction: input.isProduction,
     serverKey: input.serverKey,
     clientKey: "",
   });
 
-  const result = (await coreApi.charge({
-    payment_type: "bank_transfer",
-    transaction_details: {
-      order_id: input.orderId,
-      gross_amount: input.grossAmount,
-    },
-    customer_details: {
-      first_name: input.customer.name,
-      email: input.customer.email,
-      phone: input.customer.phone,
-    },
-    bank_transfer: {
-      bank: input.bank,
-    },
-  })) as MidtransChargeResponse;
+  const customerDetails: {
+    first_name: string;
+    email?: string;
+    phone?: string;
+  } = {
+    first_name: input.customer.name || "OTA",
+  };
+
+  if (input.customer.email?.trim()) {
+    customerDetails.email = input.customer.email.trim();
+  }
+
+  if (input.customer.phone?.trim()) {
+    customerDetails.phone = input.customer.phone.trim();
+  }
+
+  let result: MidtransChargeResponse;
+  try {
+    result = (await coreApi.charge({
+      payment_type: "bank_transfer",
+      transaction_details: {
+        order_id: input.orderId,
+        gross_amount: input.grossAmount,
+      },
+      customer_details: customerDetails,
+      bank_transfer: {
+        bank: input.bank,
+      },
+    })) as MidtransChargeResponse;
+  } catch (error) {
+    const parsed = extractMidtransError(error);
+    throw Object.assign(new Error(parsed.message), {
+      name: "MidtransApiError",
+      statusCode: parsed.statusCode,
+      isNotFound: parsed.isNotFound,
+      cause: error,
+    });
+  }
 
   const vaNumber =
     result.va_numbers?.[0]?.va_number ?? result.permata_va_number ?? undefined;
@@ -118,13 +219,23 @@ export async function getMidtransTransactionStatus(input: {
   isProduction: boolean;
   orderId: string;
 }): Promise<MidtransStatusResponse> {
-  const coreApi = new midtransClient.CoreApi({
+  const coreApi = new midtrans.CoreApi({
     isProduction: input.isProduction,
     serverKey: input.serverKey,
     clientKey: "",
   });
 
-  return (await coreApi.transaction.status(input.orderId)) as MidtransStatusResponse;
+  try {
+    return (await coreApi.transaction.status(input.orderId)) as MidtransStatusResponse;
+  } catch (error) {
+    const parsed = extractMidtransError(error);
+    throw Object.assign(new Error(parsed.message), {
+      name: "MidtransApiError",
+      statusCode: parsed.statusCode,
+      isNotFound: parsed.isNotFound,
+      cause: error,
+    });
+  }
 }
 
 export async function cancelMidtransTransaction(input: {
@@ -132,11 +243,21 @@ export async function cancelMidtransTransaction(input: {
   isProduction: boolean;
   orderId: string;
 }): Promise<MidtransStatusResponse> {
-  const coreApi = new midtransClient.CoreApi({
+  const coreApi = new midtrans.CoreApi({
     isProduction: input.isProduction,
     serverKey: input.serverKey,
     clientKey: "",
   });
 
-  return (await coreApi.transaction.cancel(input.orderId)) as MidtransStatusResponse;
+  try {
+    return (await coreApi.transaction.cancel(input.orderId)) as MidtransStatusResponse;
+  } catch (error) {
+    const parsed = extractMidtransError(error);
+    throw Object.assign(new Error(parsed.message), {
+      name: "MidtransApiError",
+      statusCode: parsed.statusCode,
+      isNotFound: parsed.isNotFound,
+      cause: error,
+    });
+  }
 }
