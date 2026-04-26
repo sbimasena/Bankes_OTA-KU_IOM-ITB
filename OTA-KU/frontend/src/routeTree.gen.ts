@@ -14,12 +14,14 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as AppImport } from './routes/_app'
 import { Route as AppIndexImport } from './routes/_app/index'
 import { Route as AppVerifikasiAkunIndexImport } from './routes/_app/verifikasi-akun/index'
+import { Route as AppTestimoniIndexImport } from './routes/_app/testimoni/index'
 import { Route as AppStatusTransaksiIndexImport } from './routes/_app/status-transaksi/index'
 import { Route as AppProfileIndexImport } from './routes/_app/profile/index'
 import { Route as AppPersetujuanAsuhIndexImport } from './routes/_app/persetujuan-asuh/index'
 import { Route as AppPendaftaranIndexImport } from './routes/_app/pendaftaran/index'
 import { Route as AppPemasanganBotaIndexImport } from './routes/_app/pemasangan-bota/index'
 import { Route as AppOrangTuaAsuhSayaIndexImport } from './routes/_app/orang-tua-asuh-saya/index'
+import { Route as AppModerasiTestimoniIndexImport } from './routes/_app/moderasi-testimoni/index'
 import { Route as AppManajemenAkunIndexImport } from './routes/_app/manajemen-akun/index'
 import { Route as AppMahasiswaAsuhSayaIndexImport } from './routes/_app/mahasiswa-asuh-saya/index'
 import { Route as AppDataHubunganAsuhIndexImport } from './routes/_app/data-hubungan-asuh/index'
@@ -51,6 +53,12 @@ const AppIndexRoute = AppIndexImport.update({
 const AppVerifikasiAkunIndexRoute = AppVerifikasiAkunIndexImport.update({
   id: '/verifikasi-akun/',
   path: '/verifikasi-akun/',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppTestimoniIndexRoute = AppTestimoniIndexImport.update({
+  id: '/testimoni/',
+  path: '/testimoni/',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -87,6 +95,12 @@ const AppPemasanganBotaIndexRoute = AppPemasanganBotaIndexImport.update({
 const AppOrangTuaAsuhSayaIndexRoute = AppOrangTuaAsuhSayaIndexImport.update({
   id: '/orang-tua-asuh-saya/',
   path: '/orang-tua-asuh-saya/',
+  getParentRoute: () => AppRoute,
+} as any)
+
+const AppModerasiTestimoniIndexRoute = AppModerasiTestimoniIndexImport.update({
+  id: '/moderasi-testimoni/',
+  path: '/moderasi-testimoni/',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -247,6 +261,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppManajemenAkunIndexImport
       parentRoute: typeof AppImport
     }
+    '/_app/moderasi-testimoni/': {
+      id: '/_app/moderasi-testimoni/'
+      path: '/moderasi-testimoni'
+      fullPath: '/moderasi-testimoni'
+      preLoaderRoute: typeof AppModerasiTestimoniIndexImport
+      parentRoute: typeof AppImport
+    }
     '/_app/orang-tua-asuh-saya/': {
       id: '/_app/orang-tua-asuh-saya/'
       path: '/orang-tua-asuh-saya'
@@ -287,6 +308,13 @@ declare module '@tanstack/react-router' {
       path: '/status-transaksi'
       fullPath: '/status-transaksi'
       preLoaderRoute: typeof AppStatusTransaksiIndexImport
+      parentRoute: typeof AppImport
+    }
+    '/_app/testimoni/': {
+      id: '/_app/testimoni/'
+      path: '/testimoni'
+      fullPath: '/testimoni'
+      preLoaderRoute: typeof AppTestimoniIndexImport
       parentRoute: typeof AppImport
     }
     '/_app/verifikasi-akun/': {
@@ -359,12 +387,14 @@ interface AppRouteChildren {
   AppDataHubunganAsuhIndexRoute: typeof AppDataHubunganAsuhIndexRoute
   AppMahasiswaAsuhSayaIndexRoute: typeof AppMahasiswaAsuhSayaIndexRoute
   AppManajemenAkunIndexRoute: typeof AppManajemenAkunIndexRoute
+  AppModerasiTestimoniIndexRoute: typeof AppModerasiTestimoniIndexRoute
   AppOrangTuaAsuhSayaIndexRoute: typeof AppOrangTuaAsuhSayaIndexRoute
   AppPemasanganBotaIndexRoute: typeof AppPemasanganBotaIndexRoute
   AppPendaftaranIndexRoute: typeof AppPendaftaranIndexRoute
   AppPersetujuanAsuhIndexRoute: typeof AppPersetujuanAsuhIndexRoute
   AppProfileIndexRoute: typeof AppProfileIndexRoute
   AppStatusTransaksiIndexRoute: typeof AppStatusTransaksiIndexRoute
+  AppTestimoniIndexRoute: typeof AppTestimoniIndexRoute
   AppVerifikasiAkunIndexRoute: typeof AppVerifikasiAkunIndexRoute
   AppDetailMahasiswaDetailIdRoute: typeof AppDetailMahasiswaDetailIdRoute
   AppAuthLoginIndexRoute: typeof AppAuthLoginIndexRoute
@@ -384,12 +414,14 @@ const AppRouteChildren: AppRouteChildren = {
   AppDataHubunganAsuhIndexRoute: AppDataHubunganAsuhIndexRoute,
   AppMahasiswaAsuhSayaIndexRoute: AppMahasiswaAsuhSayaIndexRoute,
   AppManajemenAkunIndexRoute: AppManajemenAkunIndexRoute,
+  AppModerasiTestimoniIndexRoute: AppModerasiTestimoniIndexRoute,
   AppOrangTuaAsuhSayaIndexRoute: AppOrangTuaAsuhSayaIndexRoute,
   AppPemasanganBotaIndexRoute: AppPemasanganBotaIndexRoute,
   AppPendaftaranIndexRoute: AppPendaftaranIndexRoute,
   AppPersetujuanAsuhIndexRoute: AppPersetujuanAsuhIndexRoute,
   AppProfileIndexRoute: AppProfileIndexRoute,
   AppStatusTransaksiIndexRoute: AppStatusTransaksiIndexRoute,
+  AppTestimoniIndexRoute: AppTestimoniIndexRoute,
   AppVerifikasiAkunIndexRoute: AppVerifikasiAkunIndexRoute,
   AppDetailMahasiswaDetailIdRoute: AppDetailMahasiswaDetailIdRoute,
   AppAuthLoginIndexRoute: AppAuthLoginIndexRoute,
@@ -413,12 +445,14 @@ export interface FileRoutesByFullPath {
   '/data-hubungan-asuh': typeof AppDataHubunganAsuhIndexRoute
   '/mahasiswa-asuh-saya': typeof AppMahasiswaAsuhSayaIndexRoute
   '/manajemen-akun': typeof AppManajemenAkunIndexRoute
+  '/moderasi-testimoni': typeof AppModerasiTestimoniIndexRoute
   '/orang-tua-asuh-saya': typeof AppOrangTuaAsuhSayaIndexRoute
   '/pemasangan-bota': typeof AppPemasanganBotaIndexRoute
   '/pendaftaran': typeof AppPendaftaranIndexRoute
   '/persetujuan-asuh': typeof AppPersetujuanAsuhIndexRoute
   '/profile': typeof AppProfileIndexRoute
   '/status-transaksi': typeof AppStatusTransaksiIndexRoute
+  '/testimoni': typeof AppTestimoniIndexRoute
   '/verifikasi-akun': typeof AppVerifikasiAkunIndexRoute
   '/detail/mahasiswa/$detailId': typeof AppDetailMahasiswaDetailIdRoute
   '/auth/login': typeof AppAuthLoginIndexRoute
@@ -438,12 +472,14 @@ export interface FileRoutesByTo {
   '/data-hubungan-asuh': typeof AppDataHubunganAsuhIndexRoute
   '/mahasiswa-asuh-saya': typeof AppMahasiswaAsuhSayaIndexRoute
   '/manajemen-akun': typeof AppManajemenAkunIndexRoute
+  '/moderasi-testimoni': typeof AppModerasiTestimoniIndexRoute
   '/orang-tua-asuh-saya': typeof AppOrangTuaAsuhSayaIndexRoute
   '/pemasangan-bota': typeof AppPemasanganBotaIndexRoute
   '/pendaftaran': typeof AppPendaftaranIndexRoute
   '/persetujuan-asuh': typeof AppPersetujuanAsuhIndexRoute
   '/profile': typeof AppProfileIndexRoute
   '/status-transaksi': typeof AppStatusTransaksiIndexRoute
+  '/testimoni': typeof AppTestimoniIndexRoute
   '/verifikasi-akun': typeof AppVerifikasiAkunIndexRoute
   '/detail/mahasiswa/$detailId': typeof AppDetailMahasiswaDetailIdRoute
   '/auth/login': typeof AppAuthLoginIndexRoute
@@ -465,12 +501,14 @@ export interface FileRoutesById {
   '/_app/data-hubungan-asuh/': typeof AppDataHubunganAsuhIndexRoute
   '/_app/mahasiswa-asuh-saya/': typeof AppMahasiswaAsuhSayaIndexRoute
   '/_app/manajemen-akun/': typeof AppManajemenAkunIndexRoute
+  '/_app/moderasi-testimoni/': typeof AppModerasiTestimoniIndexRoute
   '/_app/orang-tua-asuh-saya/': typeof AppOrangTuaAsuhSayaIndexRoute
   '/_app/pemasangan-bota/': typeof AppPemasanganBotaIndexRoute
   '/_app/pendaftaran/': typeof AppPendaftaranIndexRoute
   '/_app/persetujuan-asuh/': typeof AppPersetujuanAsuhIndexRoute
   '/_app/profile/': typeof AppProfileIndexRoute
   '/_app/status-transaksi/': typeof AppStatusTransaksiIndexRoute
+  '/_app/testimoni/': typeof AppTestimoniIndexRoute
   '/_app/verifikasi-akun/': typeof AppVerifikasiAkunIndexRoute
   '/_app/detail/mahasiswa/$detailId': typeof AppDetailMahasiswaDetailIdRoute
   '/_app/auth/login/': typeof AppAuthLoginIndexRoute
@@ -493,12 +531,14 @@ export interface FileRouteTypes {
     | '/data-hubungan-asuh'
     | '/mahasiswa-asuh-saya'
     | '/manajemen-akun'
+    | '/moderasi-testimoni'
     | '/orang-tua-asuh-saya'
     | '/pemasangan-bota'
     | '/pendaftaran'
     | '/persetujuan-asuh'
     | '/profile'
     | '/status-transaksi'
+    | '/testimoni'
     | '/verifikasi-akun'
     | '/detail/mahasiswa/$detailId'
     | '/auth/login'
@@ -517,12 +557,14 @@ export interface FileRouteTypes {
     | '/data-hubungan-asuh'
     | '/mahasiswa-asuh-saya'
     | '/manajemen-akun'
+    | '/moderasi-testimoni'
     | '/orang-tua-asuh-saya'
     | '/pemasangan-bota'
     | '/pendaftaran'
     | '/persetujuan-asuh'
     | '/profile'
     | '/status-transaksi'
+    | '/testimoni'
     | '/verifikasi-akun'
     | '/detail/mahasiswa/$detailId'
     | '/auth/login'
@@ -542,12 +584,14 @@ export interface FileRouteTypes {
     | '/_app/data-hubungan-asuh/'
     | '/_app/mahasiswa-asuh-saya/'
     | '/_app/manajemen-akun/'
+    | '/_app/moderasi-testimoni/'
     | '/_app/orang-tua-asuh-saya/'
     | '/_app/pemasangan-bota/'
     | '/_app/pendaftaran/'
     | '/_app/persetujuan-asuh/'
     | '/_app/profile/'
     | '/_app/status-transaksi/'
+    | '/_app/testimoni/'
     | '/_app/verifikasi-akun/'
     | '/_app/detail/mahasiswa/$detailId'
     | '/_app/auth/login/'
@@ -591,12 +635,14 @@ export const routeTree = rootRoute
         "/_app/data-hubungan-asuh/",
         "/_app/mahasiswa-asuh-saya/",
         "/_app/manajemen-akun/",
+        "/_app/moderasi-testimoni/",
         "/_app/orang-tua-asuh-saya/",
         "/_app/pemasangan-bota/",
         "/_app/pendaftaran/",
         "/_app/persetujuan-asuh/",
         "/_app/profile/",
         "/_app/status-transaksi/",
+        "/_app/testimoni/",
         "/_app/verifikasi-akun/",
         "/_app/detail/mahasiswa/$detailId",
         "/_app/auth/login/",
@@ -639,6 +685,10 @@ export const routeTree = rootRoute
       "filePath": "_app/manajemen-akun/index.tsx",
       "parent": "/_app"
     },
+    "/_app/moderasi-testimoni/": {
+      "filePath": "_app/moderasi-testimoni/index.tsx",
+      "parent": "/_app"
+    },
     "/_app/orang-tua-asuh-saya/": {
       "filePath": "_app/orang-tua-asuh-saya/index.tsx",
       "parent": "/_app"
@@ -661,6 +711,10 @@ export const routeTree = rootRoute
     },
     "/_app/status-transaksi/": {
       "filePath": "_app/status-transaksi/index.tsx",
+      "parent": "/_app"
+    },
+    "/_app/testimoni/": {
+      "filePath": "_app/testimoni/index.tsx",
       "parent": "/_app"
     },
     "/_app/verifikasi-akun/": {

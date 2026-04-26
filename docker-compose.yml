@@ -81,7 +81,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/iom_ota_db
     command: >
-      sh -c " cd /workspace/prisma && npm install --quiet && echo '📦 Dependencies installed' && npx prisma generate && echo '⚙️  Prisma client generated' && npx prisma db push && echo '🗄️  Schema pushed' && npx prisma db seed && echo '🌱 Seed completed' "
+      sh -c " cd /workspace/prisma && npm install --quiet && echo '📦 Dependencies installed' && npx prisma generate && echo '⚙️  Prisma client generated' && npx prisma db execute --url $$DATABASE_URL --file ./scripts/prepush-testimonial-backfill.sql && echo '🧩 Legacy testimonial data backfilled' && npx prisma db push && echo '🗄️  Schema pushed' && npx prisma db seed && echo '🌱 Seed completed' "
     depends_on:
       postgres:
         condition: service_healthy

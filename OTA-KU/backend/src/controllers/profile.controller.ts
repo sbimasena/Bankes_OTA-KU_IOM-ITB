@@ -506,6 +506,21 @@ profileProtectedRouter.openapi(editProfileOrangTuaRoute, async (c) => {
   }
 
   try {
+    const parsedIsDetailVisible =
+      typeof isDetailVisible === "boolean"
+        ? isDetailVisible
+        : isDetailVisible === "true";
+    const parsedAllowAdminSelection =
+      typeof allowAdminSelection === "boolean"
+        ? allowAdminSelection
+        : allowAdminSelection === "true";
+    const responseIsDetailVisible: "true" | "false" = parsedIsDetailVisible
+      ? "true"
+      : "false";
+    const responseAllowAdminSelection: "true" | "false" = parsedAllowAdminSelection
+      ? "true"
+      : "false";
+
     await prisma.otaProfile.update({
       where: { userId: user.id },
       data: {
@@ -519,8 +534,8 @@ profileProtectedRouter.openapi(editProfileOrangTuaRoute, async (c) => {
         name,
         transferDate,
         startDate: startDate ? new Date(startDate) : undefined,
-        isDetailVisible: isDetailVisible === "true" || isDetailVisible === true,
-        allowAdminSelection: allowAdminSelection === "true" || allowAdminSelection === true,
+        isDetailVisible: parsedIsDetailVisible,
+        allowAdminSelection: parsedAllowAdminSelection,
       },
     });
 
@@ -539,8 +554,8 @@ profileProtectedRouter.openapi(editProfileOrangTuaRoute, async (c) => {
           maxSemester,
           startDate,
           transferDate,
-          isDetailVisible,
-          allowAdminSelection,
+          isDetailVisible: responseIsDetailVisible,
+          allowAdminSelection: responseAllowAdminSelection,
         },
       },
       200,

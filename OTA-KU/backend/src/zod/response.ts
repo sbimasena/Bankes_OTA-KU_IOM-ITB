@@ -17,3 +17,9 @@ export const ForbiddenResponse = z.object({
   message: z.string().openapi({ example: "Forbidden" }),
   error: z.object({}),
 });
+
+export const BadRequestResponse = z.object({
+  success: z.boolean().openapi({ example: false }),
+  message: z.string().openapi({ example: "Bad request" }),
+  error: z.object({}),
+});

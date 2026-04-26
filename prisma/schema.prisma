@@ -193,6 +193,12 @@ enum TransferStatus {
   unpaid
 }
 
+// [OTA] Status moderasi testimoni mahasiswa.
+enum TestimonialStatus {
+  pending
+  confirmed
+}
+
 // [BANKES] Kategori nilai wawancara.
 enum ScoreCategory {
   KURANG
@@ -236,6 +242,8 @@ model User {
   // OTA auth extras (OTP & forgot password — fitur baru untuk Bankes)
   OTPs               OTP[]
   TemporaryPasswords TemporaryPassword[]
+
+  ApprovedTestimonials Testimonial[] @relation("TestimonialApprover")
 
   @@map("users")
 }
@@ -282,6 +290,7 @@ model MahasiswaProfile {
   // OTA relations
   Connections  Connection[]  @relation("MahasiswaConnections")
   Transactions Transaction[] @relation("MahasiswaTransactions")
+  Testimonials Testimonial[]
 
   @@map("mahasiswa_profile")
 }
@@ -408,6 +417,32 @@ model Transaction {
   @@map("transaction")
 }
 
+// [OTA] Testimoni mahasiswa untuk ditampilkan di landing page.
+// Satu mahasiswa maksimal satu testimoni (bisa diupdate).
+model Testimonial {
+  id              String            @id @default(uuid()) @db.Uuid
+  mahasiswaId     String            @db.Uuid
+  periodId        Int
+  content         String
+  imageUrls       String[]
+  status          TestimonialStatus @default(pending)
+  isActive        Boolean           @default(false)
+  approvedById    String?           @db.Uuid
+  approvedAt      DateTime?
+  rejectedReason  String?
+  reviewedAt      DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  MahasiswaProfile MahasiswaProfile @relation(fields: [mahasiswaId], references: [userId], onDelete: Cascade)
+  Period           Period           @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  Approver         User?            @relation("TestimonialApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([mahasiswaId, periodId])
+  @@index([status, isActive, updatedAt])
+  @@map("testimonial")
+}
+
 // [OTA] One-time password untuk verifikasi email saat registrasi.
 model OTP {
   userId    String   @db.Uuid
@@ -450,6 +485,7 @@ model Period {
   BankesStatuses BankesStatus[]
   InterviewSlots InterviewSlot[]
   ScoreMatrices  ScoreMatrix[]
+  Testimonials   Testimonial[]
 
   @@map("period")
 }

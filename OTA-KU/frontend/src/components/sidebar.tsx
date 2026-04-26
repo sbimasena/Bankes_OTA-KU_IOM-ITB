@@ -59,6 +59,12 @@ const adminRoutes = [
     path: "/daftar-tagihan",
   },
   {
+    id: "moderasi-testimoni",
+    label: "Moderasi Testimoni",
+    icon: "/icon/Type=shield.svg",
+    path: "/moderasi-testimoni",
+  },
+  {
     id: "daftar-terminasi",
     label: "Daftar Terminasi",
     icon: "/icon/Type=remove-destructive.svg",
@@ -171,6 +177,12 @@ const getMenuItems = (role: string, applicationStatus?: string): MenuItem[] => {
           label: "Orang Tua Asuh Saya",
           icon: "/icon/Type=student-list.svg",
           path: "/orang-tua-asuh-saya",
+        },
+        {
+          id: "testimoni",
+          label: "Testimoni Saya",
+          icon: "/icon/Type=form.svg",
+          path: "/testimoni",
         },
       ];
     case "ota":
