@@ -78,7 +78,7 @@ const maybeActivateGroupByPledge = async (
   });
 
   const totalPledge = aggregate._sum.pledgeAmount ?? 0;
-  if (totalPledge > MIN_GROUP_CONTRIBUTION) {
+  if (totalPledge >= MIN_GROUP_CONTRIBUTION) {
     await tx.otaGroup.updateMany({
       where: { id: groupId, status: "forming" },
       data: { status: "active" },
@@ -361,6 +361,8 @@ groupProtectedRouter.openapi(joinOpenGroupRoute, async (c) => {
         pledgeAmount,
       },
     });
+
+    await maybeActivateGroupByPledge(prisma, groupId);
 
     return c.json(
       { success: true, message: "Berhasil bergabung ke grup" },
