@@ -119,6 +119,20 @@ export const MahasiswaSayaDetailResponse = z.object({
         example: "2025-03-30T09:40:05.508Z",
         description: "Timestamp when the mahasiswa was created",
       }),
+      testimonial: z
+        .string()
+        .nullable()
+        .openapi({
+          example: "Alhamdulillah, bantuan OTA sangat membantu biaya kuliah saya.",
+          description:
+            "Isi testimoni mahasiswa untuk OTA. Null jika testimoni belum dibuat",
+        }),
+      testimonialImages: z
+        .array(z.string().url())
+        .openapi({
+          example: ["https://example.com/testimonial-1.jpg"],
+          description: "Daftar URL foto testimoni mahasiswa untuk OTA",
+        }),
     })
     .openapi("MahasiswaSayaDetailResponse"),
 });

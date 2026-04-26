@@ -20,5 +20,13 @@ export type MahasiswaSayaDetailResponse = {
    * Timestamp when the mahasiswa was created
    */
   createdAt: string;
+  /**
+   * Isi testimoni mahasiswa untuk OTA. Null jika testimoni belum dibuat
+   */
+  testimonial: string | null;
+  /**
+   * Daftar URL foto testimoni mahasiswa untuk OTA
+   */
+  testimonialImages: Array<string>;
 };
 

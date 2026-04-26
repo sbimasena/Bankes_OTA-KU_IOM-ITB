@@ -149,6 +149,17 @@ detailProtectedRouter.openapi(getMahasiswaSayaDetailRoute, async (c) => {
 
     const profile = connection.MahasiswaProfile;
     const mahasiswaUser = profile.User;
+    const testimonial = await prisma.testimonial.findFirst({
+      where: {
+        mahasiswaId: id,
+        otaId: user.id,
+      },
+      select: {
+        content: true,
+        imageUrls: true,
+      },
+      orderBy: { updatedAt: "desc" },
+    });
 
     return c.json(
       {
@@ -169,6 +180,8 @@ detailProtectedRouter.openapi(getMahasiswaSayaDetailRoute, async (c) => {
           gpa: profile.gpa!,
           notes: profile.notes!,
           createdAt: profile.createdAt.toISOString(),
+          testimonial: testimonial?.content ?? null,
+          testimonialImages: testimonial?.imageUrls ?? [],
         },
       },
       200,
@@ -205,12 +218,22 @@ detailProtectedRouter.openapi(getMahasiswaDetailForOTARoute, async (c) => {
   }
 
   try {
-    const mahasiswaUser = await prisma.user.findFirst({
-      where: { id },
-      include: { MahasiswaProfile: true },
+    const connection = await prisma.connection.findFirst({
+      where: {
+        mahasiswaId: id,
+        otaId: user.id,
+        connectionStatus: "accepted",
+      },
+      include: {
+        MahasiswaProfile: {
+          include: {
+            User: true,
+          },
+        },
+      },
     });
 
-    if (!mahasiswaUser || !mahasiswaUser.MahasiswaProfile) {
+    if (!connection || !connection.MahasiswaProfile) {
       return c.json(
         {
           success: false,
@@ -224,7 +247,19 @@ detailProtectedRouter.openapi(getMahasiswaDetailForOTARoute, async (c) => {
       );
     }
 
-    const profile = mahasiswaUser.MahasiswaProfile;
+    const profile = connection.MahasiswaProfile;
+    const mahasiswaUser = profile.User;
+    const testimonial = await prisma.testimonial.findFirst({
+      where: {
+        mahasiswaId: id,
+        otaId: user.id,
+      },
+      select: {
+        content: true,
+        imageUrls: true,
+      },
+      orderBy: { updatedAt: "desc" },
+    });
 
     return c.json(
       {
@@ -245,6 +280,8 @@ detailProtectedRouter.openapi(getMahasiswaDetailForOTARoute, async (c) => {
           gpa: profile.gpa!,
           notes: profile.notes!,
           createdAt: profile.createdAt.toISOString(),
+          testimonial: testimonial?.content ?? null,
+          testimonialImages: testimonial?.imageUrls ?? [],
         },
       },
       200,
