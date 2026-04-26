@@ -6,6 +6,7 @@ import type {
   GroupDetail,
   GroupInvitation,
   GroupProposal,
+  MaOtaGroup,
   OtaGroup,
   PaginatedResponse,
   PendingConnection,
@@ -22,6 +23,14 @@ type ApiDataResponse<T> = ApiResponse<{ data: T }>;
 const request = api.request;
 
 export const groupService = {
+  getMaOtaGroups: async (): Promise<MaOtaGroup[]> => {
+    const response = await request.request<ApiDataResponse<MaOtaGroup[]>>({
+      method: "GET",
+      url: "/api/group/my-ota-group",
+    });
+    return response.body?.data ?? [];
+  },
+
   getMyGroups: async (): Promise<OtaGroup[]> => {
     const response = await request.request<ApiDataResponse<OtaGroup[]>>({
       method: "GET",

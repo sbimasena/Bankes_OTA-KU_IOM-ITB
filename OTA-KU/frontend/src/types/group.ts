@@ -98,6 +98,24 @@ export interface PaginatedResponse<T> {
   totalData: number;
 }
 
+export interface MaOtaGroupMember {
+  otaId: string;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  isDetailVisible: boolean;
+  pledgeAmount: number;
+  joinedAt: string;
+}
+
+export interface MaOtaGroup {
+  groupId: string;
+  groupName: string;
+  groupStatus: OtaGroupStatus;
+  transferDate: number | null;
+  members: MaOtaGroupMember[];
+}
+
 export interface AutoPairSuggestion {
   mahasiswaId: string;
   nim: string;

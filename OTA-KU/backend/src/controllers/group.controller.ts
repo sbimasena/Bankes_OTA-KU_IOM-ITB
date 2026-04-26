@@ -8,6 +8,7 @@ import {
   autoPairGroupRoute,
   connectGroupByAdminRoute,
   createGroupRoute,
+  getMaOtaGroupRoute,
   getGroupDetailRoute,
   inviteMemberRoute,
   listAllGroupConnectionsRoute,
@@ -238,6 +239,72 @@ groupProtectedRouter.openapi(listMyGroupsRoute, async (c) => {
           })),
         },
       },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// GET /group/my-ota-group (mahasiswa: lihat grup dari OTA yang mengasuh)
+groupProtectedRouter.openapi(getMaOtaGroupRoute, async (c) => {
+  const user = c.var.user;
+
+  if (user.type !== "mahasiswa") {
+    return c.json(
+      { success: false, message: "Forbidden", error: { code: "FORBIDDEN" } },
+      403,
+    );
+  }
+
+  try {
+    const connections = await prisma.groupConnection.findMany({
+      where: { mahasiswaId: user.id },
+      include: {
+        Group: {
+          include: {
+            Members: {
+              include: {
+                Ota: {
+                  select: {
+                    name: true,
+                    isDetailVisible: true,
+                    transferDate: true,
+                    createdAt: true,
+                    User: { select: { email: true, phoneNumber: true } },
+                  },
+                },
+              },
+              orderBy: { joinedAt: "asc" },
+            },
+          },
+        },
+      },
+    });
+
+    return c.json(
+      {
+        success: true,
+        message: "Grup orang tua asuh berhasil diambil",
+        body: {
+          data: connections.map((conn) => ({
+            groupId: conn.groupId,
+            groupName: conn.Group.name,
+            groupStatus: conn.Group.status,
+            transferDate: conn.Group.transferDate ?? null,
+            members: conn.Group.Members.map((m) => ({
+              otaId: m.otaId,
+              name: m.Ota.name ?? "-",
+              email: m.Ota.User.email,
+              phoneNumber: m.Ota.User.phoneNumber ?? "-",
+              isDetailVisible: m.Ota.isDetailVisible,
+              pledgeAmount: m.pledgeAmount,
+              joinedAt: m.joinedAt.toISOString(),
+            })),
+          })),
+        },
+      } as any,
       200,
     );
   } catch (error) {
