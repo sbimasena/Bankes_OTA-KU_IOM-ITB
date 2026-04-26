@@ -1,6 +1,12 @@
 import { api, queryClient } from "@/api/client";
 import { SearchInput } from "@/components/search-input";
 // import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -10,6 +16,7 @@ import { toast } from "sonner";
 function ModerasiTestimoniContent() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"shown" | "not_shown" | "">("");
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["moderationTestimonials", search, status],
@@ -119,12 +126,19 @@ function ModerasiTestimoniContent() {
               {item.images.length > 0 && (
                 <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
                   {item.images.map((src, idx) => (
-                    <img
+                    <button
                       key={`${src}-${idx}`}
-                      src={src}
-                      alt={`testimoni-${idx + 1}`}
-                      className="h-24 w-full rounded-md object-cover"
-                    />
+                      type="button"
+                      onClick={() => setSelectedImage(src)}
+                      className="focus-visible:ring-primary overflow-hidden rounded-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                      aria-label={`Buka foto testimoni ${idx + 1}`}
+                    >
+                      <img
+                        src={src}
+                        alt={`testimoni-${idx + 1}`}
+                        className="h-24 w-full object-cover transition-transform hover:scale-105"
+                      />
+                    </button>
                   ))}
                 </div>
               )}
@@ -136,6 +150,29 @@ function ModerasiTestimoniContent() {
           </div>
         )}
       </div>
+
+      <Dialog
+        open={Boolean(selectedImage)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedImage(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-auto p-3 sm:p-4">
+          <DialogTitle className="sr-only">Foto Testimoni</DialogTitle>
+          <DialogDescription className="sr-only">
+            Pratinjau foto testimoni dalam ukuran lebih besar.
+          </DialogDescription>
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              alt="foto-testimoni-preview"
+              className="max-h-[80vh] w-full rounded-md object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
