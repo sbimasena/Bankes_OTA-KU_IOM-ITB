@@ -216,6 +216,12 @@ enum ProposalStatus {
   rejected
 }
 
+// [OTA] Status moderasi testimoni mahasiswa.
+enum TestimonialStatus {
+  shown
+  not_shown
+}
+
 // [BANKES] Kategori nilai wawancara.
 enum ScoreCategory {
   KURANG
@@ -307,6 +313,7 @@ model MahasiswaProfile {
   // OTA relations
   Connections  Connection[]  @relation("MahasiswaConnections")
   Transactions Transaction[] @relation("MahasiswaTransactions")
+  Testimonials Testimonial[]
 
   GroupConnections  GroupConnection[]
   GroupTransactions GroupTransaction[]
@@ -376,6 +383,7 @@ model OtaProfile {
   User         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   Connections  Connection[]  @relation("OtaConnections")
   Transactions Transaction[] @relation("OtaTransactions")
+  Testimonials Testimonial[]
 
   GroupMemberships         OtaGroupMember[]
   SentInvitations          GroupInvitation[]          @relation("SentInvitations")
@@ -443,6 +451,27 @@ model Transaction {
   Connection       Connection       @relation(fields: [mahasiswaId, otaId], references: [mahasiswaId, otaId])
 
   @@map("transaction")
+}
+
+// [OTA] Testimoni mahasiswa untuk ditampilkan di landing page.
+// Satu mahasiswa maksimal satu testimoni (bisa diupdate).
+model Testimonial {
+  id              String            @id @default(uuid()) @db.Uuid
+  mahasiswaId     String            @db.Uuid
+  otaId           String            @db.Uuid
+  content         String
+  imageUrls       String[]
+  status          TestimonialStatus @default(not_shown)
+  isActive        Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  MahasiswaProfile MahasiswaProfile @relation(fields: [mahasiswaId], references: [userId], onDelete: Cascade)
+  OtaProfile       OtaProfile       @relation(fields: [otaId], references: [userId], onDelete: Cascade)
+  
+  @@unique([mahasiswaId])
+  @@index([status, isActive, updatedAt])
+  @@map("testimonial")
 }
 
 // [OTA] One-time password untuk verifikasi email saat registrasi.

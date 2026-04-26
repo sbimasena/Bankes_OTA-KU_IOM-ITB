@@ -186,6 +186,11 @@ enum ProposalStatus {
   rejected
 }
 
+enum TestimonialStatus {
+  shown
+  not_shown
+}
+
 enum ScoreCategory {
   KURANG
   CUKUP
@@ -261,6 +266,7 @@ model MahasiswaProfile {
 
   Connections  Connection[]  @relation("MahasiswaConnections")
   Transactions Transaction[] @relation("MahasiswaTransactions")
+  Testimonials Testimonial[]
 
   GroupConnections  GroupConnection[]
   GroupTransactions GroupTransaction[]
@@ -322,6 +328,7 @@ model OtaProfile {
   User         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   Connections  Connection[]  @relation("OtaConnections")
   Transactions Transaction[] @relation("OtaTransactions")
+  Testimonials Testimonial[]
 
   GroupMemberships         OtaGroupMember[]
   SentInvitations          GroupInvitation[]          @relation("SentInvitations")
@@ -384,6 +391,25 @@ model Transaction {
   Connection       Connection       @relation(fields: [mahasiswaId, otaId], references: [mahasiswaId, otaId])
 
   @@map("transaction")
+}
+
+model Testimonial {
+  id              String            @id @default(uuid()) @db.Uuid
+  mahasiswaId     String            @db.Uuid
+  otaId           String            @db.Uuid
+  content         String
+  imageUrls       String[]
+  status          TestimonialStatus @default(not_shown)
+  isActive        Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  MahasiswaProfile MahasiswaProfile @relation(fields: [mahasiswaId], references: [userId], onDelete: Cascade)
+  OtaProfile       OtaProfile       @relation(fields: [otaId], references: [userId], onDelete: Cascade)
+  
+  @@unique([mahasiswaId])
+  @@index([status, isActive, updatedAt])
+  @@map("testimonial")
 }
 
 model OTP {
