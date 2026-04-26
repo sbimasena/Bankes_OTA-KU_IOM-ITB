@@ -562,10 +562,7 @@ export const dailyReminderCron = new CronJob(
   "Asia/Jakarta",
 );
 
-// Runs daily at midnight (00:00) Jakarta time - 3 days before payment due date
-export const dailyReminder3DaysWhatsAppCron = new CronJob(
-  "0 0 * * *",
-  async () => {
+export async function runWhatsAppReminder3Days() {
     const now = new TZDate(new Date(), "Asia/Jakarta");
 
     const targetDate = addDays(now, 3);
@@ -628,7 +625,12 @@ export const dailyReminder3DaysWhatsAppCron = new CronJob(
         });
       }),
     );
-  },
+}
+
+// Runs daily at midnight (00:00) Jakarta time - 3 days before payment due date
+export const dailyReminder3DaysWhatsAppCron = new CronJob(
+  "0 0 * * *",
+  runWhatsAppReminder3Days,
   null,
   true,
   "Asia/Jakarta",
