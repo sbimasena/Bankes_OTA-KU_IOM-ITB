@@ -255,6 +255,34 @@ export const GroupConnectionListResponse = z.object({
   }),
 });
 
+// === Mahasiswa: OTA Group View ===
+
+export const MaOtaGroupResponse = z.object({
+  success: z.boolean().openapi({ example: true }),
+  message: z.string().openapi({ example: "Grup orang tua asuh berhasil diambil" }),
+  body: z.object({
+    data: z.array(
+      z.object({
+        groupId: z.string().uuid(),
+        groupName: z.string(),
+        groupStatus: z.enum(["forming", "active"]),
+        transferDate: z.number().nullable(),
+        members: z.array(
+          z.object({
+            otaId: z.string().uuid(),
+            name: z.string(),
+            email: z.string(),
+            phoneNumber: z.string(),
+            isDetailVisible: z.boolean(),
+            pledgeAmount: z.number(),
+            joinedAt: z.string().datetime(),
+          }),
+        ),
+      }),
+    ),
+  }),
+});
+
 // === Task 5: My Groups, My Invitations & Termination Schemas ===
 
 export const MyGroupListResponse = z.object({

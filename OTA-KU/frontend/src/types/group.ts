@@ -39,6 +39,8 @@ export interface GroupInvitation {
   groupName: string;
   groupStatus: OtaGroupStatus;
   invitedByName: string | null;
+  memberCount: number;
+  totalPledge: number;
   createdAt: string;
 }
 
@@ -96,6 +98,24 @@ export interface PendingConnection {
 export interface PaginatedResponse<T> {
   data: T[];
   totalData: number;
+}
+
+export interface MaOtaGroupMember {
+  otaId: string;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  isDetailVisible: boolean;
+  pledgeAmount: number;
+  joinedAt: string;
+}
+
+export interface MaOtaGroup {
+  groupId: string;
+  groupName: string;
+  groupStatus: OtaGroupStatus;
+  transferDate: number | null;
+  members: MaOtaGroupMember[];
 }
 
 export interface AutoPairSuggestion {

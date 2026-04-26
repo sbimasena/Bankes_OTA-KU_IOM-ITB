@@ -26,6 +26,7 @@ import {
   GroupVerifyMemberPaymentSchema,
   InvitationIdParamSchema,
   InviteMemberSchema,
+  MaOtaGroupResponse,
   MyGroupListResponse,
   MyInvitationListResponse,
   ProposalIdParamSchema,
@@ -528,6 +529,27 @@ export const connectGroupByAdminRoute = createRoute({
       description: "Grup atau mahasiswa tidak ditemukan",
       content: { "application/json": { schema: NotFoundResponse } },
     },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+// ── Mahasiswa: OTA Group View ────────────────────────────────────────────────
+
+export const getMaOtaGroupRoute = createRoute({
+  operationId: "getMaOtaGroup",
+  tags: ["Group"],
+  method: "get",
+  path: "/my-ota-group",
+  description: "Daftar grup OTA dari orang tua asuh mahasiswa yang sedang login.",
+  responses: {
+    200: {
+      description: "Grup orang tua asuh berhasil diambil",
+      content: { "application/json": { schema: MaOtaGroupResponse } },
+    },
+    401: AuthorizationErrorResponse,
     500: {
       description: "Internal server error",
       content: { "application/json": { schema: InternalServerErrorResponse } },
