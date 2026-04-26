@@ -160,6 +160,7 @@ groupProtectedRouter.openapi(listGroupsRoute, async (c) => {
               Connections: { where: { connectionStatus: "accepted" } },
             },
           },
+          Members: { select: { pledgeAmount: true } },
         },
         orderBy: { createdAt: "desc" },
         skip: offset,
@@ -179,6 +180,7 @@ groupProtectedRouter.openapi(listGroupsRoute, async (c) => {
             status: g.status,
             memberCount: g._count.Members,
             activeConnectionCount: g._count.Connections,
+            totalPledge: g.Members.reduce((sum, m) => sum + m.pledgeAmount, 0),
             createdAt: g.createdAt.toISOString(),
           })),
           totalData,
@@ -916,6 +918,7 @@ groupProtectedRouter.openapi(listProposalsRoute, async (c) => {
         Mahasiswa: { select: { name: true, nim: true } },
         ProposedBy: { select: { name: true } },
         Votes: { include: { Ota: { select: { name: true } } } },
+        Connection: { select: { connectionStatus: true } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -925,14 +928,19 @@ groupProtectedRouter.openapi(listProposalsRoute, async (c) => {
         success: true,
         message: "Daftar proposal berhasil diambil",
         body: {
-          data: proposals.map((p) => ({
+          data: proposals.map((p) => {
+            let effectiveStatus: string = p.status;
+            if (p.Connection?.connectionStatus === "accepted") effectiveStatus = "approved";
+            else if (p.Connection?.connectionStatus === "rejected") effectiveStatus = "rejected";
+
+            return {
             id: p.id,
             mahasiswaId: p.mahasiswaId,
             mahasiswaName: p.Mahasiswa.name ?? "",
             mahasiswaNim: p.Mahasiswa.nim,
             proposedById: p.proposedById,
             proposedByName: p.ProposedBy?.name ?? null,
-            status: p.status,
+            status: effectiveStatus,
             votes: p.Votes.map((v) => ({
               otaId: v.otaId,
               otaName: v.Ota.name ?? "",
@@ -942,7 +950,8 @@ groupProtectedRouter.openapi(listProposalsRoute, async (c) => {
             totalPledge: p.Votes.filter((v) => v.approve).reduce((s, v) => s + v.pledgeAmount, 0),
             memberCount: group._count.Members,
             createdAt: p.createdAt.toISOString(),
-          })),
+          };
+          }),
         },
       },
       200,
@@ -1178,12 +1187,10 @@ groupProtectedRouter.openapi(verifyGroupConnectionAccRoute, async (c) => {
     }
 
     // Tentukan kontribusi per anggota
+    const approvedVotes = groupConn.Proposal?.Votes.filter((v) => v.approve) ?? [];
     const contributions: { otaId: string; amount: number }[] =
-      groupConn.Proposal
-        ? groupConn.Proposal.Votes.filter((v) => v.approve).map((v) => ({
-          otaId: v.otaId,
-          amount: v.pledgeAmount,
-        }))
+      approvedVotes.length > 0
+        ? approvedVotes.map((v) => ({ otaId: v.otaId, amount: v.pledgeAmount }))
         : groupConn.Group.Members.map((m) => ({ otaId: m.otaId, amount: m.pledgeAmount }));
 
     if (contributions.length === 0) {
@@ -1206,6 +1213,13 @@ groupProtectedRouter.openapi(verifyGroupConnectionAccRoute, async (c) => {
         where: { id: groupConnectionId },
         data: { connectionStatus: "accepted" },
       });
+
+      if (groupConn.proposalId) {
+        await tx.groupStudentProposal.update({
+          where: { id: groupConn.proposalId },
+          data: { status: "approved" },
+        });
+      }
 
       await tx.groupMemberContribution.createMany({
         data: contributions.map((contrib) => ({

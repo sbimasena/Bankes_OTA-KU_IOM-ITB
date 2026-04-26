@@ -102,6 +102,7 @@ export const GroupListResponse = z.object({
         status: z.enum(["forming", "active"]),
         memberCount: z.number(),
         activeConnectionCount: z.number(),
+        totalPledge: z.number(),
         createdAt: z.string().datetime(),
       }),
     ),
