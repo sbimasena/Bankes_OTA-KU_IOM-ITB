@@ -81,8 +81,33 @@ function RouteComponent() {
         religion={data?.body.religion || "Islam"}
         notes={data?.body.notes || "-"}
         createdAt={data?.body.createdAt || "-"}
+        testimonial={data?.body.testimonial ?? null}
+        testimonialImages={data?.body.testimonialImages ?? []}
         id={data?.body.id || "-"}
       />
+
+      {/* Testimoni Mahasiswa */}
+      <div className="mt-6 grid grid-cols-1">
+        <Card className="gap-4 p-6">
+          <div className="flex items-center">
+            <FileText className="text-primary mr-2 h-5 w-5" />
+            <h3 className="text-lg font-semibold">Testimoni untuk OTA</h3>
+          </div>
+          <div className="text-gray-600">{data?.body.testimonial || "Belum ada testimoni dari mahasiswa."}</div>
+          {data?.body.testimonialImages && data.body.testimonialImages.length > 0 && (
+            <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
+              {data.body.testimonialImages.map((src, idx) => (
+                <img
+                  key={`${src}-${idx}`}
+                  src={src}
+                  alt={`foto-testimoni-${idx + 1}`}
+                  className="h-24 w-full rounded-md object-cover"
+                />
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
 
       {/* IOM Notes */}
       <div className="mt-6 grid grid-cols-1">
@@ -94,6 +119,7 @@ function RouteComponent() {
           <div className="text-gray-600">{data?.body.notes || "-"}</div>
         </Card>
       </div>
+      
     </main>
   );
 }
