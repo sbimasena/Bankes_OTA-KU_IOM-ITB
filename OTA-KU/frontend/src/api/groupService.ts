@@ -246,4 +246,11 @@ export const groupService = {
       mediaType: "multipart/form-data",
     });
   },
+
+  deleteGroup: async (groupId: string): Promise<ApiResponse<unknown>> => {
+    return request.request<ApiResponse<unknown>>({
+      method: "DELETE",
+      url: `/api/group/${groupId}`,
+    });
+  },
 };
