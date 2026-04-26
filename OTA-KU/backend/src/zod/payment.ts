@@ -66,3 +66,40 @@ export const MidtransWebhookResponse = z.object({
     })
     .optional(),
 });
+
+export const VerifyMidtransPaymentSchema = z.object({
+  transactionId: z
+    .string({
+      required_error: "ID transaksi harus diisi",
+      invalid_type_error: "ID transaksi harus berupa string",
+    })
+    .uuid({ message: "ID transaksi tidak valid" })
+    .openapi({
+      description: "ID transaksi OTA yang ingin disinkronkan status Midtrans-nya",
+      example: "123e4567-e89b-12d3-a456-426614174000",
+    }),
+});
+
+export const VerifyMidtransPaymentResponse = z.object({
+  success: z.boolean().openapi({ example: true }),
+  message: z.string().openapi({ example: "Status pembayaran berhasil disinkronkan" }),
+  body: z.object({
+    transactionId: z.string().uuid(),
+    orderId: z.string(),
+    status: z.enum(["unpaid", "pending", "paid"]),
+    paymentType: z.string().nullable(),
+  }),
+});
+
+export const CancelMidtransPaymentSchema = VerifyMidtransPaymentSchema;
+
+export const CancelMidtransPaymentResponse = z.object({
+  success: z.boolean().openapi({ example: true }),
+  message: z.string().openapi({ example: "Pembayaran berhasil dibatalkan" }),
+  body: z.object({
+    transactionId: z.string().uuid(),
+    orderId: z.string(),
+    status: z.enum(["unpaid", "pending", "paid"]),
+    paymentType: z.string().nullable(),
+  }),
+});

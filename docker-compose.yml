@@ -164,6 +164,11 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-placeholder}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-placeholder}
       TEST_EMAIL: ${TEST_EMAIL:-test@example.com}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-none}
+      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
+      MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY:-}
+      MIDTRANS_MERCHANT_ID: ${MIDTRANS_MERCHANT_ID:-}
+      MIDTRANS_IS_PRODUCTION: ${MIDTRANS_IS_PRODUCTION:-false}
       BACKEND_PORT: "3000"
     command: sh -c "npm install --quiet && npx prisma generate && npm run dev"
     depends_on:

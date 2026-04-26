@@ -12,7 +12,7 @@ const getStatusBadge = (status: string) => {
     case "pending":
       return (
         <Badge className="bg-yellow-100 text-yellow-800">
-          Menunggu Verifikasi
+          Menunggu Pembayaran
         </Badge>
       );
     case "unpaid":

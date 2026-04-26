@@ -24,6 +24,7 @@
     "env-cmd": "^10.1.0",
     "form-data": "^4.0.2",
     "hono": "^4.7.4",
+    "midtrans-client": "^1.4.3",
     "minio": "^8.0.5",
     "nodemailer": "^6.10.1",
     "uuid": "^11.1.0",
