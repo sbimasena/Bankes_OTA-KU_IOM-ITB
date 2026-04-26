@@ -310,8 +310,8 @@ export default function NavBar() {
                       )}
                     <MenubarItem
                       className="text-destructive hover:cursor-pointer"
-                      onClick={() => {
-                        api.auth.logout();
+                      onClick={async () => {
+                        await api.auth.logout();
                         localStorage.removeItem("state");
                         localStorage.removeItem("pendaftaran-ota");
                         localStorage.removeItem("pendaftaran-mahasiswa");
