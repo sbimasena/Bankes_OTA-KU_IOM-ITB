@@ -16,6 +16,9 @@ const EnvSchema = z.object({
   AZURE_CLIENT_ID: z.string(),
   AZURE_CLIENT_SECRET: z.string(),
   VITE_PUBLIC_URL: z.string().url(),
+  CLOUDINARY_CLOUD_NAME: z.string(),
+  CLOUDINARY_API_KEY: z.string(),
+  CLOUDINARY_API_SECRET: z.string(),
   MINIO_ENDPOINT: z.string().default("minio"),
   MINIO_PORT: z.coerce.number().default(9000),
   MINIO_USE_SSL: z
@@ -33,6 +36,16 @@ const EnvSchema = z.object({
   VAPID_PUBLIC_KEY: z.string(),
   VAPID_PRIVATE_KEY: z.string(),
   TEST_EMAIL: z.string().email(),
+  PAYMENT_PROVIDER: z.enum(["none", "midtrans"]).default("none"),
+  MIDTRANS_SERVER_KEY: z.string().default(""),
+  MIDTRANS_CLIENT_KEY: z.string().default(""),
+  MIDTRANS_MERCHANT_ID: z.string().default(""),
+  MIDTRANS_IS_PRODUCTION: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
+  WHATSAPP_API_URL: z.string().url().optional(),
+  WHATSAPP_API_KEY: z.string().optional(),
 });
 
 const result = EnvSchema.safeParse(process.env);

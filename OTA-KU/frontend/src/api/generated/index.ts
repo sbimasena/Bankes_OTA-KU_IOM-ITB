@@ -41,4 +41,5 @@ export { ProfileService } from './services/ProfileService';
 export { PushSubscriptionService } from './services/PushSubscriptionService';
 export { StatusService } from './services/StatusService';
 export { TerminateService } from './services/TerminateService';
+export { TestimonialService } from './services/TestimonialService';
 export { TransactionService } from './services/TransactionService';

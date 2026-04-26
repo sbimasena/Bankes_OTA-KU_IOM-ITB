@@ -8,6 +8,7 @@ import { prisma } from "../db/prisma.js";
 import { deadlineTransaksiEmail } from "../lib/email/deadline-transaksi.js";
 import { mahasiswaOutdatedEmail } from "../lib/email/mahasiswa-outdated.js";
 import { mahasiswaReapplyEmail } from "../lib/email/mahasiswa-reapply.js";
+import { sendWhatsApp } from "../lib/whatsapp.js";
 
 export const dailyReminder30DaysCron = new CronJob(
   "0 0 * * *",
@@ -556,6 +557,140 @@ export const dailyReminderCron = new CronJob(
       );
     }
   },
+  null,
+  true,
+  "Asia/Jakarta",
+);
+
+export async function runWhatsAppReminder3Days() {
+  const now = new TZDate(new Date(), "Asia/Jakarta");
+
+  const targetDate = addDays(now, 3);
+  const target = new TZDate(startOfDay(targetDate), "Asia/Jakarta");
+  const targetEnd = new TZDate(addDays(target, 1), "Asia/Jakarta");
+
+  console.log(
+    "[whatsapp-cron] Running H-3 payment reminder for dueDate between",
+    target.toISOString(),
+    "and",
+    targetEnd.toISOString(),
+  );
+
+  // Individual transactions 
+  const dueTransactions = await prisma.transaction.findMany({
+    where: {
+      dueDate: { gte: target, lt: targetEnd },
+      transactionStatus: "unpaid",
+    },
+    include: {
+      OtaProfile: { include: { User: true } },
+      MahasiswaProfile: true,
+    },
+  });
+
+  console.log("[whatsapp-cron] Individual transactions due in 3 days:", dueTransactions.length);
+
+  await Promise.allSettled(
+    dueTransactions.map(async (transaction) => {
+      const phoneNumber = transaction.OtaProfile?.User?.phoneNumber;
+      const otaName = transaction.OtaProfile?.name ?? "Orang Tua Asuh";
+      const mahasiswaName = transaction.MahasiswaProfile?.name ?? "mahasiswa asuh";
+
+      if (!phoneNumber) {
+        console.warn(`[whatsapp-cron] OTA ${transaction.otaId} has no phone number, skipping.`);
+        return;
+      }
+
+      const dueDateStr = transaction.dueDate.toLocaleDateString("id-ID", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      const message =
+        `Yth. ${otaName},\n\n` +
+        `Ini adalah pengingat bahwa tagihan pembayaran bantuan untuk ${mahasiswaName} ` +
+        `sebesar Rp${Number(transaction.bill).toLocaleString("id-ID")} akan jatuh tempo pada ${dueDateStr} ` +
+        `(3 hari lagi).\n\n` +
+        `Mohon segera lakukan pembayaran melalui platform OTA-KU.\n\nTerima kasih.`;
+
+      try {
+        await sendWhatsApp({
+          to: phoneNumber,
+          message,
+          clientReference: `trx-ota-${transaction.id}`,
+          idempotencyKey: `payment-reminder-${transaction.id}`,
+        });
+      } catch (err) {
+        console.error(`[whatsapp-cron] Failed to send WA to ${phoneNumber}:`, err);
+      }
+    }),
+  );
+
+  // Group transactions 
+
+  const dueGroupTransactions = await prisma.groupTransaction.findMany({
+    where: {
+      dueDate: { gte: target, lt: targetEnd },
+      transactionStatus: "unpaid",
+    },
+    include: {
+      Mahasiswa: true,
+      MemberPayments: {
+        where: { paymentStatus: "unpaid" },
+        include: {
+          Ota: { include: { User: true } },
+        },
+      },
+    },
+  });
+
+  console.log("[whatsapp-cron] Group transactions due in 3 days:", dueGroupTransactions.length);
+
+  await Promise.allSettled(
+    dueGroupTransactions.flatMap((groupTx) =>
+      groupTx.MemberPayments.map(async (memberPayment) => {
+        const phoneNumber = memberPayment.Ota?.User?.phoneNumber;
+        const otaName = memberPayment.Ota?.name ?? "Orang Tua Asuh";
+        const mahasiswaName = groupTx.Mahasiswa?.name ?? "mahasiswa asuh";
+
+        if (!phoneNumber) {
+          console.warn(`[whatsapp-cron] Group OTA ${memberPayment.otaId} has no phone number, skipping.`);
+          return;
+        }
+
+        const dueDateStr = groupTx.dueDate.toLocaleDateString("id-ID", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        const message =
+          `Yth. ${otaName},\n\n` +
+          `Ini adalah pengingat bahwa tagihan pembayaran bantuan kelompok untuk ${mahasiswaName} ` +
+          `sebesar Rp${Number(memberPayment.expectedAmount).toLocaleString("id-ID")} akan jatuh tempo pada ${dueDateStr} ` +
+          `(3 hari lagi).\n\n` +
+          `Mohon segera lakukan pembayaran melalui platform OTA-KU.\n\nTerima kasih.`;
+
+        try {
+          await sendWhatsApp({
+            to: phoneNumber,
+            message,
+            clientReference: `grp-trx-${groupTx.id}-ota-${memberPayment.otaId}`,
+            idempotencyKey: `group-payment-reminder-${groupTx.id}-${memberPayment.otaId}`,
+          });
+        } catch (err) {
+          console.error(`[whatsapp-cron] Failed to send group WA to ${phoneNumber}:`, err);
+        }
+      }),
+    ),
+  );
+}
+
+// Runs daily at midnight (00:00) Jakarta time - 3 days before payment due date
+export const dailyReminder3DaysWhatsAppCron = new CronJob(
+  "0 0 * * *",
+  runWhatsAppReminder3Days,
   null,
   true,
   "Asia/Jakarta",

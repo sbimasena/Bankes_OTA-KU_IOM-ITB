@@ -8,363 +8,573 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppVerifikasiAkunIndexRouteImport } from './routes/_app/verifikasi-akun/index'
+import { Route as AppStatusTransaksiIndexRouteImport } from './routes/_app/status-transaksi/index'
+import { Route as AppProfileIndexRouteImport } from './routes/_app/profile/index'
+import { Route as AppPersetujuanAsuhIndexRouteImport } from './routes/_app/persetujuan-asuh/index'
+import { Route as AppPendaftaranIndexRouteImport } from './routes/_app/pendaftaran/index'
+import { Route as AppPemasanganBotaIndexRouteImport } from './routes/_app/pemasangan-bota/index'
+import { Route as AppOrangTuaAsuhSayaIndexRouteImport } from './routes/_app/orang-tua-asuh-saya/index'
+import { Route as AppManajemenAkunIndexRouteImport } from './routes/_app/manajemen-akun/index'
+import { Route as AppMahasiswaAsuhSayaIndexRouteImport } from './routes/_app/mahasiswa-asuh-saya/index'
+import { Route as AppGroupsIndexRouteImport } from './routes/_app/groups/index'
+import { Route as AppDataHubunganAsuhIndexRouteImport } from './routes/_app/data-hubungan-asuh/index'
+import { Route as AppDaftarTransferMahasiswaIndexRouteImport } from './routes/_app/daftar-transfer-mahasiswa/index'
+import { Route as AppDaftarTerminasiIndexRouteImport } from './routes/_app/daftar-terminasi/index'
+import { Route as AppDaftarTagihanIndexRouteImport } from './routes/_app/daftar-tagihan/index'
+import { Route as AppCariMahasiswaIndexRouteImport } from './routes/_app/cari-mahasiswa/index'
+import { Route as AppGroupsGroupIdRouteImport } from './routes/_app/groups/$groupId'
+import { Route as AppTestimoniIndexRouteImport } from './routes/_app/testimoni/index'
+import { Route as AppModerasiTestimoniIndexRouteImport } from './routes/_app/moderasi-testimoni/index'
+import { Route as AppDaftarTerminasiMahasiswaIndexRouteImport } from './routes/_app/daftar/terminasi-mahasiswa/index'
+import { Route as AppAuthRegisterIndexRouteImport } from './routes/_app/auth/register/index'
+import { Route as AppAuthOtpVerificationIndexRouteImport } from './routes/_app/auth/otp-verification/index'
+import { Route as AppAuthLupaPasswordIndexRouteImport } from './routes/_app/auth/lupa-password/index'
+import { Route as AppAuthLoginIndexRouteImport } from './routes/_app/auth/login/index'
+import { Route as AppDetailMahasiswaDetailIdRouteImport } from './routes/_app/detail/mahasiswa/$detailId'
+import { Route as AppIntegrationsAzureKeyVaultOauth2CallbackIndexRouteImport } from './routes/_app/integrations/azure-key-vault/oauth2/callback/index'
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as AppImport } from './routes/_app'
-import { Route as AppIndexImport } from './routes/_app/index'
-import { Route as AppVerifikasiAkunIndexImport } from './routes/_app/verifikasi-akun/index'
-import { Route as AppStatusTransaksiIndexImport } from './routes/_app/status-transaksi/index'
-import { Route as AppProfileIndexImport } from './routes/_app/profile/index'
-import { Route as AppPersetujuanAsuhIndexImport } from './routes/_app/persetujuan-asuh/index'
-import { Route as AppPendaftaranIndexImport } from './routes/_app/pendaftaran/index'
-import { Route as AppPemasanganBotaIndexImport } from './routes/_app/pemasangan-bota/index'
-import { Route as AppOrangTuaAsuhSayaIndexImport } from './routes/_app/orang-tua-asuh-saya/index'
-import { Route as AppManajemenAkunIndexImport } from './routes/_app/manajemen-akun/index'
-import { Route as AppMahasiswaAsuhSayaIndexImport } from './routes/_app/mahasiswa-asuh-saya/index'
-import { Route as AppDataHubunganAsuhIndexImport } from './routes/_app/data-hubungan-asuh/index'
-import { Route as AppDaftarTransferMahasiswaIndexImport } from './routes/_app/daftar-transfer-mahasiswa/index'
-import { Route as AppDaftarTerminasiIndexImport } from './routes/_app/daftar-terminasi/index'
-import { Route as AppDaftarTagihanIndexImport } from './routes/_app/daftar-tagihan/index'
-import { Route as AppCariMahasiswaIndexImport } from './routes/_app/cari-mahasiswa/index'
-import { Route as AppDaftarTerminasiMahasiswaIndexImport } from './routes/_app/daftar/terminasi-mahasiswa/index'
-import { Route as AppAuthRegisterIndexImport } from './routes/_app/auth/register/index'
-import { Route as AppAuthOtpVerificationIndexImport } from './routes/_app/auth/otp-verification/index'
-import { Route as AppAuthLupaPasswordIndexImport } from './routes/_app/auth/lupa-password/index'
-import { Route as AppAuthLoginIndexImport } from './routes/_app/auth/login/index'
-import { Route as AppDetailMahasiswaDetailIdImport } from './routes/_app/detail/mahasiswa/$detailId'
-import { Route as AppIntegrationsAzureKeyVaultOauth2CallbackIndexImport } from './routes/_app/integrations/azure-key-vault/oauth2/callback/index'
-
-// Create/Update Routes
-
-const AppRoute = AppImport.update({
+const AppRoute = AppRouteImport.update({
   id: '/_app',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AppIndexRoute = AppIndexImport.update({
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-
-const AppVerifikasiAkunIndexRoute = AppVerifikasiAkunIndexImport.update({
+const AppVerifikasiAkunIndexRoute = AppVerifikasiAkunIndexRouteImport.update({
   id: '/verifikasi-akun/',
   path: '/verifikasi-akun/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTestimoniIndexRoute = AppTestimoniIndexRouteImport.update({
+  id: '/testimoni/',
+  path: '/testimoni/',
+  getParentRoute: () => AppRoute,
+} as any)
 
-const AppStatusTransaksiIndexRoute = AppStatusTransaksiIndexImport.update({
+const AppStatusTransaksiIndexRoute = AppStatusTransaksiIndexRouteImport.update({
   id: '/status-transaksi/',
   path: '/status-transaksi/',
   getParentRoute: () => AppRoute,
 } as any)
-
-const AppProfileIndexRoute = AppProfileIndexImport.update({
+const AppProfileIndexRoute = AppProfileIndexRouteImport.update({
   id: '/profile/',
   path: '/profile/',
   getParentRoute: () => AppRoute,
 } as any)
-
-const AppPersetujuanAsuhIndexRoute = AppPersetujuanAsuhIndexImport.update({
+const AppPersetujuanAsuhIndexRoute = AppPersetujuanAsuhIndexRouteImport.update({
   id: '/persetujuan-asuh/',
   path: '/persetujuan-asuh/',
   getParentRoute: () => AppRoute,
 } as any)
-
-const AppPendaftaranIndexRoute = AppPendaftaranIndexImport.update({
+const AppPendaftaranIndexRoute = AppPendaftaranIndexRouteImport.update({
   id: '/pendaftaran/',
   path: '/pendaftaran/',
   getParentRoute: () => AppRoute,
 } as any)
-
-const AppPemasanganBotaIndexRoute = AppPemasanganBotaIndexImport.update({
+const AppPemasanganBotaIndexRoute = AppPemasanganBotaIndexRouteImport.update({
   id: '/pemasangan-bota/',
   path: '/pemasangan-bota/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOrangTuaAsuhSayaIndexRoute =
+  AppOrangTuaAsuhSayaIndexRouteImport.update({
+    id: '/orang-tua-asuh-saya/',
+    path: '/orang-tua-asuh-saya/',
+    getParentRoute: () => AppRoute,
+  } as any)
 
-const AppOrangTuaAsuhSayaIndexRoute = AppOrangTuaAsuhSayaIndexImport.update({
-  id: '/orang-tua-asuh-saya/',
-  path: '/orang-tua-asuh-saya/',
+const AppModerasiTestimoniIndexRoute = AppModerasiTestimoniIndexRouteImport.update({
+  id: '/moderasi-testimoni/',
+  path: '/moderasi-testimoni/',
   getParentRoute: () => AppRoute,
 } as any)
 
-const AppManajemenAkunIndexRoute = AppManajemenAkunIndexImport.update({
+const AppManajemenAkunIndexRoute = AppManajemenAkunIndexRouteImport.update({
   id: '/manajemen-akun/',
   path: '/manajemen-akun/',
   getParentRoute: () => AppRoute,
 } as any)
-
-const AppMahasiswaAsuhSayaIndexRoute = AppMahasiswaAsuhSayaIndexImport.update({
-  id: '/mahasiswa-asuh-saya/',
-  path: '/mahasiswa-asuh-saya/',
+const AppMahasiswaAsuhSayaIndexRoute =
+  AppMahasiswaAsuhSayaIndexRouteImport.update({
+    id: '/mahasiswa-asuh-saya/',
+    path: '/mahasiswa-asuh-saya/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppGroupsIndexRoute = AppGroupsIndexRouteImport.update({
+  id: '/groups/',
+  path: '/groups/',
   getParentRoute: () => AppRoute,
 } as any)
-
-const AppDataHubunganAsuhIndexRoute = AppDataHubunganAsuhIndexImport.update({
-  id: '/data-hubungan-asuh/',
-  path: '/data-hubungan-asuh/',
-  getParentRoute: () => AppRoute,
-} as any)
-
+const AppDataHubunganAsuhIndexRoute =
+  AppDataHubunganAsuhIndexRouteImport.update({
+    id: '/data-hubungan-asuh/',
+    path: '/data-hubungan-asuh/',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppDaftarTransferMahasiswaIndexRoute =
-  AppDaftarTransferMahasiswaIndexImport.update({
+  AppDaftarTransferMahasiswaIndexRouteImport.update({
     id: '/daftar-transfer-mahasiswa/',
     path: '/daftar-transfer-mahasiswa/',
     getParentRoute: () => AppRoute,
   } as any)
-
-const AppDaftarTerminasiIndexRoute = AppDaftarTerminasiIndexImport.update({
+const AppDaftarTerminasiIndexRoute = AppDaftarTerminasiIndexRouteImport.update({
   id: '/daftar-terminasi/',
   path: '/daftar-terminasi/',
   getParentRoute: () => AppRoute,
 } as any)
-
-const AppDaftarTagihanIndexRoute = AppDaftarTagihanIndexImport.update({
+const AppDaftarTagihanIndexRoute = AppDaftarTagihanIndexRouteImport.update({
   id: '/daftar-tagihan/',
   path: '/daftar-tagihan/',
   getParentRoute: () => AppRoute,
 } as any)
-
-const AppCariMahasiswaIndexRoute = AppCariMahasiswaIndexImport.update({
+const AppCariMahasiswaIndexRoute = AppCariMahasiswaIndexRouteImport.update({
   id: '/cari-mahasiswa/',
   path: '/cari-mahasiswa/',
   getParentRoute: () => AppRoute,
 } as any)
-
+const AppGroupsGroupIdRoute = AppGroupsGroupIdRouteImport.update({
+  id: '/groups/$groupId',
+  path: '/groups/$groupId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDaftarTerminasiMahasiswaIndexRoute =
-  AppDaftarTerminasiMahasiswaIndexImport.update({
+  AppDaftarTerminasiMahasiswaIndexRouteImport.update({
     id: '/daftar/terminasi-mahasiswa/',
     path: '/daftar/terminasi-mahasiswa/',
     getParentRoute: () => AppRoute,
   } as any)
-
-const AppAuthRegisterIndexRoute = AppAuthRegisterIndexImport.update({
+const AppAuthRegisterIndexRoute = AppAuthRegisterIndexRouteImport.update({
   id: '/auth/register/',
   path: '/auth/register/',
   getParentRoute: () => AppRoute,
 } as any)
-
 const AppAuthOtpVerificationIndexRoute =
-  AppAuthOtpVerificationIndexImport.update({
+  AppAuthOtpVerificationIndexRouteImport.update({
     id: '/auth/otp-verification/',
     path: '/auth/otp-verification/',
     getParentRoute: () => AppRoute,
   } as any)
-
-const AppAuthLupaPasswordIndexRoute = AppAuthLupaPasswordIndexImport.update({
-  id: '/auth/lupa-password/',
-  path: '/auth/lupa-password/',
-  getParentRoute: () => AppRoute,
-} as any)
-
-const AppAuthLoginIndexRoute = AppAuthLoginIndexImport.update({
+const AppAuthLupaPasswordIndexRoute =
+  AppAuthLupaPasswordIndexRouteImport.update({
+    id: '/auth/lupa-password/',
+    path: '/auth/lupa-password/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAuthLoginIndexRoute = AppAuthLoginIndexRouteImport.update({
   id: '/auth/login/',
   path: '/auth/login/',
   getParentRoute: () => AppRoute,
 } as any)
-
-const AppDetailMahasiswaDetailIdRoute = AppDetailMahasiswaDetailIdImport.update(
-  {
+const AppDetailMahasiswaDetailIdRoute =
+  AppDetailMahasiswaDetailIdRouteImport.update({
     id: '/detail/mahasiswa/$detailId',
     path: '/detail/mahasiswa/$detailId',
     getParentRoute: () => AppRoute,
-  } as any,
-)
-
+  } as any)
 const AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute =
-  AppIntegrationsAzureKeyVaultOauth2CallbackIndexImport.update({
+  AppIntegrationsAzureKeyVaultOauth2CallbackIndexRouteImport.update({
     id: '/integrations/azure-key-vault/oauth2/callback/',
     path: '/integrations/azure-key-vault/oauth2/callback/',
     getParentRoute: () => AppRoute,
   } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/': typeof AppIndexRoute
+  '/groups/$groupId': typeof AppGroupsGroupIdRoute
+  '/cari-mahasiswa/': typeof AppCariMahasiswaIndexRoute
+  '/daftar-tagihan/': typeof AppDaftarTagihanIndexRoute
+  '/daftar-terminasi/': typeof AppDaftarTerminasiIndexRoute
+  '/daftar-transfer-mahasiswa/': typeof AppDaftarTransferMahasiswaIndexRoute
+  '/data-hubungan-asuh/': typeof AppDataHubunganAsuhIndexRoute
+  '/groups/': typeof AppGroupsIndexRoute
+  '/mahasiswa-asuh-saya/': typeof AppMahasiswaAsuhSayaIndexRoute
+  '/manajemen-akun/': typeof AppManajemenAkunIndexRoute
+  '/moderasi-testimoni/': typeof AppModerasiTestimoniIndexRoute
+  '/orang-tua-asuh-saya/': typeof AppOrangTuaAsuhSayaIndexRoute
+  '/pemasangan-bota/': typeof AppPemasanganBotaIndexRoute
+  '/pendaftaran/': typeof AppPendaftaranIndexRoute
+  '/persetujuan-asuh/': typeof AppPersetujuanAsuhIndexRoute
+  '/profile/': typeof AppProfileIndexRoute
+  '/status-transaksi/': typeof AppStatusTransaksiIndexRoute
+  '/testimoni/': typeof AppTestimoniIndexRoute
+  '/verifikasi-akun/': typeof AppVerifikasiAkunIndexRoute
+  '/detail/mahasiswa/$detailId': typeof AppDetailMahasiswaDetailIdRoute
+  '/auth/login/': typeof AppAuthLoginIndexRoute
+  '/auth/lupa-password/': typeof AppAuthLupaPasswordIndexRoute
+  '/auth/otp-verification/': typeof AppAuthOtpVerificationIndexRoute
+  '/auth/register/': typeof AppAuthRegisterIndexRoute
+  '/daftar/terminasi-mahasiswa/': typeof AppDaftarTerminasiMahasiswaIndexRoute
+  '/integrations/azure-key-vault/oauth2/callback/': typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof AppIndexRoute
+  '/groups/$groupId': typeof AppGroupsGroupIdRoute
+  '/cari-mahasiswa': typeof AppCariMahasiswaIndexRoute
+  '/daftar-tagihan': typeof AppDaftarTagihanIndexRoute
+  '/daftar-terminasi': typeof AppDaftarTerminasiIndexRoute
+  '/daftar-transfer-mahasiswa': typeof AppDaftarTransferMahasiswaIndexRoute
+  '/data-hubungan-asuh': typeof AppDataHubunganAsuhIndexRoute
+  '/groups': typeof AppGroupsIndexRoute
+  '/mahasiswa-asuh-saya': typeof AppMahasiswaAsuhSayaIndexRoute
+  '/manajemen-akun': typeof AppManajemenAkunIndexRoute
+  '/moderasi-testimoni': typeof AppModerasiTestimoniIndexRoute
+  '/orang-tua-asuh-saya': typeof AppOrangTuaAsuhSayaIndexRoute
+  '/pemasangan-bota': typeof AppPemasanganBotaIndexRoute
+  '/pendaftaran': typeof AppPendaftaranIndexRoute
+  '/persetujuan-asuh': typeof AppPersetujuanAsuhIndexRoute
+  '/profile': typeof AppProfileIndexRoute
+  '/status-transaksi': typeof AppStatusTransaksiIndexRoute
+  '/testimoni': typeof AppTestimoniIndexRoute
+  '/verifikasi-akun': typeof AppVerifikasiAkunIndexRoute
+  '/detail/mahasiswa/$detailId': typeof AppDetailMahasiswaDetailIdRoute
+  '/auth/login': typeof AppAuthLoginIndexRoute
+  '/auth/lupa-password': typeof AppAuthLupaPasswordIndexRoute
+  '/auth/otp-verification': typeof AppAuthOtpVerificationIndexRoute
+  '/auth/register': typeof AppAuthRegisterIndexRoute
+  '/daftar/terminasi-mahasiswa': typeof AppDaftarTerminasiMahasiswaIndexRoute
+  '/integrations/azure-key-vault/oauth2/callback': typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/_app': typeof AppRouteWithChildren
+  '/_app/': typeof AppIndexRoute
+  '/_app/groups/$groupId': typeof AppGroupsGroupIdRoute
+  '/_app/cari-mahasiswa/': typeof AppCariMahasiswaIndexRoute
+  '/_app/daftar-tagihan/': typeof AppDaftarTagihanIndexRoute
+  '/_app/daftar-terminasi/': typeof AppDaftarTerminasiIndexRoute
+  '/_app/daftar-transfer-mahasiswa/': typeof AppDaftarTransferMahasiswaIndexRoute
+  '/_app/data-hubungan-asuh/': typeof AppDataHubunganAsuhIndexRoute
+  '/_app/groups/': typeof AppGroupsIndexRoute
+  '/_app/mahasiswa-asuh-saya/': typeof AppMahasiswaAsuhSayaIndexRoute
+  '/_app/manajemen-akun/': typeof AppManajemenAkunIndexRoute
+  '/_app/moderasi-testimoni/': typeof AppModerasiTestimoniIndexRoute
+  '/_app/orang-tua-asuh-saya/': typeof AppOrangTuaAsuhSayaIndexRoute
+  '/_app/pemasangan-bota/': typeof AppPemasanganBotaIndexRoute
+  '/_app/pendaftaran/': typeof AppPendaftaranIndexRoute
+  '/_app/persetujuan-asuh/': typeof AppPersetujuanAsuhIndexRoute
+  '/_app/profile/': typeof AppProfileIndexRoute
+  '/_app/status-transaksi/': typeof AppStatusTransaksiIndexRoute
+  '/_app/testimoni/': typeof AppTestimoniIndexRoute
+  '/_app/verifikasi-akun/': typeof AppVerifikasiAkunIndexRoute
+  '/_app/detail/mahasiswa/$detailId': typeof AppDetailMahasiswaDetailIdRoute
+  '/_app/auth/login/': typeof AppAuthLoginIndexRoute
+  '/_app/auth/lupa-password/': typeof AppAuthLupaPasswordIndexRoute
+  '/_app/auth/otp-verification/': typeof AppAuthOtpVerificationIndexRoute
+  '/_app/auth/register/': typeof AppAuthRegisterIndexRoute
+  '/_app/daftar/terminasi-mahasiswa/': typeof AppDaftarTerminasiMahasiswaIndexRoute
+  '/_app/integrations/azure-key-vault/oauth2/callback/': typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/groups/$groupId'
+    | '/cari-mahasiswa/'
+    | '/daftar-tagihan/'
+    | '/daftar-terminasi/'
+    | '/daftar-transfer-mahasiswa/'
+    | '/data-hubungan-asuh/'
+    | '/groups/'
+    | '/mahasiswa-asuh-saya/'
+    | '/manajemen-akun/'
+    | '/moderasi-testimoni/'
+    | '/orang-tua-asuh-saya/'
+    | '/pemasangan-bota/'
+    | '/pendaftaran/'
+    | '/persetujuan-asuh/'
+    | '/profile/'
+    | '/status-transaksi/'
+    | '/testimoni/'
+    | '/verifikasi-akun/'
+    | '/detail/mahasiswa/$detailId'
+    | '/auth/login/'
+    | '/auth/lupa-password/'
+    | '/auth/otp-verification/'
+    | '/auth/register/'
+    | '/daftar/terminasi-mahasiswa/'
+    | '/integrations/azure-key-vault/oauth2/callback/'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/groups/$groupId'
+    | '/cari-mahasiswa'
+    | '/daftar-tagihan'
+    | '/daftar-terminasi'
+    | '/daftar-transfer-mahasiswa'
+    | '/data-hubungan-asuh'
+    | '/groups'
+    | '/mahasiswa-asuh-saya'
+    | '/manajemen-akun'
+    | '/moderasi-testimoni'
+    | '/orang-tua-asuh-saya'
+    | '/pemasangan-bota'
+    | '/pendaftaran'
+    | '/persetujuan-asuh'
+    | '/profile'
+    | '/status-transaksi'
+    | '/testimoni'
+    | '/verifikasi-akun'
+    | '/detail/mahasiswa/$detailId'
+    | '/auth/login'
+    | '/auth/lupa-password'
+    | '/auth/otp-verification'
+    | '/auth/register'
+    | '/daftar/terminasi-mahasiswa'
+    | '/integrations/azure-key-vault/oauth2/callback'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/_app/'
+    | '/_app/groups/$groupId'
+    | '/_app/cari-mahasiswa/'
+    | '/_app/daftar-tagihan/'
+    | '/_app/daftar-terminasi/'
+    | '/_app/daftar-transfer-mahasiswa/'
+    | '/_app/data-hubungan-asuh/'
+    | '/_app/groups/'
+    | '/_app/mahasiswa-asuh-saya/'
+    | '/_app/manajemen-akun/'
+    | '/_app/moderasi-testimoni/'
+    | '/_app/orang-tua-asuh-saya/'
+    | '/_app/pemasangan-bota/'
+    | '/_app/pendaftaran/'
+    | '/_app/persetujuan-asuh/'
+    | '/_app/profile/'
+    | '/_app/status-transaksi/'
+    | '/_app/testimoni/'
+    | '/_app/verifikasi-akun/'
+    | '/_app/detail/mahasiswa/$detailId'
+    | '/_app/auth/login/'
+    | '/_app/auth/lupa-password/'
+    | '/_app/auth/otp-verification/'
+    | '/_app/auth/register/'
+    | '/_app/daftar/terminasi-mahasiswa/'
+    | '/_app/integrations/azure-key-vault/oauth2/callback/'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  AppRoute: typeof AppRouteWithChildren
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/_app': {
       id: '/_app'
       path: ''
-      fullPath: ''
-      preLoaderRoute: typeof AppImport
-      parentRoute: typeof rootRoute
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/': {
       id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof AppIndexImport
-      parentRoute: typeof AppImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/_app/cari-mahasiswa/': {
-      id: '/_app/cari-mahasiswa/'
-      path: '/cari-mahasiswa'
-      fullPath: '/cari-mahasiswa'
-      preLoaderRoute: typeof AppCariMahasiswaIndexImport
-      parentRoute: typeof AppImport
+    '/_app/testimoni/': {
+      id: '/_app/testimoni/'
+      path: '/testimoni'
+      fullPath: '/testimoni/'
+      preLoaderRoute: typeof AppTestimoniIndexRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/_app/daftar-tagihan/': {
-      id: '/_app/daftar-tagihan/'
-      path: '/daftar-tagihan'
-      fullPath: '/daftar-tagihan'
-      preLoaderRoute: typeof AppDaftarTagihanIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/daftar-terminasi/': {
-      id: '/_app/daftar-terminasi/'
-      path: '/daftar-terminasi'
-      fullPath: '/daftar-terminasi'
-      preLoaderRoute: typeof AppDaftarTerminasiIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/daftar-transfer-mahasiswa/': {
-      id: '/_app/daftar-transfer-mahasiswa/'
-      path: '/daftar-transfer-mahasiswa'
-      fullPath: '/daftar-transfer-mahasiswa'
-      preLoaderRoute: typeof AppDaftarTransferMahasiswaIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/data-hubungan-asuh/': {
-      id: '/_app/data-hubungan-asuh/'
-      path: '/data-hubungan-asuh'
-      fullPath: '/data-hubungan-asuh'
-      preLoaderRoute: typeof AppDataHubunganAsuhIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/mahasiswa-asuh-saya/': {
-      id: '/_app/mahasiswa-asuh-saya/'
-      path: '/mahasiswa-asuh-saya'
-      fullPath: '/mahasiswa-asuh-saya'
-      preLoaderRoute: typeof AppMahasiswaAsuhSayaIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/manajemen-akun/': {
-      id: '/_app/manajemen-akun/'
-      path: '/manajemen-akun'
-      fullPath: '/manajemen-akun'
-      preLoaderRoute: typeof AppManajemenAkunIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/orang-tua-asuh-saya/': {
-      id: '/_app/orang-tua-asuh-saya/'
-      path: '/orang-tua-asuh-saya'
-      fullPath: '/orang-tua-asuh-saya'
-      preLoaderRoute: typeof AppOrangTuaAsuhSayaIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/pemasangan-bota/': {
-      id: '/_app/pemasangan-bota/'
-      path: '/pemasangan-bota'
-      fullPath: '/pemasangan-bota'
-      preLoaderRoute: typeof AppPemasanganBotaIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/pendaftaran/': {
-      id: '/_app/pendaftaran/'
-      path: '/pendaftaran'
-      fullPath: '/pendaftaran'
-      preLoaderRoute: typeof AppPendaftaranIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/persetujuan-asuh/': {
-      id: '/_app/persetujuan-asuh/'
-      path: '/persetujuan-asuh'
-      fullPath: '/persetujuan-asuh'
-      preLoaderRoute: typeof AppPersetujuanAsuhIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/profile/': {
-      id: '/_app/profile/'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AppProfileIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/status-transaksi/': {
-      id: '/_app/status-transaksi/'
-      path: '/status-transaksi'
-      fullPath: '/status-transaksi'
-      preLoaderRoute: typeof AppStatusTransaksiIndexImport
-      parentRoute: typeof AppImport
+    '/_app/moderasi-testimoni/': {
+      id: '/_app/moderasi-testimoni/'
+      path: '/moderasi-testimoni'
+      fullPath: '/moderasi-testimoni/'
+      preLoaderRoute: typeof AppModerasiTestimoniIndexRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/verifikasi-akun/': {
       id: '/_app/verifikasi-akun/'
       path: '/verifikasi-akun'
-      fullPath: '/verifikasi-akun'
-      preLoaderRoute: typeof AppVerifikasiAkunIndexImport
-      parentRoute: typeof AppImport
+      fullPath: '/verifikasi-akun/'
+      preLoaderRoute: typeof AppVerifikasiAkunIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/status-transaksi/': {
+      id: '/_app/status-transaksi/'
+      path: '/status-transaksi'
+      fullPath: '/status-transaksi/'
+      preLoaderRoute: typeof AppStatusTransaksiIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/profile/': {
+      id: '/_app/profile/'
+      path: '/profile'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof AppProfileIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/persetujuan-asuh/': {
+      id: '/_app/persetujuan-asuh/'
+      path: '/persetujuan-asuh'
+      fullPath: '/persetujuan-asuh/'
+      preLoaderRoute: typeof AppPersetujuanAsuhIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pendaftaran/': {
+      id: '/_app/pendaftaran/'
+      path: '/pendaftaran'
+      fullPath: '/pendaftaran/'
+      preLoaderRoute: typeof AppPendaftaranIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pemasangan-bota/': {
+      id: '/_app/pemasangan-bota/'
+      path: '/pemasangan-bota'
+      fullPath: '/pemasangan-bota/'
+      preLoaderRoute: typeof AppPemasanganBotaIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/orang-tua-asuh-saya/': {
+      id: '/_app/orang-tua-asuh-saya/'
+      path: '/orang-tua-asuh-saya'
+      fullPath: '/orang-tua-asuh-saya/'
+      preLoaderRoute: typeof AppOrangTuaAsuhSayaIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/manajemen-akun/': {
+      id: '/_app/manajemen-akun/'
+      path: '/manajemen-akun'
+      fullPath: '/manajemen-akun/'
+      preLoaderRoute: typeof AppManajemenAkunIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/mahasiswa-asuh-saya/': {
+      id: '/_app/mahasiswa-asuh-saya/'
+      path: '/mahasiswa-asuh-saya'
+      fullPath: '/mahasiswa-asuh-saya/'
+      preLoaderRoute: typeof AppMahasiswaAsuhSayaIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/groups/': {
+      id: '/_app/groups/'
+      path: '/groups'
+      fullPath: '/groups/'
+      preLoaderRoute: typeof AppGroupsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/data-hubungan-asuh/': {
+      id: '/_app/data-hubungan-asuh/'
+      path: '/data-hubungan-asuh'
+      fullPath: '/data-hubungan-asuh/'
+      preLoaderRoute: typeof AppDataHubunganAsuhIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/daftar-transfer-mahasiswa/': {
+      id: '/_app/daftar-transfer-mahasiswa/'
+      path: '/daftar-transfer-mahasiswa'
+      fullPath: '/daftar-transfer-mahasiswa/'
+      preLoaderRoute: typeof AppDaftarTransferMahasiswaIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/daftar-terminasi/': {
+      id: '/_app/daftar-terminasi/'
+      path: '/daftar-terminasi'
+      fullPath: '/daftar-terminasi/'
+      preLoaderRoute: typeof AppDaftarTerminasiIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/daftar-tagihan/': {
+      id: '/_app/daftar-tagihan/'
+      path: '/daftar-tagihan'
+      fullPath: '/daftar-tagihan/'
+      preLoaderRoute: typeof AppDaftarTagihanIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/cari-mahasiswa/': {
+      id: '/_app/cari-mahasiswa/'
+      path: '/cari-mahasiswa'
+      fullPath: '/cari-mahasiswa/'
+      preLoaderRoute: typeof AppCariMahasiswaIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/groups/$groupId': {
+      id: '/_app/groups/$groupId'
+      path: '/groups/$groupId'
+      fullPath: '/groups/$groupId'
+      preLoaderRoute: typeof AppGroupsGroupIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/daftar/terminasi-mahasiswa/': {
+      id: '/_app/daftar/terminasi-mahasiswa/'
+      path: '/daftar/terminasi-mahasiswa'
+      fullPath: '/daftar/terminasi-mahasiswa/'
+      preLoaderRoute: typeof AppDaftarTerminasiMahasiswaIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/auth/register/': {
+      id: '/_app/auth/register/'
+      path: '/auth/register'
+      fullPath: '/auth/register/'
+      preLoaderRoute: typeof AppAuthRegisterIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/auth/otp-verification/': {
+      id: '/_app/auth/otp-verification/'
+      path: '/auth/otp-verification'
+      fullPath: '/auth/otp-verification/'
+      preLoaderRoute: typeof AppAuthOtpVerificationIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/auth/lupa-password/': {
+      id: '/_app/auth/lupa-password/'
+      path: '/auth/lupa-password'
+      fullPath: '/auth/lupa-password/'
+      preLoaderRoute: typeof AppAuthLupaPasswordIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/auth/login/': {
+      id: '/_app/auth/login/'
+      path: '/auth/login'
+      fullPath: '/auth/login/'
+      preLoaderRoute: typeof AppAuthLoginIndexRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/detail/mahasiswa/$detailId': {
       id: '/_app/detail/mahasiswa/$detailId'
       path: '/detail/mahasiswa/$detailId'
       fullPath: '/detail/mahasiswa/$detailId'
-      preLoaderRoute: typeof AppDetailMahasiswaDetailIdImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/auth/login/': {
-      id: '/_app/auth/login/'
-      path: '/auth/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AppAuthLoginIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/auth/lupa-password/': {
-      id: '/_app/auth/lupa-password/'
-      path: '/auth/lupa-password'
-      fullPath: '/auth/lupa-password'
-      preLoaderRoute: typeof AppAuthLupaPasswordIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/auth/otp-verification/': {
-      id: '/_app/auth/otp-verification/'
-      path: '/auth/otp-verification'
-      fullPath: '/auth/otp-verification'
-      preLoaderRoute: typeof AppAuthOtpVerificationIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/auth/register/': {
-      id: '/_app/auth/register/'
-      path: '/auth/register'
-      fullPath: '/auth/register'
-      preLoaderRoute: typeof AppAuthRegisterIndexImport
-      parentRoute: typeof AppImport
-    }
-    '/_app/daftar/terminasi-mahasiswa/': {
-      id: '/_app/daftar/terminasi-mahasiswa/'
-      path: '/daftar/terminasi-mahasiswa'
-      fullPath: '/daftar/terminasi-mahasiswa'
-      preLoaderRoute: typeof AppDaftarTerminasiMahasiswaIndexImport
-      parentRoute: typeof AppImport
+      preLoaderRoute: typeof AppDetailMahasiswaDetailIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/integrations/azure-key-vault/oauth2/callback/': {
       id: '/_app/integrations/azure-key-vault/oauth2/callback/'
       path: '/integrations/azure-key-vault/oauth2/callback'
-      fullPath: '/integrations/azure-key-vault/oauth2/callback'
-      preLoaderRoute: typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexImport
-      parentRoute: typeof AppImport
+      fullPath: '/integrations/azure-key-vault/oauth2/callback/'
+      preLoaderRoute: typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
-// Create and export the route tree
-
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
+  AppGroupsGroupIdRoute: typeof AppGroupsGroupIdRoute
   AppCariMahasiswaIndexRoute: typeof AppCariMahasiswaIndexRoute
   AppDaftarTagihanIndexRoute: typeof AppDaftarTagihanIndexRoute
   AppDaftarTerminasiIndexRoute: typeof AppDaftarTerminasiIndexRoute
   AppDaftarTransferMahasiswaIndexRoute: typeof AppDaftarTransferMahasiswaIndexRoute
   AppDataHubunganAsuhIndexRoute: typeof AppDataHubunganAsuhIndexRoute
+  AppGroupsIndexRoute: typeof AppGroupsIndexRoute
   AppMahasiswaAsuhSayaIndexRoute: typeof AppMahasiswaAsuhSayaIndexRoute
   AppManajemenAkunIndexRoute: typeof AppManajemenAkunIndexRoute
+  AppModerasiTestimoniIndexRoute: typeof AppModerasiTestimoniIndexRoute
   AppOrangTuaAsuhSayaIndexRoute: typeof AppOrangTuaAsuhSayaIndexRoute
   AppPemasanganBotaIndexRoute: typeof AppPemasanganBotaIndexRoute
   AppPendaftaranIndexRoute: typeof AppPendaftaranIndexRoute
   AppPersetujuanAsuhIndexRoute: typeof AppPersetujuanAsuhIndexRoute
   AppProfileIndexRoute: typeof AppProfileIndexRoute
   AppStatusTransaksiIndexRoute: typeof AppStatusTransaksiIndexRoute
+  AppTestimoniIndexRoute: typeof AppTestimoniIndexRoute
   AppVerifikasiAkunIndexRoute: typeof AppVerifikasiAkunIndexRoute
   AppDetailMahasiswaDetailIdRoute: typeof AppDetailMahasiswaDetailIdRoute
   AppAuthLoginIndexRoute: typeof AppAuthLoginIndexRoute
@@ -377,19 +587,23 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
+  AppGroupsGroupIdRoute: AppGroupsGroupIdRoute,
   AppCariMahasiswaIndexRoute: AppCariMahasiswaIndexRoute,
   AppDaftarTagihanIndexRoute: AppDaftarTagihanIndexRoute,
   AppDaftarTerminasiIndexRoute: AppDaftarTerminasiIndexRoute,
   AppDaftarTransferMahasiswaIndexRoute: AppDaftarTransferMahasiswaIndexRoute,
   AppDataHubunganAsuhIndexRoute: AppDataHubunganAsuhIndexRoute,
+  AppGroupsIndexRoute: AppGroupsIndexRoute,
   AppMahasiswaAsuhSayaIndexRoute: AppMahasiswaAsuhSayaIndexRoute,
   AppManajemenAkunIndexRoute: AppManajemenAkunIndexRoute,
+  AppModerasiTestimoniIndexRoute: AppModerasiTestimoniIndexRoute,
   AppOrangTuaAsuhSayaIndexRoute: AppOrangTuaAsuhSayaIndexRoute,
   AppPemasanganBotaIndexRoute: AppPemasanganBotaIndexRoute,
   AppPendaftaranIndexRoute: AppPendaftaranIndexRoute,
   AppPersetujuanAsuhIndexRoute: AppPersetujuanAsuhIndexRoute,
   AppProfileIndexRoute: AppProfileIndexRoute,
   AppStatusTransaksiIndexRoute: AppStatusTransaksiIndexRoute,
+  AppTestimoniIndexRoute: AppTestimoniIndexRoute,
   AppVerifikasiAkunIndexRoute: AppVerifikasiAkunIndexRoute,
   AppDetailMahasiswaDetailIdRoute: AppDetailMahasiswaDetailIdRoute,
   AppAuthLoginIndexRoute: AppAuthLoginIndexRoute,
@@ -413,12 +627,14 @@ export interface FileRoutesByFullPath {
   '/data-hubungan-asuh': typeof AppDataHubunganAsuhIndexRoute
   '/mahasiswa-asuh-saya': typeof AppMahasiswaAsuhSayaIndexRoute
   '/manajemen-akun': typeof AppManajemenAkunIndexRoute
+  '/moderasi-testimoni': typeof AppModerasiTestimoniIndexRoute
   '/orang-tua-asuh-saya': typeof AppOrangTuaAsuhSayaIndexRoute
   '/pemasangan-bota': typeof AppPemasanganBotaIndexRoute
   '/pendaftaran': typeof AppPendaftaranIndexRoute
   '/persetujuan-asuh': typeof AppPersetujuanAsuhIndexRoute
   '/profile': typeof AppProfileIndexRoute
   '/status-transaksi': typeof AppStatusTransaksiIndexRoute
+  '/testimoni': typeof AppTestimoniIndexRoute
   '/verifikasi-akun': typeof AppVerifikasiAkunIndexRoute
   '/detail/mahasiswa/$detailId': typeof AppDetailMahasiswaDetailIdRoute
   '/auth/login': typeof AppAuthLoginIndexRoute
@@ -438,12 +654,14 @@ export interface FileRoutesByTo {
   '/data-hubungan-asuh': typeof AppDataHubunganAsuhIndexRoute
   '/mahasiswa-asuh-saya': typeof AppMahasiswaAsuhSayaIndexRoute
   '/manajemen-akun': typeof AppManajemenAkunIndexRoute
+  '/moderasi-testimoni': typeof AppModerasiTestimoniIndexRoute
   '/orang-tua-asuh-saya': typeof AppOrangTuaAsuhSayaIndexRoute
   '/pemasangan-bota': typeof AppPemasanganBotaIndexRoute
   '/pendaftaran': typeof AppPendaftaranIndexRoute
   '/persetujuan-asuh': typeof AppPersetujuanAsuhIndexRoute
   '/profile': typeof AppProfileIndexRoute
   '/status-transaksi': typeof AppStatusTransaksiIndexRoute
+  '/testimoni': typeof AppTestimoniIndexRoute
   '/verifikasi-akun': typeof AppVerifikasiAkunIndexRoute
   '/detail/mahasiswa/$detailId': typeof AppDetailMahasiswaDetailIdRoute
   '/auth/login': typeof AppAuthLoginIndexRoute
@@ -465,12 +683,14 @@ export interface FileRoutesById {
   '/_app/data-hubungan-asuh/': typeof AppDataHubunganAsuhIndexRoute
   '/_app/mahasiswa-asuh-saya/': typeof AppMahasiswaAsuhSayaIndexRoute
   '/_app/manajemen-akun/': typeof AppManajemenAkunIndexRoute
+  '/_app/moderasi-testimoni/': typeof AppModerasiTestimoniIndexRoute
   '/_app/orang-tua-asuh-saya/': typeof AppOrangTuaAsuhSayaIndexRoute
   '/_app/pemasangan-bota/': typeof AppPemasanganBotaIndexRoute
   '/_app/pendaftaran/': typeof AppPendaftaranIndexRoute
   '/_app/persetujuan-asuh/': typeof AppPersetujuanAsuhIndexRoute
   '/_app/profile/': typeof AppProfileIndexRoute
   '/_app/status-transaksi/': typeof AppStatusTransaksiIndexRoute
+  '/_app/testimoni/': typeof AppTestimoniIndexRoute
   '/_app/verifikasi-akun/': typeof AppVerifikasiAkunIndexRoute
   '/_app/detail/mahasiswa/$detailId': typeof AppDetailMahasiswaDetailIdRoute
   '/_app/auth/login/': typeof AppAuthLoginIndexRoute
@@ -493,12 +713,14 @@ export interface FileRouteTypes {
     | '/data-hubungan-asuh'
     | '/mahasiswa-asuh-saya'
     | '/manajemen-akun'
+    | '/moderasi-testimoni'
     | '/orang-tua-asuh-saya'
     | '/pemasangan-bota'
     | '/pendaftaran'
     | '/persetujuan-asuh'
     | '/profile'
     | '/status-transaksi'
+    | '/testimoni'
     | '/verifikasi-akun'
     | '/detail/mahasiswa/$detailId'
     | '/auth/login'
@@ -517,12 +739,14 @@ export interface FileRouteTypes {
     | '/data-hubungan-asuh'
     | '/mahasiswa-asuh-saya'
     | '/manajemen-akun'
+    | '/moderasi-testimoni'
     | '/orang-tua-asuh-saya'
     | '/pemasangan-bota'
     | '/pendaftaran'
     | '/persetujuan-asuh'
     | '/profile'
     | '/status-transaksi'
+    | '/testimoni'
     | '/verifikasi-akun'
     | '/detail/mahasiswa/$detailId'
     | '/auth/login'
@@ -542,12 +766,14 @@ export interface FileRouteTypes {
     | '/_app/data-hubungan-asuh/'
     | '/_app/mahasiswa-asuh-saya/'
     | '/_app/manajemen-akun/'
+    | '/_app/moderasi-testimoni/'
     | '/_app/orang-tua-asuh-saya/'
     | '/_app/pemasangan-bota/'
     | '/_app/pendaftaran/'
     | '/_app/persetujuan-asuh/'
     | '/_app/profile/'
     | '/_app/status-transaksi/'
+    | '/_app/testimoni/'
     | '/_app/verifikasi-akun/'
     | '/_app/detail/mahasiswa/$detailId'
     | '/_app/auth/login/'
@@ -566,8 +792,7 @@ export interface RootRouteChildren {
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
@@ -584,6 +809,8 @@ export const routeTree = rootRoute
       "filePath": "_app.tsx",
       "children": [
         "/_app/",
+        "/_app/groups/",
+        "/_app/groups/$groupId",
         "/_app/cari-mahasiswa/",
         "/_app/daftar-tagihan/",
         "/_app/daftar-terminasi/",
@@ -591,12 +818,14 @@ export const routeTree = rootRoute
         "/_app/data-hubungan-asuh/",
         "/_app/mahasiswa-asuh-saya/",
         "/_app/manajemen-akun/",
+        "/_app/moderasi-testimoni/",
         "/_app/orang-tua-asuh-saya/",
         "/_app/pemasangan-bota/",
         "/_app/pendaftaran/",
         "/_app/persetujuan-asuh/",
         "/_app/profile/",
         "/_app/status-transaksi/",
+        "/_app/testimoni/",
         "/_app/verifikasi-akun/",
         "/_app/detail/mahasiswa/$detailId",
         "/_app/auth/login/",
@@ -606,6 +835,14 @@ export const routeTree = rootRoute
         "/_app/daftar/terminasi-mahasiswa/",
         "/_app/integrations/azure-key-vault/oauth2/callback/"
       ]
+    },
+    "/_app/groups/": {
+      "filePath": "_app/groups/index.tsx",
+      "parent": "/_app"
+    },
+    "/_app/groups/$groupId": {
+      "filePath": "_app/groups/$groupId.tsx",
+      "parent": "/_app"
     },
     "/_app/": {
       "filePath": "_app/index.tsx",
@@ -639,6 +876,10 @@ export const routeTree = rootRoute
       "filePath": "_app/manajemen-akun/index.tsx",
       "parent": "/_app"
     },
+    "/_app/moderasi-testimoni/": {
+      "filePath": "_app/moderasi-testimoni/index.tsx",
+      "parent": "/_app"
+    },
     "/_app/orang-tua-asuh-saya/": {
       "filePath": "_app/orang-tua-asuh-saya/index.tsx",
       "parent": "/_app"
@@ -661,6 +902,10 @@ export const routeTree = rootRoute
     },
     "/_app/status-transaksi/": {
       "filePath": "_app/status-transaksi/index.tsx",
+      "parent": "/_app"
+    },
+    "/_app/testimoni/": {
+      "filePath": "_app/testimoni/index.tsx",
       "parent": "/_app"
     },
     "/_app/verifikasi-akun/": {

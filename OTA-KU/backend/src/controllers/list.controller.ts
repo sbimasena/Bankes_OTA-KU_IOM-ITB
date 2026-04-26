@@ -635,54 +635,103 @@ listProtectedRouter.openapi(listMAActiveRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const where: Record<string, unknown> = {
-      otaId,
-      connectionStatus: "accepted",
-    };
-    if (q) {
-      where.MahasiswaProfile = {
-        OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { nim: { contains: q, mode: "insensitive" } },
-        ],
-      };
-    }
+    const nameFilter = q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" as const } },
+            { nim: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : undefined;
 
-    const [mahasiswaList, totalCount] = await Promise.all([
+    const [individualConns, groupConns] = await Promise.all([
       prisma.connection.findMany({
-        where,
-        take: LIST_PAGE_SIZE,
-        skip: offset,
+        where: {
+          otaId,
+          connectionStatus: "accepted",
+          ...(nameFilter ? { MahasiswaProfile: nameFilter } : {}),
+        },
         include: { MahasiswaProfile: true },
       }),
-      prisma.connection.count({ where }),
+      prisma.groupConnection.findMany({
+        where: {
+          connectionStatus: "accepted",
+          Group: { Members: { some: { otaId } } },
+          ...(nameFilter ? { Mahasiswa: nameFilter } : {}),
+        },
+        include: { Mahasiswa: true },
+      }),
     ]);
+
+    type MaEntry = {
+      accountId: string;
+      name: string;
+      nim: string;
+      major: string;
+      faculty: string;
+      cityOfOrigin: string;
+      highschoolAlumni: string;
+      gender: "M" | "F";
+      religion: "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu";
+      mahasiswaStatus: "active" | "inactive";
+      gpa: string;
+      request_term_ota: boolean;
+      request_term_ma: boolean;
+    };
+
+    const seen = new Set<string>();
+    const merged: MaEntry[] = [];
+
+    for (const conn of individualConns) {
+      const mp = conn.MahasiswaProfile;
+      if (seen.has(mp.userId)) continue;
+      seen.add(mp.userId);
+      merged.push({
+        accountId: conn.mahasiswaId,
+        name: mp.name!,
+        nim: mp.nim,
+        major: mp.major ?? "",
+        faculty: mp.faculty ?? "",
+        cityOfOrigin: mp.cityOfOrigin ?? "",
+        highschoolAlumni: mp.highschoolAlumni ?? "",
+        gender: mp.gender as "M" | "F",
+        religion: mp.religion as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
+        mahasiswaStatus: mp.mahasiswaStatus as "active" | "inactive",
+        gpa: mp.gpa ? String(mp.gpa) : "0",
+        request_term_ota: conn.requestTerminateOta,
+        request_term_ma: conn.requestTerminateMahasiswa,
+      });
+    }
+
+    for (const conn of groupConns) {
+      const mp = conn.Mahasiswa;
+      if (seen.has(mp.userId)) continue;
+      seen.add(mp.userId);
+      merged.push({
+        accountId: conn.mahasiswaId,
+        name: mp.name!,
+        nim: mp.nim,
+        major: mp.major ?? "",
+        faculty: mp.faculty ?? "",
+        cityOfOrigin: mp.cityOfOrigin ?? "",
+        highschoolAlumni: mp.highschoolAlumni ?? "",
+        gender: mp.gender as "M" | "F",
+        religion: mp.religion as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
+        mahasiswaStatus: mp.mahasiswaStatus as "active" | "inactive",
+        gpa: mp.gpa ? String(mp.gpa) : "0",
+        request_term_ota: conn.requestTerminateGroup,
+        request_term_ma: conn.requestTerminateMahasiswa,
+      });
+    }
+
+    const totalData = merged.length;
+    const paginated = merged.slice(offset, offset + LIST_PAGE_SIZE);
 
     return c.json(
       {
         success: true,
         message: "Daftar MA aktif berhasil diambil",
-        body: {
-          data: mahasiswaList.map((conn) => {
-            const mp = conn.MahasiswaProfile;
-            return {
-              accountId: conn.mahasiswaId,
-              name: mp.name!,
-              nim: mp.nim,
-              major: mp.major ?? "",
-              faculty: mp.faculty ?? "",
-              cityOfOrigin: mp.cityOfOrigin ?? "",
-              highschoolAlumni: mp.highschoolAlumni ?? "",
-              gender: mp.gender as "M" | "F",
-              religion: mp.religion as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
-              mahasiswaStatus: mp.mahasiswaStatus,
-              gpa: mp.gpa!,
-              request_term_ota: conn.requestTerminateOta,
-              request_term_ma: conn.requestTerminateMahasiswa,
-            };
-          }),
-          totalData: totalCount,
-        },
+        body: { data: paginated, totalData },
       },
       200,
     );
@@ -726,56 +775,105 @@ listProtectedRouter.openapi(listMAPendingRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
 
-    const where: Record<string, unknown> = {
-      otaId,
-      connectionStatus: "pending",
-      requestTerminateMahasiswa: false,
-      requestTerminateOta: false,
-    };
-    if (q) {
-      where.MahasiswaProfile = {
-        OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { nim: { contains: q, mode: "insensitive" } },
-        ],
-      };
-    }
+    const nameFilter = q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" as const } },
+            { nim: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : undefined;
 
-    const [mahasiswaList, totalCount] = await Promise.all([
+    const [individualConns, groupConns] = await Promise.all([
       prisma.connection.findMany({
-        where,
-        take: LIST_PAGE_SIZE,
-        skip: offset,
+        where: {
+          otaId,
+          connectionStatus: "pending",
+          requestTerminateMahasiswa: false,
+          requestTerminateOta: false,
+          ...(nameFilter ? { MahasiswaProfile: nameFilter } : {}),
+        },
         include: { MahasiswaProfile: true },
       }),
-      prisma.connection.count({ where }),
+      prisma.groupConnection.findMany({
+        where: {
+          connectionStatus: "pending",
+          Group: { Members: { some: { otaId } } },
+          ...(nameFilter ? { Mahasiswa: nameFilter } : {}),
+        },
+        include: { Mahasiswa: true },
+      }),
     ]);
+
+    type MaEntry = {
+      accountId: string;
+      name: string;
+      nim: string;
+      major: string;
+      faculty: string;
+      cityOfOrigin: string;
+      highschoolAlumni: string;
+      gender: "M" | "F";
+      religion: "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu";
+      mahasiswaStatus: "active" | "inactive";
+      gpa: string;
+      request_term_ota: boolean;
+      request_term_ma: boolean;
+    };
+
+    const seen = new Set<string>();
+    const merged: MaEntry[] = [];
+
+    for (const conn of individualConns) {
+      const mp = conn.MahasiswaProfile;
+      if (seen.has(mp.userId)) continue;
+      seen.add(mp.userId);
+      merged.push({
+        accountId: conn.mahasiswaId,
+        name: mp.name!,
+        nim: mp.nim,
+        major: mp.major ?? "",
+        faculty: mp.faculty ?? "",
+        cityOfOrigin: mp.cityOfOrigin ?? "",
+        highschoolAlumni: mp.highschoolAlumni ?? "",
+        gender: mp.gender as "M" | "F",
+        religion: mp.religion as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
+        mahasiswaStatus: mp.mahasiswaStatus as "active" | "inactive",
+        gpa: mp.gpa ? String(mp.gpa) : "0",
+        request_term_ota: conn.requestTerminateOta,
+        request_term_ma: conn.requestTerminateMahasiswa,
+      });
+    }
+
+    for (const conn of groupConns) {
+      const mp = conn.Mahasiswa;
+      if (seen.has(mp.userId)) continue;
+      seen.add(mp.userId);
+      merged.push({
+        accountId: conn.mahasiswaId,
+        name: mp.name!,
+        nim: mp.nim,
+        major: mp.major ?? "",
+        faculty: mp.faculty ?? "",
+        cityOfOrigin: mp.cityOfOrigin ?? "",
+        highschoolAlumni: mp.highschoolAlumni ?? "",
+        gender: mp.gender as "M" | "F",
+        religion: mp.religion as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
+        mahasiswaStatus: mp.mahasiswaStatus as "active" | "inactive",
+        gpa: mp.gpa ? String(mp.gpa) : "0",
+        request_term_ota: conn.requestTerminateGroup,
+        request_term_ma: conn.requestTerminateMahasiswa,
+      });
+    }
+
+    const totalData = merged.length;
+    const paginated = merged.slice(offset, offset + LIST_PAGE_SIZE);
 
     return c.json(
       {
         success: true,
         message: "Daftar MA pending berhasil diambil",
-        body: {
-          data: mahasiswaList.map((conn) => {
-            const mp = conn.MahasiswaProfile;
-            return {
-              accountId: conn.mahasiswaId,
-              name: mp.name!,
-              nim: mp.nim,
-              major: mp.major ?? "",
-              faculty: mp.faculty ?? "",
-              cityOfOrigin: mp.cityOfOrigin ?? "",
-              highschoolAlumni: mp.highschoolAlumni ?? "",
-              gender: mp.gender as "M" | "F",
-              religion: mp.religion as "Islam" | "Kristen Protestan" | "Katolik" | "Hindu" | "Buddha" | "Konghucu",
-              gpa: mp.gpa!,
-              mahasiswaStatus: mp.mahasiswaStatus,
-              request_term_ota: conn.requestTerminateOta,
-              request_term_ma: conn.requestTerminateMahasiswa,
-            };
-          }),
-          totalData: totalCount,
-        },
+        body: { data: paginated, totalData },
       },
       200,
     );

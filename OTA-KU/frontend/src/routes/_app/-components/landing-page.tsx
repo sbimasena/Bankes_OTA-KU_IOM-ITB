@@ -1,12 +1,43 @@
+import { api } from "@/api/client";
 import { UserSchema } from "@/api/generated";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
 
 function LandingPage({ session }: { session: UserSchema | null | undefined }) {
   const isLoggedIn = !!session;
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const { data } = useQuery({
+    queryKey: ["publicTestimonialsHome"],
+    queryFn: () => api.testimonial.listPublicTestimonials({ limit: 10 }),
+  });
+
+  const testimonials = data?.body.data ?? [];
+
+  const current = testimonials[activeIndex];
+
+  const next = () => {
+    if (!testimonials.length) return;
+    setActiveIndex((prev) => (prev + 1) % testimonials.length);
+  };
+
+  const prev = () => {
+    if (!testimonials.length) return;
+    setActiveIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+  };
 
   return (
-    <section className="flex h-full flex-col items-center justify-center gap-10 px-3 lg:gap-15">
+    <section className="flex h-full w-full flex-col items-center justify-center gap-10 px-3 lg:gap-15">
       {/* Text and icon */}
       <div className="flex flex-col items-center gap-6 lg:flex-row-reverse lg:gap-15 xl:gap-30">
         {/* Icon */}
@@ -41,6 +72,80 @@ function LandingPage({ session }: { session: UserSchema | null | undefined }) {
           <Link to="/auth/login">Bergabung Sekarang</Link>
         </Button>
       )}
+
+      <section className="w-full max-w-5xl rounded-2xl bg-white p-4 shadow-md md:p-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-dark text-xl font-bold md:text-3xl">Suara Mahasiswa OTA-KU</h2>
+          {testimonials.length > 1 && (
+            <div className="flex gap-2">
+              <Button size="icon" variant="outline" onClick={prev}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button size="icon" variant="outline" onClick={next}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {!current ? (
+          <div className="rounded-xl border border-dashed p-8 text-center text-sm text-gray-500">
+            Testimoni akan tampil setelah dikonfirmasi dan diaktifkan admin.
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-3">
+              <p className="text-base leading-relaxed md:text-lg">"{current.content}"</p>
+              <div>
+                <p className="text-muted-foreground text-xs">
+                  {[current.faculty, current.major].filter(Boolean).join(" - ") || "Mahasiswa ITB"}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {(current.images.length ? current.images : ["/icon/logo-basic.png"]).slice(0, 3).map((img, idx) => (
+                <button
+                  key={`${img}-${idx}`}
+                  type="button"
+                  onClick={() => setSelectedImage(img)}
+                  className="focus-visible:ring-primary overflow-hidden rounded-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                  aria-label={`Buka foto testimoni ${idx + 1}`}
+                >
+                  <img
+                    src={img}
+                    alt={`testimoni-image-${idx + 1}`}
+                    className="h-32 w-full object-cover transition-transform hover:scale-105"
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <Dialog
+        open={Boolean(selectedImage)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedImage(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-auto p-3 sm:p-4">
+          <DialogTitle className="sr-only">Foto Testimoni Mahasiswa</DialogTitle>
+          <DialogDescription className="sr-only">
+            Pratinjau foto testimoni dalam ukuran lebih besar.
+          </DialogDescription>
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              alt="foto-testimoni-preview"
+              className="max-h-[80vh] w-full rounded-md object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
