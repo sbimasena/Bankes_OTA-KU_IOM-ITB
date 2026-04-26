@@ -34,6 +34,7 @@ export const Route = createFileRoute("/_app/groups/")({
   component: GroupsDashboard,
 });
 
+const MIN_PLEDGE = 100_000;
 const MAX_PLEDGE = 800_000;
 const formatRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`;
 
@@ -137,8 +138,8 @@ function GroupsDashboard() {
     e.preventDefault();
     const pledge = Number(createForm.pledgeAmount);
     if (!createForm.name.trim()) return toast.error("Nama grup wajib diisi");
-    if (pledge <= 0 || pledge > MAX_PLEDGE)
-      return toast.error(`Pledge harus antara Rp1 – ${formatRp(MAX_PLEDGE)}`);
+    if (pledge < MIN_PLEDGE || pledge > MAX_PLEDGE)
+      return toast.error(`Pledge harus antara ${formatRp(MIN_PLEDGE)} – ${formatRp(MAX_PLEDGE)}`);
 
     createMutation.mutate({
       name: createForm.name,
@@ -153,8 +154,8 @@ function GroupsDashboard() {
     e.preventDefault();
     if (!acceptInviteId) return;
     const pledge = Number(acceptPledge);
-    if (pledge <= 0 || pledge > MAX_PLEDGE)
-      return toast.error(`Pledge harus antara Rp1 – ${formatRp(MAX_PLEDGE)}`);
+    if (pledge < MIN_PLEDGE || pledge > MAX_PLEDGE)
+      return toast.error(`Pledge harus antara ${formatRp(MIN_PLEDGE)} – ${formatRp(MAX_PLEDGE)}`);
     respondMutation.mutate({ id: acceptInviteId, response: "accepted", pledgeAmount: pledge });
   };
 
@@ -162,8 +163,8 @@ function GroupsDashboard() {
     e.preventDefault();
     if (!joinOpenGroupId) return;
     const pledge = Number(joinPledge);
-    if (pledge <= 0 || pledge > MAX_PLEDGE)
-      return toast.error(`Pledge harus antara Rp1 – ${formatRp(MAX_PLEDGE)}`);
+    if (pledge < MIN_PLEDGE || pledge > MAX_PLEDGE)
+      return toast.error(`Pledge harus antara ${formatRp(MIN_PLEDGE)} – ${formatRp(MAX_PLEDGE)}`);
     joinOpenGroupMutation.mutate({ groupId: joinOpenGroupId, pledgeAmount: pledge });
   };
 
@@ -262,16 +263,16 @@ function GroupsDashboard() {
                     <Input
                       id="create-pledge"
                       type="number"
-                      min={1}
+                      min={MIN_PLEDGE}
                       max={MAX_PLEDGE}
-                      placeholder="400000"
+                      placeholder="100000"
                       className="pl-8"
                       value={createForm.pledgeAmount}
                       onChange={(e) => setCreateForm({ ...createForm, pledgeAmount: e.target.value })}
                       required
                     />
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Maks. {formatRp(MAX_PLEDGE)}</p>
+                  <p className="text-[11px] text-muted-foreground">Min. {formatRp(MIN_PLEDGE)} – Maks. {formatRp(MAX_PLEDGE)}</p>
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={createMutation.isPending}>
@@ -378,9 +379,9 @@ function GroupsDashboard() {
                     <Input
                       id="accept-pledge"
                       type="number"
-                      min={1}
+                      min={MIN_PLEDGE}
                       max={MAX_PLEDGE}
-                      placeholder="400000"
+                      placeholder="100000"
                       className="pl-8"
                       value={acceptPledge}
                       onChange={(e) => setAcceptPledge(e.target.value)}
@@ -388,7 +389,7 @@ function GroupsDashboard() {
                       autoFocus
                     />
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Maks. {formatRp(MAX_PLEDGE)}</p>
+                  <p className="text-[11px] text-muted-foreground">Min. {formatRp(MIN_PLEDGE)} – Maks. {formatRp(MAX_PLEDGE)}</p>
                 </div>
                 <Button type="submit" className="w-full" disabled={respondMutation.isPending}>
                   {respondMutation.isPending ? "Memproses..." : "Terima & Bergabung"}
@@ -478,9 +479,9 @@ function GroupsDashboard() {
                 <Input
                   id="join-pledge"
                   type="number"
-                  min={1}
+                  min={MIN_PLEDGE}
                   max={MAX_PLEDGE}
-                  placeholder="400000"
+                  placeholder="100000"
                   className="pl-8"
                   value={joinPledge}
                   onChange={(e) => setJoinPledge(e.target.value)}
@@ -488,7 +489,7 @@ function GroupsDashboard() {
                   autoFocus
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground">Maks. {formatRp(MAX_PLEDGE)}</p>
+              <p className="text-[11px] text-muted-foreground">Min. {formatRp(MIN_PLEDGE)} – Maks. {formatRp(MAX_PLEDGE)}</p>
             </div>
             <Button type="submit" className="w-full" disabled={joinOpenGroupMutation.isPending}>
               {joinOpenGroupMutation.isPending ? "Memproses..." : "Bergabung"}

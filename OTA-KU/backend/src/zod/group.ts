@@ -19,8 +19,8 @@ export const CreateGroupSchema = z.object({
     description: "Tanggal transfer bulanan (1-31)",
     example: 15,
   }),
-  pledgeAmount: z.coerce.number().min(1).max(800000).openapi({
-    description: "Nominal komitmen dana OTA pembuat grup (maksimum Rp800.000)",
+  pledgeAmount: z.coerce.number().min(100000).max(800000).openapi({
+    description: "Nominal komitmen dana OTA pembuat grup (minimum Rp100.000, maksimum Rp800.000)",
     example: 400000,
   }),
 });
@@ -37,15 +37,15 @@ export const RespondInvitationSchema = z.object({
     description: "Respons undangan: accepted atau rejected",
     example: "accepted",
   }),
-  pledgeAmount: z.coerce.number().min(1).max(800000).optional().openapi({
-    description: "Nominal komitmen dana OTA saat menerima undangan (wajib jika accepted)",
+  pledgeAmount: z.coerce.number().min(100000).max(800000).optional().openapi({
+    description: "Nominal komitmen dana OTA saat menerima undangan (minimum Rp100.000, wajib jika accepted)",
     example: 250000,
   }),
 });
 
 export const JoinOpenGroupSchema = z.object({
-  pledgeAmount: z.coerce.number().min(1).max(800000).openapi({
-    description: "Nominal komitmen dana OTA saat bergabung ke grup terbuka",
+  pledgeAmount: z.coerce.number().min(100000).max(800000).openapi({
+    description: "Nominal komitmen dana OTA saat bergabung ke grup terbuka (minimum Rp100.000)",
     example: 250000,
   }),
 });
