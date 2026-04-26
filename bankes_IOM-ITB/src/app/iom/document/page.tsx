@@ -56,8 +56,8 @@ export default function Upload() {
   const indexOfLastStudent = currentPage * itemsPerPage;
   const indexOfFirstStudent = indexOfLastStudent - itemsPerPage;
   const filteredStudents = students.filter((student) =>
-    student.Student.nim.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.Student.User.name.toLowerCase().includes(searchTerm.toLowerCase())
+    student.Student?.nim?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.Student?.User?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
@@ -110,7 +110,23 @@ export default function Upload() {
         if (!fileResponse.ok) throw new Error("Failed to fetch student files");
         const fileData = await fileResponse.json();
         if (fileData.success) {
-          setStudents(fileData.data);
+          setStudents(fileData.data.map((s: any) => ({
+            student_id: s.userId,
+            period_id: s.periodId,
+            passDitmawa: s.passDitmawa,
+            passIOM: s.passIOM,
+            Student: s.MahasiswaProfile ? {
+              nim: s.MahasiswaProfile.nim,
+              User: { user_id: s.MahasiswaProfile.User?.id, name: s.MahasiswaProfile.User?.name },
+              Files: (s.MahasiswaProfile.StudentFiles ?? []).map((f: any) => ({
+                file_id: f.id,
+                fileUrl: f.fileUrl,
+                fileName: f.fileName,
+                type: f.type,
+              })),
+              Statuses: [],
+            } : undefined,
+          })));
         }
       } catch (error) {
         console.error("Error:", error);
@@ -142,7 +158,23 @@ export default function Upload() {
         }
         const fileData = await fileResponse.json();
         if (fileData.success) {
-          setStudents(fileData.data);
+          setStudents(fileData.data.map((s: any) => ({
+            student_id: s.userId,
+            period_id: s.periodId,
+            passDitmawa: s.passDitmawa,
+            passIOM: s.passIOM,
+            Student: s.MahasiswaProfile ? {
+              nim: s.MahasiswaProfile.nim,
+              User: { user_id: s.MahasiswaProfile.User?.id, name: s.MahasiswaProfile.User?.name },
+              Files: (s.MahasiswaProfile.StudentFiles ?? []).map((f: any) => ({
+                file_id: f.id,
+                fileUrl: f.fileUrl,
+                fileName: f.fileName,
+                type: f.type,
+              })),
+              Statuses: [],
+            } : undefined,
+          })));
         } else {
           console.error("Error fetching student files:", fileData.error);
         }
@@ -201,7 +233,7 @@ export default function Upload() {
     }
   };
 
-  const completedCount = students.filter(student => areAllFilesUploaded(student.Student.Files)).length;
+  const completedCount = students.filter(student => student.Student && areAllFilesUploaded(student.Student.Files)).length;
   const passedDitmawa = students.filter(student => student.passDitmawa).length;
   const passedIOM = students.filter(student => student.passIOM).length;
 
