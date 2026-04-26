@@ -1,4 +1,6 @@
+import { api } from "@/api/client";
 import { groupService } from "@/api/groupService";
+import type { MahasiswaListElement } from "@/api/generated/models/MahasiswaListElement";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,9 +20,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Users, Calendar, Info, UserPlus, Lock, Coins } from "lucide-react";
+import { ArrowLeft, Users, Calendar, Info, UserPlus, Lock, Coins, Search, Check } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -36,7 +39,8 @@ function GroupDetailPage() {
   const queryClient = useQueryClient();
 
   const [isProposeModalOpen, setIsProposeModalOpen] = useState(false);
-  const [mahasiswaIdInput, setMahasiswaIdInput] = useState("");
+  const [mahasiswaSearch, setMahasiswaSearch] = useState("");
+  const [selectedMahasiswa, setSelectedMahasiswa] = useState<MahasiswaListElement | null>(null);
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmailOrId, setInviteEmailOrId] = useState("");
@@ -52,6 +56,13 @@ function GroupDetailPage() {
     queryFn: () => groupService.getProposals(groupId),
   });
 
+  const { data: mahasiswaList, isLoading: isLoadingMahasiswa } = useQuery({
+    queryKey: ["availableMahasiswa", mahasiswaSearch],
+    queryFn: () => api.list.listMahasiswaOta({ q: mahasiswaSearch || undefined }),
+    enabled: isProposeModalOpen,
+    select: (res) => res.body.data,
+  });
+
   // ── Mutations ─────────────────────────────────────────────────────────────
   const proposeMutation = useMutation({
     mutationFn: (mahasiswaId: string) => groupService.proposeStudent(groupId, mahasiswaId),
@@ -59,7 +70,8 @@ function GroupDetailPage() {
       toast.success("Mahasiswa berhasil diusulkan, menunggu persetujuan admin.");
       queryClient.invalidateQueries({ queryKey: ["groupProposals", groupId] });
       setIsProposeModalOpen(false);
-      setMahasiswaIdInput("");
+      setSelectedMahasiswa(null);
+      setMahasiswaSearch("");
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message ?? "Gagal mengusulkan mahasiswa");
@@ -81,8 +93,16 @@ function GroupDetailPage() {
 
   const handlePropose = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mahasiswaIdInput) return;
-    proposeMutation.mutate(mahasiswaIdInput);
+    if (!selectedMahasiswa) return;
+    proposeMutation.mutate(selectedMahasiswa.accountId);
+  };
+
+  const handleProposeModalOpenChange = (open: boolean) => {
+    setIsProposeModalOpen(open);
+    if (!open) {
+      setSelectedMahasiswa(null);
+      setMahasiswaSearch("");
+    }
   };
 
   const handleInvite = (e: React.FormEvent) => {
@@ -170,7 +190,7 @@ function GroupDetailPage() {
             </Dialog>
           )}
 
-          <Dialog open={isProposeModalOpen} onOpenChange={setIsProposeModalOpen}>
+          <Dialog open={isProposeModalOpen} onOpenChange={handleProposeModalOpenChange}>
             <div className="flex flex-col items-end gap-1">
               <DialogTrigger asChild>
                 <Button disabled={!canPropose} title={proposeLockMessage}>
@@ -188,25 +208,77 @@ function GroupDetailPage() {
                 </p>
               )}
             </div>
-            <DialogContent>
+            <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>Usulkan Mahasiswa</DialogTitle>
                 <DialogDescription>
-                  Karena grup sudah pre-funded, proposal langsung diteruskan ke admin untuk disetujui.
+                  Pilih mahasiswa dari daftar berikut. Proposal akan diteruskan ke admin untuk disetujui.
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handlePropose} className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="mhsId">ID Mahasiswa (UUID)</Label>
-                  <Input
-                    id="mhsId"
-                    placeholder="Masukkan UUID mahasiswa"
-                    value={mahasiswaIdInput}
-                    onChange={(e) => setMahasiswaIdInput(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={proposeMutation.isPending}>
+              <form onSubmit={handlePropose} className="space-y-4 py-2">
+                {selectedMahasiswa ? (
+                  <div className="flex items-center justify-between rounded-lg border border-primary bg-primary/5 px-4 py-3">
+                    <div>
+                      <p className="font-semibold text-sm">{selectedMahasiswa.name}</p>
+                      <p className="text-xs text-muted-foreground">{selectedMahasiswa.nim} · {selectedMahasiswa.major}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedMahasiswa(null)}
+                    >
+                      Ganti
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label>Cari Mahasiswa</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Cari nama atau NIM..."
+                        className="pl-9"
+                        value={mahasiswaSearch}
+                        onChange={(e) => setMahasiswaSearch(e.target.value)}
+                      />
+                    </div>
+                    <ScrollArea className="h-64 rounded-md border">
+                      {isLoadingMahasiswa ? (
+                        <div className="flex items-center justify-center h-full py-8 text-sm text-muted-foreground">
+                          Memuat daftar mahasiswa...
+                        </div>
+                      ) : !mahasiswaList || mahasiswaList.length === 0 ? (
+                        <div className="flex items-center justify-center h-full py-8 text-sm text-muted-foreground">
+                          Tidak ada mahasiswa tersedia.
+                        </div>
+                      ) : (
+                        <ul className="divide-y">
+                          {mahasiswaList.map((mhs) => (
+                            <li key={mhs.accountId}>
+                              <button
+                                type="button"
+                                className="w-full text-left px-4 py-3 hover:bg-muted/60 transition-colors flex items-center justify-between"
+                                onClick={() => setSelectedMahasiswa(mhs)}
+                              >
+                                <div>
+                                  <p className="text-sm font-medium">{mhs.name}</p>
+                                  <p className="text-xs text-muted-foreground">{mhs.nim} · {mhs.major} · IPK {mhs.gpa}</p>
+                                </div>
+                                <Check className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100" />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </ScrollArea>
+                  </div>
+                )}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={proposeMutation.isPending || !selectedMahasiswa}
+                >
                   {proposeMutation.isPending ? "Mengirim..." : "Kirim Proposal ke Admin"}
                 </Button>
               </form>
