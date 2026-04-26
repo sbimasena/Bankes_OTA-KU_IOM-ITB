@@ -26,9 +26,12 @@ import {
   GroupVerifyMemberPaymentSchema,
   InvitationIdParamSchema,
   InviteMemberSchema,
+  JoinOpenGroupSchema,
   MaOtaGroupResponse,
   MyGroupListResponse,
   MyInvitationListResponse,
+  OpenGroupListQuerySchema,
+  OpenGroupListResponse,
   ProposalIdParamSchema,
   ProposalListResponse,
   ProposeStudentSchema,
@@ -93,6 +96,65 @@ export const listGroupsRoute = createRoute({
     403: {
       description: "Forbidden",
       content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const listOpenGroupsRoute = createRoute({
+  operationId: "listOpenGroups",
+  tags: ["Group"],
+  method: "get",
+  path: "/open",
+  description: "Daftar grup aktif yang belum pernah mengajukan proposal mahasiswa. Dapat diakses OTA maupun admin.",
+  request: { query: OpenGroupListQuerySchema },
+  responses: {
+    200: {
+      description: "Daftar grup terbuka berhasil diambil",
+      content: { "application/json": { schema: OpenGroupListResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const joinOpenGroupRoute = createRoute({
+  operationId: "joinOpenGroup",
+  tags: ["Group"],
+  method: "post",
+  path: "/open/:id/join",
+  description: "Bergabung ke grup terbuka dengan komitmen dana. Otomatis diterima tanpa perlu konfirmasi anggota lain.",
+  request: {
+    params: GroupIdParamSchema,
+    body: {
+      content: {
+        "multipart/form-data": { schema: JoinOpenGroupSchema },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Berhasil bergabung ke grup",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    400: {
+      description: "OTA sudah tergabung dalam grup lain atau grup sudah penuh",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Grup tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
     },
     500: {
       description: "Internal server error",

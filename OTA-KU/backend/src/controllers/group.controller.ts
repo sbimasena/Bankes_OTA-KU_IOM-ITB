@@ -11,6 +11,7 @@ import {
   getMaOtaGroupRoute,
   getGroupDetailRoute,
   inviteMemberRoute,
+  joinOpenGroupRoute,
   listAllGroupConnectionsRoute,
   listGroupsRoute,
   listGroupTerminateRoute,
@@ -18,6 +19,7 @@ import {
   listGroupTransactionOtaRoute,
   listMyGroupsRoute,
   listMyInvitationsRoute,
+  listOpenGroupsRoute,
   listPendingGroupConnectionsRoute,
   listProposalsRoute,
   proposeStudentRoute,
@@ -45,6 +47,8 @@ import {
   GroupUploadReceiptSchema,
   GroupVerifyMemberPaymentSchema,
   InviteMemberSchema,
+  JoinOpenGroupSchema,
+  OpenGroupListQuerySchema,
   ProposeStudentSchema,
   RequestGroupTerminateSchema,
   RespondInvitationSchema,
@@ -187,6 +191,159 @@ groupProtectedRouter.openapi(listGroupsRoute, async (c) => {
           totalData,
         },
       },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// GET /group/open
+groupProtectedRouter.openapi(listOpenGroupsRoute, async (c) => {
+  const { q, page } = OpenGroupListQuerySchema.parse(c.req.query());
+  const pageNumber = (!page || page < 1) ? 1 : page;
+  const offset = (pageNumber - 1) * LIST_PAGE_SIZE;
+
+  const nameFilter = q ? { name: { contains: q, mode: "insensitive" as const } } : {};
+
+  const baseWhere = {
+    ...nameFilter,
+    status: { in: ["active", "forming"] as const },
+    Proposals: { none: {} },
+  };
+
+  try {
+    const [groups, totalData] = await Promise.all([
+      prisma.otaGroup.findMany({
+        where: baseWhere,
+        include: {
+          Members: {
+            include: { Ota: { select: { name: true } } },
+            orderBy: { joinedAt: "asc" },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: offset,
+        take: LIST_PAGE_SIZE,
+      }),
+      prisma.otaGroup.count({ where: baseWhere }),
+    ]);
+
+    return c.json(
+      {
+        success: true,
+        message: "Daftar grup terbuka berhasil diambil",
+        body: {
+          data: groups.map((g) => ({
+            id: g.id,
+            name: g.name,
+            description: g.description,
+            criteria: g.criteria,
+            memberCount: g.Members.length,
+            totalPledge: g.Members.reduce((sum, m) => sum + m.pledgeAmount, 0),
+            members: g.Members.map((m) => ({
+              otaId: m.otaId,
+              name: m.Ota.name ?? "-",
+            })),
+            createdAt: g.createdAt.toISOString(),
+          })),
+          totalData,
+        },
+      },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// POST /group/open/:id/join
+groupProtectedRouter.openapi(joinOpenGroupRoute, async (c) => {
+  const user = c.var.user;
+  const groupId = c.req.param("id");
+
+  if (user.type !== "ota") {
+    return c.json(
+      {
+        success: false,
+        message: "Unauthorized",
+        error: { code: "UNAUTHORIZED", message: "Hanya OTA yang dapat bergabung ke grup" },
+      },
+      403,
+    );
+  }
+
+  const body = await c.req.formData();
+  const { pledgeAmount } = JoinOpenGroupSchema.parse(Object.fromEntries(body.entries()));
+
+  try {
+    // Check if user already in a group
+    const existingMembership = await prisma.otaGroupMember.findFirst({
+      where: { otaId: user.id },
+    });
+
+    if (existingMembership) {
+      return c.json(
+        {
+          success: false,
+          message: "OTA sudah tergabung di grup lain",
+          error: { code: "ALREADY_IN_GROUP" },
+        },
+        400,
+      );
+    }
+
+    // Get group and check if it exists and is open
+    const group = await prisma.otaGroup.findUnique({
+      where: { id: groupId },
+      include: { _count: { select: { Members: true } } },
+    });
+
+    if (!group) {
+      return c.json({ success: false, message: "Grup tidak ditemukan", error: {} }, 404);
+    }
+
+    // Check if group is open (no proposals submitted yet)
+    const hasProposals = await prisma.groupStudentProposal.findFirst({
+      where: { groupId },
+    });
+
+    if (hasProposals) {
+      return c.json(
+        {
+          success: false,
+          message: "Grup tidak lagi terbuka untuk bergabung",
+          error: { code: "GROUP_NOT_OPEN" },
+        },
+        400,
+      );
+    }
+
+    // Check if group is at max members
+    if (group._count.Members >= 5) {
+      return c.json(
+        {
+          success: false,
+          message: "Jumlah anggota grup sudah maksimum (5)",
+          error: { code: "GROUP_MEMBER_LIMIT_REACHED" },
+        },
+        400,
+      );
+    }
+
+    // Add user to group
+    await prisma.otaGroupMember.create({
+      data: {
+        groupId,
+        otaId: user.id,
+        pledgeAmount,
+      },
+    });
+
+    return c.json(
+      { success: true, message: "Berhasil bergabung ke grup" },
       200,
     );
   } catch (error) {

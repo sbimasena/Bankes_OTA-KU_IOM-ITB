@@ -9,6 +9,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -21,7 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Users, Mail, Plus, AlertCircle } from "lucide-react";
+import { Users, Mail, Plus, AlertCircle, Search, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -49,6 +54,16 @@ function GroupsDashboard() {
   const [acceptInviteId, setAcceptInviteId] = useState<string | null>(null);
   const [acceptPledge, setAcceptPledge] = useState("");
 
+  // ── Join Open Group modal state ──────────────────────────────────────────
+  const [joinOpenGroupId, setJoinOpenGroupId] = useState<string | null>(null);
+  const [joinPledge, setJoinPledge] = useState("");
+
+  // ── Open Groups state ────────────────────────────────────────────────────
+  const [openGroupsPage, setOpenGroupsPage] = useState(1);
+  const [openGroupsSearch, setOpenGroupsSearch] = useState("");
+  const [openGroupsQuery, setOpenGroupsQuery] = useState("");
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: myGroups, isLoading: isLoadingGroups } = useQuery({
     queryKey: ["myGroups"],
@@ -58,6 +73,12 @@ function GroupsDashboard() {
   const { data: myInvitations, isLoading: isLoadingInvitations } = useQuery({
     queryKey: ["myInvitations"],
     queryFn: groupService.getMyInvitations,
+  });
+
+  const { data: openGroupsData, isLoading: isLoadingOpenGroups } = useQuery({
+    queryKey: ["openGroups", openGroupsPage, openGroupsQuery],
+    queryFn: () => groupService.getOpenGroups({ q: openGroupsQuery || undefined, page: openGroupsPage }),
+    placeholderData: (prev) => prev,
   });
 
   // User is "in a group" when they have at least one membership
@@ -96,6 +117,21 @@ function GroupsDashboard() {
     },
   });
 
+  const joinOpenGroupMutation = useMutation({
+    mutationFn: ({ groupId, pledgeAmount }: { groupId: string; pledgeAmount: number }) =>
+      groupService.joinOpenGroup(groupId, pledgeAmount),
+    onSuccess: () => {
+      toast.success("Berhasil bergabung ke grup!");
+      queryClient.invalidateQueries({ queryKey: ["openGroups"] });
+      queryClient.invalidateQueries({ queryKey: ["myGroups"] });
+      setJoinOpenGroupId(null);
+      setJoinPledge("");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message ?? "Gagal bergabung ke grup");
+    },
+  });
+
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +156,30 @@ function GroupsDashboard() {
     if (pledge <= 0 || pledge > MAX_PLEDGE)
       return toast.error(`Pledge harus antara Rp1 – ${formatRp(MAX_PLEDGE)}`);
     respondMutation.mutate({ id: acceptInviteId, response: "accepted", pledgeAmount: pledge });
+  };
+
+  const handleJoinOpenGroup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!joinOpenGroupId) return;
+    const pledge = Number(joinPledge);
+    if (pledge <= 0 || pledge > MAX_PLEDGE)
+      return toast.error(`Pledge harus antara Rp1 – ${formatRp(MAX_PLEDGE)}`);
+    joinOpenGroupMutation.mutate({ groupId: joinOpenGroupId, pledgeAmount: pledge });
+  };
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  };
+
+  const handleSearchOpenGroups = (e: React.FormEvent) => {
+    e.preventDefault();
+    setOpenGroupsQuery(openGroupsSearch);
+    setOpenGroupsPage(1);
   };
 
   if (isLoadingGroups || isLoadingInvitations) {
@@ -394,6 +454,190 @@ function GroupsDashboard() {
           </div>
         </section>
       </div>
+
+      {/* ── JOIN OPEN GROUP DIALOG ── */}
+      <Dialog
+        open={joinOpenGroupId !== null}
+        onOpenChange={(open) => {
+          if (!open) { setJoinOpenGroupId(null); setJoinPledge(""); }
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Tentukan Komitmen Dana</DialogTitle>
+            <DialogDescription>
+              Masukkan nominal dana yang Anda komitmen per bulan untuk bergabung ke grup ini.
+              Grup memerlukan total minimal <span className="font-semibold text-foreground">{formatRp(MAX_PLEDGE)}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleJoinOpenGroup} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="join-pledge">Nominal Komitmen (IDR)</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">Rp</span>
+                <Input
+                  id="join-pledge"
+                  type="number"
+                  min={1}
+                  max={MAX_PLEDGE}
+                  placeholder="400000"
+                  className="pl-8"
+                  value={joinPledge}
+                  onChange={(e) => setJoinPledge(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">Maks. {formatRp(MAX_PLEDGE)}</p>
+            </div>
+            <Button type="submit" className="w-full" disabled={joinOpenGroupMutation.isPending}>
+              {joinOpenGroupMutation.isPending ? "Memproses..." : "Bergabung"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── TEMUKAN GRUP TERBUKA ── */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 border-b pb-2">
+          <Search className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">Temukan Grup Terbuka</h2>
+          <span className="text-sm text-muted-foreground">
+            — Grup aktif yang belum mengajukan mahasiswa asuh
+          </span>
+        </div>
+
+        {/* Search bar */}
+        <form onSubmit={handleSearchOpenGroups} className="flex gap-2 max-w-sm">
+          <Input
+            id="open-groups-search"
+            placeholder="Cari nama grup..."
+            value={openGroupsSearch}
+            onChange={(e) => setOpenGroupsSearch(e.target.value)}
+          />
+          <Button type="submit" size="sm" variant="secondary">
+            <Search className="h-4 w-4" />
+          </Button>
+        </form>
+
+        {/* Grid kartu grup */}
+        {isLoadingOpenGroups ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Memuat grup...</div>
+        ) : openGroupsData && openGroupsData.data.length > 0 ? (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {openGroupsData.data.map((group) => {
+                const isExpanded = expandedGroups.has(group.id);
+                return (
+                  <Card key={group.id} className="flex flex-col">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base leading-tight">{group.name}</CardTitle>
+                      {group.description && (
+                        <CardDescription className="line-clamp-2">{group.description}</CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-3 flex-1">
+                      {group.criteria && (
+                        <p className="text-xs text-muted-foreground italic">
+                          Kriteria: {group.criteria}
+                        </p>
+                      )}
+                      <div className="flex gap-3 text-sm">
+                        <div className="flex-1 rounded-md bg-muted/50 px-3 py-2 text-center">
+                          <div className="font-semibold">{group.memberCount}</div>
+                          <div className="text-xs text-muted-foreground">Anggota</div>
+                        </div>
+                        <div className="flex-1 rounded-md bg-muted/50 px-3 py-2 text-center">
+                          <div className="font-semibold text-primary">{formatRp(group.totalPledge)}</div>
+                          <div className="text-xs text-muted-foreground">Total/bln</div>
+                        </div>
+                      </div>
+
+                      {/* Accordion anggota */}
+                      <Collapsible open={isExpanded} onOpenChange={() => toggleGroup(group.id)}>
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-between text-xs h-8"
+                          >
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3.5 w-3.5" />
+                              Lihat anggota
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <ul className="mt-1 space-y-1 rounded-md border bg-muted/30 px-3 py-2">
+                            {group.members.map((member, idx) => (
+                              <li key={member.otaId} className="flex items-center gap-2 text-sm">
+                                <span className="text-xs text-muted-foreground w-4">{idx + 1}.</span>
+                                <span>{member.name}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </CollapsibleContent>
+                      </Collapsible>
+
+                      {/* Join button */}
+                      <Button
+                        size="sm"
+                        className="w-full mt-2"
+                        disabled={isInGroup || joinOpenGroupMutation.isPending}
+                        title={isInGroup ? "Anda sudah tergabung dalam grup lain" : undefined}
+                        onClick={() => setJoinOpenGroupId(group.id)}
+                      >
+                        Bergabung
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* Pagination */}
+            {openGroupsData.totalData > 10 && (
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={openGroupsPage <= 1}
+                  onClick={() => setOpenGroupsPage((p) => p - 1)}
+                >
+                  Sebelumnya
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Halaman {openGroupsPage} dari {Math.ceil(openGroupsData.totalData / 10)}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={openGroupsPage >= Math.ceil(openGroupsData.totalData / 10)}
+                  onClick={() => setOpenGroupsPage((p) => p + 1)}
+                >
+                  Berikutnya
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <Card className="border-dashed bg-muted/20">
+            <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+              <Search className="mb-3 h-8 w-8 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">
+                {openGroupsQuery
+                  ? `Tidak ada grup terbuka dengan nama "${openGroupsQuery}".`
+                  : "Belum ada grup aktif yang terbuka saat ini."}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </section>
     </div>
   );
 }

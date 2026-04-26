@@ -43,6 +43,13 @@ export const RespondInvitationSchema = z.object({
   }),
 });
 
+export const JoinOpenGroupSchema = z.object({
+  pledgeAmount: z.coerce.number().min(1).max(800000).openapi({
+    description: "Nominal komitmen dana OTA saat bergabung ke grup terbuka",
+    example: 250000,
+  }),
+});
+
 export const GroupIdParamSchema = z.object({
   id: z.string().uuid().openapi({
     description: "ID grup OTA",
@@ -79,6 +86,17 @@ export const GroupListQuerySchema = z.object({
   }),
 });
 
+export const OpenGroupListQuerySchema = z.object({
+  q: z.string().optional().openapi({
+    description: "Pencarian berdasarkan nama grup",
+    example: "Alumni",
+  }),
+  page: z.coerce.number().optional().openapi({
+    description: "Halaman pagination",
+    example: 1,
+  }),
+});
+
 // === Response Schemas ===
 
 export const CreateGroupResponse = z.object({
@@ -103,6 +121,31 @@ export const GroupListResponse = z.object({
         memberCount: z.number(),
         activeConnectionCount: z.number(),
         totalPledge: z.number(),
+        createdAt: z.string().datetime(),
+      }),
+    ),
+    totalData: z.number().openapi({ example: 10 }),
+  }),
+});
+
+export const OpenGroupListResponse = z.object({
+  success: z.boolean().openapi({ example: true }),
+  message: z.string().openapi({ example: "Daftar grup terbuka berhasil diambil" }),
+  body: z.object({
+    data: z.array(
+      z.object({
+        id: z.string().uuid(),
+        name: z.string(),
+        description: z.string().nullable(),
+        criteria: z.string().nullable(),
+        memberCount: z.number(),
+        totalPledge: z.number(),
+        members: z.array(
+          z.object({
+            otaId: z.string().uuid(),
+            name: z.string(),
+          }),
+        ),
         createdAt: z.string().datetime(),
       }),
     ),

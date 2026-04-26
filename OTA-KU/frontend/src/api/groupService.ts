@@ -7,6 +7,7 @@ import type {
   GroupInvitation,
   GroupProposal,
   MaOtaGroup,
+  OpenGroup,
   OtaGroup,
   PaginatedResponse,
   PendingConnection,
@@ -206,6 +207,30 @@ export const groupService = {
       method: "POST",
       url: `/api/group/${groupId}/propose-student`,
       formData: { mahasiswaId },
+      mediaType: "multipart/form-data",
+    });
+  },
+
+  getOpenGroups: async (params?: {
+    q?: string;
+    page?: number;
+  }): Promise<PaginatedResponse<OpenGroup>> => {
+    const response = await request.request<ApiResponse<PaginatedResponse<OpenGroup>>>({
+      method: "GET",
+      url: "/api/group/open",
+      query: params,
+    });
+    return response.body ?? { data: [], totalData: 0 };
+  },
+
+  joinOpenGroup: async (
+    groupId: string,
+    pledgeAmount: number,
+  ): Promise<ApiResponse<unknown>> => {
+    return request.request<ApiResponse<unknown>>({
+      method: "POST",
+      url: `/api/group/open/${groupId}/join`,
+      formData: { pledgeAmount },
       mediaType: "multipart/form-data",
     });
   },

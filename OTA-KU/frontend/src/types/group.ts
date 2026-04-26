@@ -127,3 +127,19 @@ export interface AutoPairSuggestion {
   groupId: string;
   groupName: string;
 }
+
+export interface OpenGroupMember {
+  otaId: string;
+  name: string;
+}
+
+export interface OpenGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  criteria: string | null;
+  memberCount: number;
+  totalPledge: number;
+  members: OpenGroupMember[];
+  createdAt: string;
+}
