@@ -455,4 +455,3 @@ export const GroupTransactionAdminListResponse = z.object({
     totalData: z.number(),
   }),
 });
-});
