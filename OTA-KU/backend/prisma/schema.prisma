@@ -414,15 +414,16 @@ model TemporaryPassword {
 // =============================================================================
 
 model OtaGroup {
-  id           String         @id @default(uuid()) @db.Uuid
-  name         String         @db.VarChar(255)
-  description  String?
-  status       OtaGroupStatus @default(forming)
-  criteria     String?
-  transferDate Int?
-  createdById  String         @db.Uuid
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id                String         @id @default(uuid()) @db.Uuid
+  name              String         @db.VarChar(255)
+  description       String?
+  status            OtaGroupStatus @default(forming)
+  criteria          String?
+  transferDate      Int?
+  autoMatchConsent  Boolean        @default(false)
+  createdById       String         @db.Uuid
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   CreatedBy    User                   @relation(fields: [createdById], references: [id])
   Members      OtaGroupMember[]

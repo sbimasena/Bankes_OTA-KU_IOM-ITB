@@ -81,6 +81,7 @@ export interface GroupDetail {
   students: GroupStudentConnection[];
   activeConnectionCount: number;
   totalPledge: number;
+  autoMatchConsent: boolean;
 }
 
 export interface AdminGroupItem {
@@ -90,6 +91,7 @@ export interface AdminGroupItem {
   memberCount: number;
   activeConnectionCount: number;
   totalPledge: number;
+  autoMatchConsent: boolean;
   createdAt: string;
 }
 

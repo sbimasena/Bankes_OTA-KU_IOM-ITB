@@ -234,4 +234,16 @@ export const groupService = {
       mediaType: "multipart/form-data",
     });
   },
+
+  setAutoMatchConsent: async (
+    groupId: string,
+    consent: boolean,
+  ): Promise<ApiResponse<unknown>> => {
+    return request.request<ApiResponse<unknown>>({
+      method: "POST",
+      url: `/api/group/${groupId}/auto-match-consent`,
+      formData: { consent: String(consent) },
+      mediaType: "multipart/form-data",
+    });
+  },
 };

@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Users, Calendar, Info, UserPlus, Lock, Coins, Search, Check } from "lucide-react";
+import { ArrowLeft, Users, Calendar, Info, UserPlus, Lock, Coins, Search, Check, Shuffle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -111,6 +111,17 @@ function GroupDetailPage() {
     inviteMutation.mutate(inviteEmailOrId);
   };
 
+  const autoMatchConsentMutation = useMutation({
+    mutationFn: (consent: boolean) => groupService.setAutoMatchConsent(groupId, consent),
+    onSuccess: (_, consent) => {
+      toast.success(consent ? "Grup disetujui untuk auto-pair oleh admin." : "Persetujuan auto-pair dibatalkan.");
+      queryClient.invalidateQueries({ queryKey: ["groupDetail", groupId] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message ?? "Gagal memperbarui status auto-pair");
+    },
+  });
+
   if (isLoadingGroup || isLoadingProposals) {
     return <div className="p-8 text-center text-muted-foreground">Memuat data grup...</div>;
   }
@@ -160,6 +171,28 @@ function GroupDetailPage() {
 
         {/* ── Actions ── */}
         <div className="flex items-start gap-3">
+          {/* Auto-pair consent toggle */}
+          {isGroupActive && !hasActiveProposal && (
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                variant={group.autoMatchConsent ? "default" : "outline"}
+                className={group.autoMatchConsent
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400"}
+                onClick={() => autoMatchConsentMutation.mutate(!group.autoMatchConsent)}
+                disabled={autoMatchConsentMutation.isPending}
+              >
+                <Shuffle className="mr-2 h-4 w-4" />
+                {group.autoMatchConsent ? "Auto-Pair: ON" : "Auto-Pair: OFF"}
+              </Button>
+              <p className="text-[11px] text-muted-foreground max-w-[200px] text-right leading-tight">
+                {group.autoMatchConsent
+                  ? "Admin bisa pasangkan mahasiswa otomatis."
+                  : "Izinkan admin pasangkan mahasiswa otomatis."}
+              </p>
+            </div>
+          )}
+
           {group.members.length < 8 && (
             <Dialog open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
               <DialogTrigger asChild>

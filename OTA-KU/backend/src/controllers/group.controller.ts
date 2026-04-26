@@ -6,6 +6,7 @@ import {
   acceptGroupTransferStatusRoute,
   activateGroupRoute,
   autoPairGroupRoute,
+  setAutoMatchConsentRoute,
   connectGroupByAdminRoute,
   createGroupRoute,
   getMaOtaGroupRoute,
@@ -206,6 +207,7 @@ groupProtectedRouter.openapi(listGroupsRoute, async (c) => {
             memberCount: g._count.Members,
             activeConnectionCount: g._count.Connections,
             totalPledge: g.Members.reduce((sum, m) => sum + m.pledgeAmount, 0),
+            autoMatchConsent: g.autoMatchConsent,
             createdAt: g.createdAt.toISOString(),
           })),
           totalData,
@@ -637,6 +639,7 @@ groupProtectedRouter.openapi(getGroupDetailRoute, async (c) => {
           })),
           activeConnectionCount: group._count.Connections,
           totalPledge: group.Members.reduce((sum, m) => sum + m.pledgeAmount, 0),
+          autoMatchConsent: group.autoMatchConsent,
         },
       },
       200,
@@ -2413,6 +2416,61 @@ groupProtectedRouter.openapi(acceptGroupTransferStatusRoute, async (c) => {
 
     return c.json(
       { success: true, message: "Transfer status grup berhasil dikonfirmasi" },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// POST /group/:id/auto-match-consent
+groupProtectedRouter.openapi(setAutoMatchConsentRoute, async (c) => {
+  const user = c.var.user;
+  const groupId = c.req.param("id");
+
+  const body = await c.req.formData();
+  const consent = body.get("consent") === "true" || body.get("consent") === "1";
+
+  try {
+    const group = await prisma.otaGroup.findUnique({
+      where: { id: groupId },
+      include: { Members: { select: { otaId: true } } },
+    });
+
+    if (!group) {
+      return c.json({ success: false, message: "Grup tidak ditemukan", error: {} }, 404);
+    }
+
+    if (user.type === "ota") {
+      const isMember = group.Members.some((m) => m.otaId === user.id);
+      if (!isMember) {
+        return c.json(
+          {
+            success: false,
+            message: "Anda bukan anggota grup ini",
+            error: { code: "FORBIDDEN" },
+          },
+          403,
+        );
+      }
+    } else if (!isAdminRole(user.type)) {
+      return c.json(
+        { success: false, message: "Unauthorized", error: { code: "UNAUTHORIZED" } },
+        403,
+      );
+    }
+
+    await prisma.otaGroup.update({
+      where: { id: groupId },
+      data: { autoMatchConsent: consent },
+    });
+
+    return c.json(
+      {
+        success: true,
+        message: consent ? "Grup disetujui untuk auto-pair" : "Persetujuan auto-pair dibatalkan",
+      },
       200,
     );
   } catch (error) {

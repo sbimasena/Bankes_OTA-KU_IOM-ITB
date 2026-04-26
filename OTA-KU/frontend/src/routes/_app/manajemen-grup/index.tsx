@@ -636,15 +636,20 @@ function AdminGroupManagement() {
                                   </Button>
                                 )}
 
-                                {/* Auto-Pair button — active groups with no student */}
+                                {/* Auto-Pair button — active groups with no student and consent given */}
                                 {isActiveWithoutStudent && (
                                   <Button
                                     id={`auto-pair-btn-${group.id}`}
                                     size="sm"
                                     variant="outline"
-                                    className="border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/30"
-                                    onClick={() => handleAutoPair(group.id)}
-                                    disabled={isLoadingThisAutoPair || !!loadingAutoPairGroupId}
+                                    className={
+                                      group.autoMatchConsent
+                                        ? "border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/30"
+                                        : "border-muted-foreground/30 text-muted-foreground cursor-not-allowed"
+                                    }
+                                    onClick={() => group.autoMatchConsent && handleAutoPair(group.id)}
+                                    disabled={isLoadingThisAutoPair || !!loadingAutoPairGroupId || !group.autoMatchConsent}
+                                    title={!group.autoMatchConsent ? "Grup belum memberi persetujuan auto-pair" : undefined}
                                   >
                                     {isLoadingThisAutoPair ? (
                                       <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
@@ -652,6 +657,9 @@ function AdminGroupManagement() {
                                       <Shuffle className="h-3.5 w-3.5 mr-1" />
                                     )}
                                     Auto-Pair
+                                    {group.autoMatchConsent && (
+                                      <Check className="h-3 w-3 ml-1 text-green-500" />
+                                    )}
                                   </Button>
                                 )}
                               </div>

@@ -1,4 +1,5 @@
 import { createRoute } from "@hono/zod-openapi";
+import { z } from "zod";
 
 import { AuthorizationErrorResponse } from "../types/response.js";
 import {
@@ -951,6 +952,52 @@ export const acceptGroupTransferStatusRoute = createRoute({
     },
     404: {
       description: "GroupTransaction tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+// ── Auto-Match Consent Route ─────────────────────────────────────────────────
+
+export const setAutoMatchConsentRoute = createRoute({
+  operationId: "setAutoMatchConsent",
+  tags: ["Group"],
+  method: "post",
+  path: "/:id/auto-match-consent",
+  description:
+    "OTA anggota atau admin mengatur persetujuan auto-pair grup. " +
+    "Idempotent — set nilai yang sama berulang kali tidak menyebabkan error.",
+  request: {
+    params: GroupIdParamSchema,
+    body: {
+      content: {
+        "multipart/form-data": {
+          schema: z.object({
+            consent: z.coerce.boolean().openapi({
+              description: "true = setuju auto-pair, false = tidak setuju",
+              example: true,
+            }),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Status persetujuan berhasil diperbarui",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden — bukan anggota grup",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Grup tidak ditemukan",
       content: { "application/json": { schema: NotFoundResponse } },
     },
     500: {
