@@ -14,10 +14,10 @@ export function setupCronJobs() {
     
   // }
   dailyReminderCron.start();
-    dailyReminder7DaysCron.start();
-    dailyReminder14DaysCron.start();
-    dailyReminder30DaysCron.start();
-    dailyReminder3DaysWhatsAppCron.start();
-    everyThreeDaysCron.start();
-    monthlyCron.start();
+  dailyReminder7DaysCron.start();
+  dailyReminder14DaysCron.start();
+  dailyReminder30DaysCron.start();
+  dailyReminder3DaysWhatsAppCron.start();
+  everyThreeDaysCron.start();
+  monthlyCron.start();
 }
