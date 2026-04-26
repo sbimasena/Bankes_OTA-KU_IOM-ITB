@@ -5,6 +5,7 @@ import { uploadFileToMinio } from "../lib/file-upload-minio.js";
 import {
   acceptGroupTransferStatusRoute,
   activateGroupRoute,
+  autoPairGroupRoute,
   connectGroupByAdminRoute,
   createGroupRoute,
   getGroupDetailRoute,
@@ -2057,6 +2058,130 @@ groupProtectedRouter.openapi(acceptGroupTransferStatusRoute, async (c) => {
 
     return c.json(
       { success: true, message: "Transfer status grup berhasil dikonfirmasi" },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// GET /group/:id/auto-pair-preview
+groupProtectedRouter.openapi(autoPairGroupRoute, async (c) => {
+  const user = c.var.user;
+
+  if (!isAdminRole(user.type)) {
+    return c.json(
+      {
+        success: false,
+        message: "Unauthorized",
+        error: { code: "UNAUTHORIZED", message: "Hanya admin yang dapat menggunakan auto-pair" },
+      },
+      403,
+    );
+  }
+
+  const groupId = c.req.param("id");
+
+  try {
+    const group = await prisma.otaGroup.findUnique({
+      where: { id: groupId },
+    });
+
+    if (!group) {
+      return c.json(
+        { success: false, message: "Grup tidak ditemukan", error: {} },
+        404,
+      );
+    }
+
+    if (group.status !== "active") {
+      return c.json(
+        {
+          success: false,
+          message: "Auto-pair hanya tersedia untuk grup yang sudah aktif",
+          error: { code: "GROUP_NOT_ACTIVE" },
+        },
+        400,
+      );
+    }
+
+    // Check group doesn't already have a pending or accepted connection
+    const existingConnection = await prisma.groupConnection.findFirst({
+      where: {
+        groupId,
+        connectionStatus: { in: ["pending", "accepted"] },
+      },
+    });
+
+    if (existingConnection) {
+      return c.json(
+        {
+          success: false,
+          message: "Grup ini sudah memiliki mahasiswa asuh atau sedang dalam proses persetujuan",
+          error: { code: "GROUP_ALREADY_HAS_CONNECTION" },
+        },
+        400,
+      );
+    }
+
+    // Find all eligible mahasiswa:
+    // - mahasiswaStatus = inactive
+    // - applicationStatus = accepted
+    // - not in any open/passed proposal (in any group)
+    // - not in any pending/accepted group connection
+    const eligibleMahasiswas = await prisma.mahasiswaProfile.findMany({
+      where: {
+        mahasiswaStatus: "inactive",
+        User: { applicationStatus: "accepted" },
+        GroupProposals: {
+          none: {
+            status: { in: ["open", "passed"] },
+          },
+        },
+        GroupConnections: {
+          none: {
+            connectionStatus: { in: ["pending", "accepted"] },
+          },
+        },
+      },
+      select: {
+        userId: true,
+        nim: true,
+        name: true,
+        major: true,
+        description: true,
+      },
+    });
+
+    if (eligibleMahasiswas.length === 0) {
+      return c.json(
+        {
+          success: false,
+          message: "Tidak ada mahasiswa yang tersedia untuk dipasangkan saat ini",
+          error: { code: "NO_ELIGIBLE_STUDENT" },
+        },
+        404,
+      );
+    }
+
+    // Randomly pick one
+    const picked = eligibleMahasiswas[Math.floor(Math.random() * eligibleMahasiswas.length)];
+
+    return c.json(
+      {
+        success: true,
+        message: "Mahasiswa saran berhasil dipilih",
+        body: {
+          mahasiswaId: picked.userId,
+          nim: picked.nim,
+          name: picked.name ?? "-",
+          major: picked.major ?? null,
+          description: picked.description ?? null,
+          groupId: group.id,
+          groupName: group.name,
+        },
+      } as any,
       200,
     );
   } catch (error) {

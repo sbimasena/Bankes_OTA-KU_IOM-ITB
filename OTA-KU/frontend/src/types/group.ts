@@ -97,3 +97,13 @@ export interface PaginatedResponse<T> {
   data: T[];
   totalData: number;
 }
+
+export interface AutoPairSuggestion {
+  mahasiswaId: string;
+  nim: string;
+  name: string;
+  major: string | null;
+  description: string | null;
+  groupId: string;
+  groupName: string;
+}

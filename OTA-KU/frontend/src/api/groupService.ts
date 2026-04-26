@@ -1,6 +1,7 @@
 import { api } from "@/api/client";
 import type {
   AdminGroupItem,
+  AutoPairSuggestion,
   CreateGroupPayload,
   GroupDetail,
   GroupInvitation,
@@ -171,6 +172,31 @@ export const groupService = {
       method: "POST",
       url: "/api/group/connect/verify-reject",
       formData: { groupConnectionId },
+      mediaType: "multipart/form-data",
+    });
+  },
+
+  autoPairPreview: async (groupId: string): Promise<AutoPairSuggestion> => {
+    const response = await request.request<ApiResponse<AutoPairSuggestion>>({
+      method: "GET",
+      url: `/api/group/${groupId}/auto-pair-preview`,
+    });
+
+    if (!response.body) {
+      throw new Error(response.message ?? "Gagal mengambil saran mahasiswa");
+    }
+
+    return response.body;
+  },
+
+  confirmAutoPair: async (
+    groupId: string,
+    mahasiswaId: string,
+  ): Promise<ApiResponse<unknown>> => {
+    return request.request<ApiResponse<unknown>>({
+      method: "POST",
+      url: `/api/group/${groupId}/propose-student`,
+      formData: { mahasiswaId },
       mediaType: "multipart/form-data",
     });
   },

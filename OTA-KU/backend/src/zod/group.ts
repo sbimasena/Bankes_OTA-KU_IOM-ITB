@@ -391,6 +391,22 @@ export const GroupAcceptTransferStatusSchema = z.object({
   }),
 });
 
+// === Auto-Pair ===
+
+export const AutoPairGroupResponse = z.object({
+  success: z.boolean().openapi({ example: true }),
+  message: z.string().openapi({ example: "Mahasiswa ditemukan" }),
+  body: z.object({
+    mahasiswaId: z.string().uuid().openapi({ example: "123e4567-e89b-12d3-a456-426614174000" }),
+    nim: z.string().openapi({ example: "13521001" }),
+    name: z.string().openapi({ example: "Budi Santoso" }),
+    major: z.string().nullable().openapi({ example: "Teknik Informatika" }),
+    description: z.string().nullable().openapi({ example: "Mahasiswa aktif semester 3" }),
+    groupId: z.string().uuid().openapi({ example: "123e4567-e89b-12d3-a456-426614174000" }),
+    groupName: z.string().openapi({ example: "Grup Alumni Teknik 2000" }),
+  }),
+});
+
 // Task 4: Transaction Response Schemas
 
 export const GroupMemberTransactionListResponse = z.object({
@@ -454,5 +470,4 @@ export const GroupTransactionAdminListResponse = z.object({
     ),
     totalData: z.number(),
   }),
-});
 });

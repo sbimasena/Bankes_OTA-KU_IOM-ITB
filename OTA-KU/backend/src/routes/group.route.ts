@@ -2,6 +2,7 @@ import { createRoute } from "@hono/zod-openapi";
 
 import { AuthorizationErrorResponse } from "../types/response.js";
 import {
+  AutoPairGroupResponse,
   CreateGroupResponse,
   CreateGroupSchema,
   GroupAcceptTransferStatusSchema,
@@ -866,6 +867,42 @@ export const acceptGroupTransferStatusRoute = createRoute({
     },
     404: {
       description: "GroupTransaction tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+// ── Auto-Pair Route ──────────────────────────────────────────────────────────
+
+export const autoPairGroupRoute = createRoute({
+  operationId: "autoPairGroup",
+  tags: ["Group"],
+  method: "get",
+  path: "/:id/auto-pair-preview",
+  description:
+    "Admin meminta saran pasangan mahasiswa acak untuk grup aktif yang belum memiliki mahasiswa asuh. " +
+    "Endpoint ini bersifat read-only; pairing sebenarnya terjadi via proposeStudent.",
+  request: { params: GroupIdParamSchema },
+  responses: {
+    200: {
+      description: "Mahasiswa saran berhasil dipilih",
+      content: { "application/json": { schema: AutoPairGroupResponse } },
+    },
+    400: {
+      description: "Grup belum aktif atau sudah memiliki mahasiswa asuh",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden — hanya admin",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Grup tidak ditemukan atau tidak ada mahasiswa yang eligible",
       content: { "application/json": { schema: NotFoundResponse } },
     },
     500: {
