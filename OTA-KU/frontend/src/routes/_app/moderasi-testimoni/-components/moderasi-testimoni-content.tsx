@@ -10,15 +10,13 @@ import { toast } from "sonner";
 function ModerasiTestimoniContent() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"shown" | "not_shown" | "">("");
-  const [periodId, setPeriodId] = useState<number | undefined>(undefined);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["moderationTestimonials", search, status, periodId],
+    queryKey: ["moderationTestimonials", search, status],
     queryFn: () =>
       api.testimonial.listModerationTestimonials({
         q: search || undefined,
         status: status || undefined,
-        periodId,
         page: 1,
       }),
   });
@@ -65,7 +63,7 @@ function ModerasiTestimoniContent() {
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2">
         <SearchInput placeholder="Cari nama atau NIM" setSearch={setSearch} />
         <select
           value={status}
@@ -75,22 +73,6 @@ function ModerasiTestimoniContent() {
           <option value="">Semua Status</option>
           <option value="shown">Shown (Tampil)</option>
           <option value="not_shown">Not Shown (Tidak tampil)</option>
-        </select>
-        <select
-          value={periodId ?? ""}
-          onChange={(event) => {
-            const value = Number(event.target.value);
-            setPeriodId(Number.isNaN(value) ? undefined : value);
-          }}
-          className="border-input bg-background h-10 rounded-md border px-3 text-sm"
-        >
-          <option value="">Semua Periode</option>
-          {(data?.body.periods ?? []).map((period) => (
-            <option key={period.id} value={period.id}>
-              {period.period}
-              {period.isCurrent ? " (Aktif)" : ""}
-            </option>
-          ))}
         </select>
       </div>
 
@@ -102,7 +84,7 @@ function ModerasiTestimoniContent() {
                 <div className="space-y-2">
                   <p className="text-dark text-lg font-semibold">{item.name}</p>
                   <p className="text-muted-foreground text-sm">NIM: {item.nim}</p>
-                  <p className="text-muted-foreground text-sm">Periode: {item.periodLabel}</p>
+                  <p className="text-muted-foreground text-sm">OTA: {item.otaName ?? "-"}</p>
                   <p className="text-muted-foreground text-sm">
                     Status: {item.status === "shown" ? "Shown (Tampil)" : "Not Shown (Tidak tampil)"}
                   </p>

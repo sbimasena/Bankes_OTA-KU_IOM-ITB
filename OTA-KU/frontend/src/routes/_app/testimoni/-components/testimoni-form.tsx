@@ -22,15 +22,11 @@ import { z } from "zod";
 type TestimonialFormValues = z.infer<typeof TestimonialFormSchema>;
 
 function TestimoniForm() {
-  const [selectedPeriodId, setSelectedPeriodId] = useState<number | undefined>(undefined);
   const [removedExistingImages, setRemovedExistingImages] = useState<string[]>([]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["myTestimonial", selectedPeriodId],
-    queryFn: () =>
-      api.testimonial.getMyTestimonial({
-        periodId: selectedPeriodId,
-      }),
+    queryKey: ["myTestimonial"],
+    queryFn: () => api.testimonial.getMyTestimonial(),
   });
 
   const activeTestimonial = data?.body.testimonial;
@@ -42,13 +38,6 @@ function TestimoniForm() {
       images: undefined,
     },
   });
-
-  useEffect(() => {
-    if (!data?.body.periods?.length) return;
-    if (selectedPeriodId) return;
-
-    setSelectedPeriodId(data.body.currentPeriodId ?? data.body.periods[0]?.id);
-  }, [data?.body.currentPeriodId, data?.body.periods, selectedPeriodId]);
 
   useEffect(() => {
     form.reset({
@@ -75,9 +64,9 @@ function TestimoniForm() {
       });
     },
     onSuccess: () => {
-      toast.success("Testimoni berhasil disimpan", {
-        description: "Status testimoni diatur ke not shown.",
-      });
+      toast.success("Testimoni berhasil disimpan");
+      form.setValue("images", undefined); 
+      setRemovedExistingImages([]); 
       queryClient.invalidateQueries({ queryKey: ["myTestimonial"] });
     },
     onError: (error) => {
@@ -180,32 +169,10 @@ function TestimoniForm() {
 
       <div className="flex flex-col gap-4">
         <div className="rounded-xl bg-white p-4 shadow-sm">
-          <h2 className="text-dark text-lg font-semibold">Filter Periode</h2>
-          
-          <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
-            <select
-              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 md:max-w-xs" 
-              value={selectedPeriodId ?? ""}
-              onChange={(event) => {
-                const value = Number(event.target.value);
-                setSelectedPeriodId(Number.isNaN(value) ? undefined : value);
-              }}
-            >
-              <option value="">Pilih Periode</option>
-              {(data?.body.periods ?? []).map((period) => (
-                <option key={period.id} value={period.id}>
-                  {period.period}
-                  {period.isCurrent ? " (Periode Aktif)" : ""}
-                </option>
-              ))}
-            </select>
-
-            {activeTestimonial && (
-              <p className="text-muted-foreground text-xs md:mt-0 md:ml-2">
-                Periode terpilih: <span className="font-medium text-dark">{activeTestimonial.periodLabel}</span>
-              </p>
-            )}
-          </div>
+          <h2 className="text-dark text-lg font-semibold">Informasi Testimoni</h2>
+          <p className="text-muted-foreground mt-2 text-sm">
+            Satu mahasiswa memiliki satu data testimoni yang terhubung ke OTA aktif.
+          </p>
         </div>
 
         <div className="rounded-xl bg-white p-4 shadow-sm">

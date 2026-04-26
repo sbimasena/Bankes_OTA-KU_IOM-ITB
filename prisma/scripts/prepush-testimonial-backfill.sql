@@ -1,5 +1,4 @@
--- Backfill data sebelum prisma db push untuk perubahan testimonial per-periode.
--- Aman dijalankan berulang (idempotent).
+
 
 DO $$
 BEGIN
@@ -48,50 +47,50 @@ BEGIN
     FROM information_schema.tables
     WHERE table_schema = 'public' AND table_name = 'testimonial'
   ) THEN
-    -- Pastikan kolom periodId tersedia sementara agar bisa dibackfill.
+    -- Pastikan kolom otaId tersedia sementara agar bisa dibackfill.
     IF NOT EXISTS (
       SELECT 1
       FROM information_schema.columns
       WHERE table_schema = 'public'
         AND table_name = 'testimonial'
-        AND column_name = 'periodId'
+        AND column_name = 'otaId'
     ) THEN
-      ALTER TABLE "testimonial" ADD COLUMN "periodId" INTEGER;
+      ALTER TABLE "testimonial" ADD COLUMN "otaId" UUID;
     END IF;
 
-    -- Pastikan minimal ada 1 periode untuk menampung data testimonial lama.
-    IF NOT EXISTS (SELECT 1 FROM "period") THEN
-      INSERT INTO "period" ("period", "startDate", "endDate", "isCurrent", "isOpen")
-      VALUES ('Periode Migrasi Legacy', NOW(), NOW(), TRUE, FALSE);
-    END IF;
+    -- Isi otaId null dari koneksi accepted terbaru milik mahasiswa.
+    WITH ranked_connection AS (
+      SELECT
+        c."mahasiswaId",
+        c."otaId",
+        ROW_NUMBER() OVER (
+          PARTITION BY c."mahasiswaId"
+          ORDER BY c."updatedAt" DESC, c."createdAt" DESC
+        ) AS rn
+      FROM "connection" c
+      WHERE c."connectionStatus" = 'accepted'
+    )
+    UPDATE "testimonial" t
+    SET "otaId" = rc."otaId"
+    FROM ranked_connection rc
+    WHERE t."mahasiswaId" = rc."mahasiswaId"
+      AND rc.rn = 1
+      AND t."otaId" IS NULL;
+
+    -- Hapus testimoni tanpa relasi OTA accepted agar konsisten dengan model baru.
+    DELETE FROM "testimonial"
+    WHERE "otaId" IS NULL;
 
     -- Bersihkan metadata review untuk yang tidak ditampilkan.
     UPDATE "testimonial"
     SET
-      "isActive" = FALSE,
-      "rejectedReason" = NULL,
-      "approvedById" = NULL,
-      "approvedAt" = NULL,
-      "reviewedAt" = NULL
+      "isActive" = FALSE
     WHERE "status" = 'not_shown';
 
-    -- Isi periodId null ke periode aktif, fallback ke periode pertama.
-    WITH chosen_period AS (
-      SELECT COALESCE(
-        (SELECT "id" FROM "period" WHERE "isCurrent" = TRUE ORDER BY "id" DESC LIMIT 1),
-        (SELECT "id" FROM "period" ORDER BY "id" ASC LIMIT 1)
-      ) AS id
-    )
-    UPDATE "testimonial" t
-    SET "periodId" = cp.id
-    FROM chosen_period cp
-    WHERE t."periodId" IS NULL;
-
-    -- Jaga-jaga jika ada duplikat mahasiswaId+periodId dari data legacy.
+    -- Jaga-jaga jika ada duplikat testimonial per mahasiswa dari data legacy.
     DELETE FROM "testimonial" t
     USING "testimonial" keep
     WHERE t."mahasiswaId" = keep."mahasiswaId"
-      AND t."periodId" = keep."periodId"
       AND t."id" <> keep."id"
       AND t."updatedAt" < keep."updatedAt";
   END IF;

@@ -9,47 +9,28 @@ export class TestimonialService {
   constructor(public readonly httpRequest: BaseHttpRequest) {}
 
   public getMyTestimonial({
-    periodId,
     status,
   }: {
-    periodId?: number,
     status?: 'shown' | 'not_shown',
   } = {}): CancelablePromise<{
     success: boolean;
     message: string;
     body: {
-      currentPeriodId: number | null;
-      periods: Array<{
-        id: number;
-        period: string;
-        isCurrent: boolean;
-      }>;
       testimonial: {
         id: string;
-        periodId: number;
-        periodLabel: string;
+        otaId: string;
         content: string;
         images: Array<string>;
         status: 'shown' | 'not_shown';
         isActive: boolean;
-        reviewedAt: string | null;
         updatedAt: string;
       } | null;
-      history: Array<{
-        id: string;
-        periodId: number;
-        periodLabel: string;
-        status: 'shown' | 'not_shown';
-        isActive: boolean;
-        updatedAt: string;
-      }>;
     };
   }> {
     return this.httpRequest.request({
       method: 'GET',
       url: '/api/testimonial/mahasiswa/me',
       query: {
-        'periodId': periodId,
         'status': status,
       },
       errors: {
@@ -73,7 +54,7 @@ export class TestimonialService {
     message: string;
     body: {
       id: string;
-      periodId: number;
+      otaId: string;
       status: 'shown' | 'not_shown';
     };
   }> {
@@ -94,27 +75,20 @@ export class TestimonialService {
     q,
     page,
     status,
-    periodId,
   }: {
     q?: string,
     page?: number,
     status?: 'shown' | 'not_shown',
-    periodId?: number,
   }): CancelablePromise<{
     success: boolean;
     message: string;
     body: {
       totalData: number;
-      periods: Array<{
-        id: number;
-        period: string;
-        isCurrent: boolean;
-      }>;
       data: Array<{
         id: string;
         mahasiswaId: string;
-        periodId: number;
-        periodLabel: string;
+        otaId: string;
+        otaName: string | null;
         name: string;
         nim: string;
         major: string | null;
@@ -122,8 +96,6 @@ export class TestimonialService {
         images: Array<string>;
         status: 'shown' | 'not_shown';
         isActive: boolean;
-        approvedByName: string | null;
-        reviewedAt: string | null;
         updatedAt: string;
       }>;
     };
@@ -135,7 +107,6 @@ export class TestimonialService {
         'q': q,
         'page': page,
         'status': status,
-        'periodId': periodId,
       },
       errors: {
         401: `Bad request: authorization (not logged in) error`,
@@ -225,7 +196,6 @@ export class TestimonialService {
         faculty: string | null;
         content: string;
         images: Array<string>;
-        reviewedAt: string | null;
       }>;
     };
   }> {

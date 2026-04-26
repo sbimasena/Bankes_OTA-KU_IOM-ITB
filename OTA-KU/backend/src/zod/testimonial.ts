@@ -6,7 +6,6 @@ export const TestimonialStatusSchema = z.enum([
 ]);
 
 export const GetMyTestimonialQuerySchema = z.object({
-  periodId: z.coerce.number().int().min(1).optional(),
   status: TestimonialStatusSchema.optional(),
 });
 
@@ -32,37 +31,17 @@ export const TestimonialMeResponseSchema = z.object({
   message: z.string().openapi({ example: "Berhasil mengambil testimoni saya" }),
   body: z
     .object({
-      currentPeriodId: z.number().int().nullable(),
-      periods: z.array(
-        z.object({
-          id: z.number().int(),
-          period: z.string(),
-          isCurrent: z.boolean(),
-        }),
-      ),
       testimonial: z
         .object({
           id: z.string().uuid(),
-          periodId: z.number().int(),
-          periodLabel: z.string(),
+          otaId: z.string().uuid(),
           content: z.string(),
           images: z.array(z.string()).openapi({ example: [] }),
           status: TestimonialStatusSchema,
           isActive: z.boolean(),
-          reviewedAt: z.string().nullable(),
           updatedAt: z.string(),
         })
         .nullable(),
-      history: z.array(
-        z.object({
-          id: z.string().uuid(),
-          periodId: z.number().int(),
-          periodLabel: z.string(),
-          status: TestimonialStatusSchema,
-          isActive: z.boolean(),
-          updatedAt: z.string(),
-        }),
-      ),
     })
     .openapi("TestimonialMeResponse"),
 });
@@ -72,7 +51,7 @@ export const UpsertTestimonialResponseSchema = z.object({
   message: z.string().openapi({ example: "Berhasil menyimpan testimoni" }),
   body: z.object({
     id: z.string().uuid(),
-    periodId: z.number().int(),
+    otaId: z.string().uuid(),
     status: TestimonialStatusSchema,
   }),
 });
@@ -81,7 +60,6 @@ export const ListModerationTestimonialQuerySchema = z.object({
   q: z.string().optional().openapi({ example: "andi" }),
   page: z.coerce.number().min(1).optional().openapi({ example: 1 }),
   status: TestimonialStatusSchema.optional(),
-  periodId: z.coerce.number().int().min(1).optional(),
 });
 
 export const ListModerationTestimonialResponseSchema = z.object({
@@ -91,20 +69,13 @@ export const ListModerationTestimonialResponseSchema = z.object({
     .openapi({ example: "Berhasil mengambil daftar moderasi testimoni" }),
   body: z.object({
     totalData: z.number().openapi({ example: 10 }),
-    periods: z.array(
-      z.object({
-        id: z.number().int(),
-        period: z.string(),
-        isCurrent: z.boolean(),
-      }),
-    ),
     data: z.array(
       z
         .object({
           id: z.string().uuid(),
           mahasiswaId: z.string().uuid(),
-          periodId: z.number().int(),
-          periodLabel: z.string(),
+          otaId: z.string().uuid(),
+          otaName: z.string().nullable(),
           name: z.string(),
           nim: z.string(),
           major: z.string().nullable(),
@@ -112,8 +83,6 @@ export const ListModerationTestimonialResponseSchema = z.object({
           images: z.array(z.string()),
           status: TestimonialStatusSchema,
           isActive: z.boolean(),
-          approvedByName: z.string().nullable(),
-          reviewedAt: z.string().nullable(),
           updatedAt: z.string(),
         })
         .openapi("ModerationTestimonialData"),
@@ -173,7 +142,6 @@ export const PublicTestimonialResponseSchema = z.object({
           faculty: z.string().nullable(),
           content: z.string(),
           images: z.array(z.string()),
-          reviewedAt: z.string().nullable(),
         })
         .openapi("PublicTestimonialData"),
     ),
