@@ -328,7 +328,13 @@ groupProtectedRouter.openapi(listMyInvitationsRoute, async (c) => {
     const invitations = await prisma.groupInvitation.findMany({
       where: { invitedOtaId: user.id, status: "pending" },
       include: {
-        Group: { select: { name: true, status: true } },
+        Group: {
+          select: {
+            name: true,
+            status: true,
+            Members: { select: { pledgeAmount: true } },
+          },
+        },
         InvitedBy: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -345,6 +351,8 @@ groupProtectedRouter.openapi(listMyInvitationsRoute, async (c) => {
             groupName: inv.Group.name,
             groupStatus: inv.Group.status,
             invitedByName: inv.InvitedBy?.name ?? null,
+            memberCount: inv.Group.Members.length,
+            totalPledge: inv.Group.Members.reduce((sum, m) => sum + m.pledgeAmount, 0),
             createdAt: inv.createdAt.toISOString(),
           })),
         },

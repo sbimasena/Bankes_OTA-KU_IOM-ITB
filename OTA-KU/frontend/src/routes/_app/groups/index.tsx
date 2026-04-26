@@ -342,32 +342,47 @@ function GroupsDashboard() {
               myInvitations.map((invitation) => (
                 <Card key={invitation.invitationId}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">{invitation.groupName}</CardTitle>
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-base">{invitation.groupName}</CardTitle>
+                      <Badge variant={invitation.groupStatus === "active" ? "default" : "secondary"} className="shrink-0">
+                        {invitation.groupStatus === "active" ? "Aktif" : "Forming"}
+                      </Badge>
+                    </div>
                     <CardDescription>
                       Oleh {invitation.invitedByName || "Admin"}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      disabled={isInGroup || respondMutation.isPending}
-                      title={isInGroup ? "Anda sudah tergabung dalam grup lain" : undefined}
-                      onClick={() => setAcceptInviteId(invitation.invitationId)}
-                    >
-                      Terima
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      disabled={respondMutation.isPending}
-                      onClick={() =>
-                        respondMutation.mutate({ id: invitation.invitationId, response: "rejected" })
-                      }
-                    >
-                      Tolak
-                    </Button>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
+                      <span className="text-muted-foreground">Anggota saat ini</span>
+                      <span className="font-medium">{invitation.memberCount} orang</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
+                      <span className="text-muted-foreground">Total kontribusi grup</span>
+                      <span className="font-semibold text-primary">{formatRp(invitation.totalPledge)}/bln</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        disabled={isInGroup || respondMutation.isPending}
+                        title={isInGroup ? "Anda sudah tergabung dalam grup lain" : undefined}
+                        onClick={() => setAcceptInviteId(invitation.invitationId)}
+                      >
+                        Terima
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        disabled={respondMutation.isPending}
+                        onClick={() =>
+                          respondMutation.mutate({ id: invitation.invitationId, response: "rejected" })
+                        }
+                      >
+                        Tolak
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))

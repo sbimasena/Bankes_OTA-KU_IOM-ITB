@@ -39,6 +39,8 @@ export interface GroupInvitation {
   groupName: string;
   groupStatus: OtaGroupStatus;
   invitedByName: string | null;
+  memberCount: number;
+  totalPledge: number;
   createdAt: string;
 }
 
