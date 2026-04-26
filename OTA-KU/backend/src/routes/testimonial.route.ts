@@ -151,7 +151,7 @@ export const reviewTestimonialRoute = createRoute({
   tags: ["Testimonial"],
   method: "patch",
   path: "/admin/{id}/review",
-  description: "Konfirmasi testimoni sehingga bisa diatur visibilitas homepage",
+  description: "Ubah status testimoni menjadi shown agar tampil di homepage",
   request: {
     params: ReviewTestimonialParamsSchema,
     body: {
@@ -269,7 +269,7 @@ export const listPublicTestimonialsRoute = createRoute({
   tags: ["Testimonial"],
   method: "get",
   path: "/public",
-  description: "Daftar testimoni terkonfirmasi dan aktif untuk homepage",
+  description: "Daftar testimoni berstatus shown untuk homepage",
   request: {
     query: PublicTestimonialQuerySchema,
   },

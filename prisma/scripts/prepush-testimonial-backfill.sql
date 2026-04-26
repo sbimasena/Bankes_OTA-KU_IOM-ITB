@@ -1,8 +1,6 @@
 -- Backfill data sebelum prisma db push untuk perubahan testimonial per-periode.
 -- Aman dijalankan berulang (idempotent).
 
--- Ubah enum TestimonialStatus di database agar benar-benar hanya menyisakan
--- nilai pending/confirmed (approved/rejected dihapus dari tipe enum).
 DO $$
 BEGIN
   IF EXISTS (
@@ -21,7 +19,7 @@ BEGIN
       FROM pg_type
       WHERE typname = 'TestimonialStatus_new'
     ) THEN
-      CREATE TYPE "TestimonialStatus_new" AS ENUM ('pending', 'confirmed');
+      CREATE TYPE "TestimonialStatus_new" AS ENUM ('shown', 'not_shown');
     END IF;
 
     ALTER TABLE "testimonial" ALTER COLUMN "status" DROP DEFAULT;
@@ -30,16 +28,15 @@ BEGIN
     ALTER COLUMN "status" TYPE "TestimonialStatus_new"
     USING (
       CASE
-        WHEN "status"::text = 'approved' THEN 'confirmed'
-        WHEN "status"::text = 'rejected' THEN 'pending'
-        WHEN "status"::text = 'confirmed' THEN 'confirmed'
-        ELSE 'pending'
+        WHEN "status"::text IN ('approved', 'confirmed', 'shown') THEN 'shown'
+        WHEN "status"::text IN ('rejected', 'pending', 'not_shown') THEN 'not_shown'
+        ELSE 'not_shown'
       END
     )::"TestimonialStatus_new";
 
     DROP TYPE "TestimonialStatus";
     ALTER TYPE "TestimonialStatus_new" RENAME TO "TestimonialStatus";
-    ALTER TABLE "testimonial" ALTER COLUMN "status" SET DEFAULT 'pending'::"TestimonialStatus";
+    ALTER TABLE "testimonial" ALTER COLUMN "status" SET DEFAULT 'not_shown'::"TestimonialStatus";
   END IF;
 END $$;
 
@@ -68,7 +65,7 @@ BEGIN
       VALUES ('Periode Migrasi Legacy', NOW(), NOW(), TRUE, FALSE);
     END IF;
 
-    -- Bersihkan metadata review lama agar konsisten dengan status baru.
+    -- Bersihkan metadata review untuk yang tidak ditampilkan.
     UPDATE "testimonial"
     SET
       "isActive" = FALSE,
@@ -76,7 +73,7 @@ BEGIN
       "approvedById" = NULL,
       "approvedAt" = NULL,
       "reviewedAt" = NULL
-    WHERE "status" = 'pending';
+    WHERE "status" = 'not_shown';
 
     -- Isi periodId null ke periode aktif, fallback ke periode pertama.
     WITH chosen_period AS (

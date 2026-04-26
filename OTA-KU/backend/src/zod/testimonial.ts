@@ -1,8 +1,8 @@
 import { z } from "@hono/zod-openapi";
 
 export const TestimonialStatusSchema = z.enum([
-  "pending",
-  "confirmed",
+  "shown",
+  "not_shown",
 ]);
 
 export const GetMyTestimonialQuerySchema = z.object({
@@ -126,7 +126,7 @@ export const ReviewTestimonialParamsSchema = z.object({
 });
 
 export const ReviewTestimonialBodySchema = z.object({
-  status: z.literal("confirmed"),
+  status: z.literal("shown"),
 });
 
 export const ReviewTestimonialResponseSchema = z.object({

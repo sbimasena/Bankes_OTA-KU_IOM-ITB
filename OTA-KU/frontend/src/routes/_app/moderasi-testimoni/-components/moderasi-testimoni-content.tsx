@@ -1,6 +1,6 @@
 import { api, queryClient } from "@/api/client";
 import { SearchInput } from "@/components/search-input";
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 function ModerasiTestimoniContent() {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<"pending" | "confirmed" | "">("pending");
+  const [status, setStatus] = useState<"shown" | "not_shown" | "">("");
   const [periodId, setPeriodId] = useState<number | undefined>(undefined);
 
   const { data, isLoading } = useQuery({
@@ -23,23 +23,23 @@ function ModerasiTestimoniContent() {
       }),
   });
 
-  const reviewMutation = useMutation({
-    mutationFn: async ({ id }: { id: string }) => {
-      await api.testimonial.reviewTestimonial({
-        id,
-        formData: {
-          status: "confirmed",
-        },
-      });
-    },
-    onSuccess: () => {
-      toast.success("Testimoni berhasil dikonfirmasi");
-      queryClient.invalidateQueries({ queryKey: ["moderationTestimonials"] });
-    },
-    onError: (error) => {
-      toast.error("Gagal memoderasi testimoni", { description: error.message });
-    },
-  });
+  // const reviewMutation = useMutation({
+  //   mutationFn: async ({ id }: { id: string }) => {
+  //     await api.testimonial.reviewTestimonial({
+  //       id,
+  //       formData: {
+  //         status: "shown",
+  //       },
+  //     });
+  //   },
+  //   onSuccess: () => {
+  //     toast.success("Testimoni berhasil ditampilkan");
+  //     queryClient.invalidateQueries({ queryKey: ["moderationTestimonials"] });
+  //   },
+  //   onError: (error) => {
+  //     toast.error("Gagal memoderasi testimoni", { description: error.message });
+  //   },
+  // });
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
@@ -69,12 +69,12 @@ function ModerasiTestimoniContent() {
         <SearchInput placeholder="Cari nama atau NIM" setSearch={setSearch} />
         <select
           value={status}
-          onChange={(event) => setStatus(event.target.value as "pending" | "confirmed" | "")}
+          onChange={(event) => setStatus(event.target.value as "shown" | "not_shown" | "")}
           className="border-input bg-background h-10 rounded-md border px-3 text-sm"
         >
           <option value="">Semua Status</option>
-          <option value="pending">Pending</option>
-          <option value="confirmed">Terkonfirmasi</option>
+          <option value="shown">Shown (Tampil)</option>
+          <option value="not_shown">Not Shown (Tidak tampil)</option>
         </select>
         <select
           value={periodId ?? ""}
@@ -103,29 +103,31 @@ function ModerasiTestimoniContent() {
                   <p className="text-dark text-lg font-semibold">{item.name}</p>
                   <p className="text-muted-foreground text-sm">NIM: {item.nim}</p>
                   <p className="text-muted-foreground text-sm">Periode: {item.periodLabel}</p>
-                  <p className="text-muted-foreground text-sm">Status: {item.status}</p>
+                  <p className="text-muted-foreground text-sm">
+                    Status: {item.status === "shown" ? "Shown (Tampil)" : "Not Shown (Tidak tampil)"}
+                  </p>
                   <p className="text-sm leading-relaxed">{item.content}</p>
                 </div>
 
                 <div className="flex min-w-[250px] flex-col gap-2">
-                  <Button
+                  {/* <Button
                     onClick={() => {
                       reviewMutation.mutate({ id: item.id });
                     }}
-                    disabled={reviewMutation.isPending || item.status === "confirmed"}
+                    disabled={reviewMutation.isPending || item.status === "shown"}
                   >
-                    {item.status === "confirmed" ? "Sudah Terkonfirmasi" : "Konfirmasi Testimoni"}
-                  </Button>
+                    {item.status === "shown" ? "Sudah Tampil" : "Tandai Shown"}
+                  </Button> */}
 
                   <label className="mt-1 flex items-center gap-2 text-sm">
                     <Input
                       type="checkbox"
                       className="h-4 w-4"
-                      checked={item.isActive}
+                      checked={item.status === "shown"}
                       onChange={(event) => {
                         toggleMutation.mutate({ id: item.id, isActive: event.target.checked });
                       }}
-                      disabled={item.status !== "confirmed" || toggleMutation.isPending}
+                      disabled={toggleMutation.isPending}
                     />
                     Tampilkan di homepage
                   </label>

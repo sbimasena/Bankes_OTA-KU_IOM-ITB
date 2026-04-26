@@ -174,15 +174,26 @@ statusProtectedRouter.openapi(getApplicationStatusRoute, async (c) => {
   }
 
   try {
-    const account = await prisma.user.findFirst({
+    const account = await prisma.user.findUnique({
       where: { id },
     });
+
+    if (!account) {
+      return c.json(
+        {
+          success: false,
+          message: "Akun tidak ditemukan",
+          error: {},
+        },
+        404,
+      );
+    }
 
     return c.json(
       {
         success: true,
         message: "Berhasil mengambil status pendaftaran",
-        body: { status: account!.applicationStatus },
+        body: { status: account.applicationStatus },
       },
       200,
     );
@@ -215,15 +226,26 @@ statusProtectedRouter.openapi(getVerificationStatusRoute, async (c) => {
   }
 
   try {
-    const account = await prisma.user.findFirst({
+    const account = await prisma.user.findUnique({
       where: { id },
     });
+
+    if (!account) {
+      return c.json(
+        {
+          success: false,
+          message: "Akun tidak ditemukan",
+          error: {},
+        },
+        404,
+      );
+    }
 
     return c.json(
       {
         success: true,
-        message: "Berhasil mengambil status pendaftaran",
-        body: { status: account!.verificationStatus },
+        message: "Berhasil mengambil status verifikasi",
+        body: { status: account.verificationStatus },
       },
       200,
     );
@@ -256,9 +278,20 @@ statusProtectedRouter.openapi(getReapplicationStatusRoute, async (c) => {
   }
 
   try {
-    const account = await prisma.user.findFirst({
+    const account = await prisma.user.findUnique({
       where: { id },
     });
+
+    if (!account) {
+      return c.json(
+        {
+          success: false,
+          message: "Akun tidak ditemukan",
+          error: {},
+        },
+        404,
+      );
+    }
 
     if (account?.role !== "Mahasiswa") {
       return c.json(
@@ -276,9 +309,20 @@ statusProtectedRouter.openapi(getReapplicationStatusRoute, async (c) => {
       select: { dueNextUpdateAt: true },
     });
 
+    if (!mahasiswaProfile) {
+      return c.json(
+        {
+          success: false,
+          message: "Profil mahasiswa tidak ditemukan",
+          error: {},
+        },
+        404,
+      );
+    }
+
     // Return true if current date is 30 days before dueNextUpdateAt
     const currentDate = new Date();
-    const dueDate = new Date(mahasiswaProfile!.dueNextUpdateAt);
+    const dueDate = new Date(mahasiswaProfile.dueNextUpdateAt);
     const thirtyDaysBeforeDueDate = new Date(
       dueDate.getTime() - 30 * 24 * 60 * 60 * 1000,
     );

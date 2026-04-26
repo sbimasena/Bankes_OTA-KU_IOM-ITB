@@ -167,8 +167,8 @@ enum TransferStatus {
 }
 
 enum TestimonialStatus {
-  pending
-  confirmed
+  shown
+  not_shown
 }
 
 enum ScoreCategory {
@@ -366,7 +366,7 @@ model Testimonial {
   periodId        Int
   content         String
   imageUrls       String[]
-  status          TestimonialStatus @default(pending)
+  status          TestimonialStatus @default(not_shown)
   isActive        Boolean           @default(false)
   approvedById    String?           @db.Uuid
   approvedAt      DateTime?

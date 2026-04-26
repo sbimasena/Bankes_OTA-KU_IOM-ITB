@@ -3,6 +3,7 @@ import { seedUsers } from "./users";
 import { seedOtaProfiles } from "./ota-profiles";
 import { seedPeriods } from "./periods";
 import { seedConnections } from "./connections";
+import { seedTestimonials } from "./testimonials";
 
 const prisma = new PrismaClient();
 
@@ -20,6 +21,9 @@ async function main() {
 
   // 4. OTA Connections + Transactions (OTA-specific)
   await seedConnections(prisma);
+
+  // 5. OTA Testimonials
+  await seedTestimonials(prisma);
 
   console.log("\n✅ All seeds completed successfully!");
 }

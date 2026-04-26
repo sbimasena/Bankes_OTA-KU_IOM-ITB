@@ -13,7 +13,7 @@ export class TestimonialService {
     status,
   }: {
     periodId?: number,
-    status?: 'pending' | 'confirmed',
+    status?: 'shown' | 'not_shown',
   } = {}): CancelablePromise<{
     success: boolean;
     message: string;
@@ -30,7 +30,7 @@ export class TestimonialService {
         periodLabel: string;
         content: string;
         images: Array<string>;
-        status: 'pending' | 'confirmed';
+        status: 'shown' | 'not_shown';
         isActive: boolean;
         reviewedAt: string | null;
         updatedAt: string;
@@ -39,7 +39,7 @@ export class TestimonialService {
         id: string;
         periodId: number;
         periodLabel: string;
-        status: 'pending' | 'confirmed';
+        status: 'shown' | 'not_shown';
         isActive: boolean;
         updatedAt: string;
       }>;
@@ -74,7 +74,7 @@ export class TestimonialService {
     body: {
       id: string;
       periodId: number;
-      status: 'pending' | 'confirmed';
+      status: 'shown' | 'not_shown';
     };
   }> {
     return this.httpRequest.request({
@@ -98,7 +98,7 @@ export class TestimonialService {
   }: {
     q?: string,
     page?: number,
-    status?: 'pending' | 'confirmed',
+    status?: 'shown' | 'not_shown',
     periodId?: number,
   }): CancelablePromise<{
     success: boolean;
@@ -120,7 +120,7 @@ export class TestimonialService {
         major: string | null;
         content: string;
         images: Array<string>;
-        status: 'pending' | 'confirmed';
+        status: 'shown' | 'not_shown';
         isActive: boolean;
         approvedByName: string | null;
         reviewedAt: string | null;
@@ -151,14 +151,14 @@ export class TestimonialService {
   }: {
     id: string,
     formData?: {
-      status: 'confirmed';
+      status: 'shown';
     },
   }): CancelablePromise<{
     success: boolean;
     message: string;
     body: {
       id: string;
-      status: 'pending' | 'confirmed';
+      status: 'shown' | 'not_shown';
     };
   }> {
     return this.httpRequest.request({

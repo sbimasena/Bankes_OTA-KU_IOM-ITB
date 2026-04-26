@@ -284,7 +284,7 @@ testimonialProtectedRouter.openapi(upsertMyTestimonialRoute, async (c) => {
         periodId: currentPeriod.id,
         content: sanitizedContent,
         imageUrls,
-        status: "pending",
+        status: "not_shown",
         isActive: false,
         approvedById: null,
         approvedAt: null,
@@ -294,7 +294,7 @@ testimonialProtectedRouter.openapi(upsertMyTestimonialRoute, async (c) => {
       update: {
         content: sanitizedContent,
         imageUrls,
-        status: "pending",
+        status: "not_shown",
         isActive: false,
         approvedById: null,
         approvedAt: null,
@@ -489,7 +489,7 @@ testimonialProtectedRouter.openapi(reviewTestimonialRoute, async (c) => {
       where: { id },
       data: {
         status: parsed.status,
-        isActive: false,
+        isActive: parsed.status === "shown",
         approvedById: user.id,
         approvedAt: now,
         rejectedReason: null,
@@ -504,7 +504,7 @@ testimonialProtectedRouter.openapi(reviewTestimonialRoute, async (c) => {
     return c.json(
       {
         success: true,
-        message: "Berhasil mengonfirmasi testimoni",
+        message: "Berhasil mengubah status testimoni",
         body: updated,
       },
       200,
@@ -548,7 +548,7 @@ testimonialProtectedRouter.openapi(toggleTestimonialActiveRoute, async (c) => {
 
     const existing = await prisma.testimonial.findUnique({
       where: { id },
-      select: { id: true, status: true },
+      select: { id: true },
     });
 
     if (!existing) {
@@ -565,23 +565,12 @@ testimonialProtectedRouter.openapi(toggleTestimonialActiveRoute, async (c) => {
       );
     }
 
-    if (existing.status !== "confirmed" && parsed.isActive) {
-      return c.json(
-        {
-          success: false,
-          message: "Hanya testimoni terkonfirmasi yang dapat diaktifkan",
-          error: {
-            code: "BAD_REQUEST",
-            message: "Hanya testimoni terkonfirmasi yang dapat diaktifkan",
-          },
-        },
-        400,
-      );
-    }
-
     const updated = await prisma.testimonial.update({
       where: { id },
-      data: { isActive: parsed.isActive },
+      data: {
+        isActive: parsed.isActive,
+        status: parsed.isActive ? "shown" : "not_shown",
+      },
       select: {
         id: true,
         isActive: true,
@@ -615,8 +604,7 @@ testimonialRouter.openapi(listPublicTestimonialsRoute, async (c) => {
   try {
     const rows = await prisma.testimonial.findMany({
       where: {
-        status: "confirmed",
-        isActive: true,
+        status: "shown",
       },
       include: {
         MahasiswaProfile: true,

@@ -21,22 +21,15 @@ import { z } from "zod";
 
 type TestimonialFormValues = z.infer<typeof TestimonialFormSchema>;
 
-const statusLabelMap: Record<string, string> = {
-  pending: "Menunggu Moderasi",
-  confirmed: "Terkonfirmasi Admin",
-};
-
 function TestimoniForm() {
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | undefined>(undefined);
-  const [statusFilter, setStatusFilter] = useState<"pending" | "confirmed" | "">("");
   const [removedExistingImages, setRemovedExistingImages] = useState<string[]>([]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["myTestimonial", selectedPeriodId, statusFilter],
+    queryKey: ["myTestimonial", selectedPeriodId],
     queryFn: () =>
       api.testimonial.getMyTestimonial({
         periodId: selectedPeriodId,
-        status: statusFilter || undefined,
       }),
   });
 
@@ -83,7 +76,7 @@ function TestimoniForm() {
     },
     onSuccess: () => {
       toast.success("Testimoni berhasil disimpan", {
-        description: "Status testimoni kembali ke pending dan menunggu konfirmasi admin.",
+        description: "Status testimoni diatur ke not shown.",
       });
       queryClient.invalidateQueries({ queryKey: ["myTestimonial"] });
     },
@@ -101,9 +94,6 @@ function TestimoniForm() {
   if (isLoading) {
     return <Skeleton className="h-[320px] w-full rounded-xl" />;
   }
-
-  const currentStatus = activeTestimonial?.status;
-  const statusLabel = currentStatus ? statusLabelMap[currentStatus] : "Belum Ada";
 
   return (
     <section className="grid gap-6 lg:grid-cols-3">
@@ -190,10 +180,11 @@ function TestimoniForm() {
 
       <div className="flex flex-col gap-4">
         <div className="rounded-xl bg-white p-4 shadow-sm">
-          <h2 className="text-dark text-lg font-semibold">Filter Periode & Status</h2>
-          <div className="mt-3 grid gap-2">
+          <h2 className="text-dark text-lg font-semibold">Filter Periode</h2>
+          
+          <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
             <select
-              className="border-input bg-background h-10 rounded-md border px-3 text-sm"
+              className="border-input bg-background h-10 w-full rounded-md border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 md:max-w-xs" 
               value={selectedPeriodId ?? ""}
               onChange={(event) => {
                 const value = Number(event.target.value);
@@ -209,31 +200,12 @@ function TestimoniForm() {
               ))}
             </select>
 
-            <select
-              className="border-input bg-background h-10 rounded-md border px-3 text-sm"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as "pending" | "confirmed" | "")}
-            >
-              <option value="">Semua Status</option>
-              <option value="pending">Pending</option>
-              <option value="confirmed">Terkonfirmasi</option>
-            </select>
+            {activeTestimonial && (
+              <p className="text-muted-foreground text-xs md:mt-0 md:ml-2">
+                Periode terpilih: <span className="font-medium text-dark">{activeTestimonial.periodLabel}</span>
+              </p>
+            )}
           </div>
-        </div>
-
-        <div className="rounded-xl bg-white p-4 shadow-sm">
-          <h2 className="text-dark text-lg font-semibold">Status Konfirmasi</h2>
-          <p className="mt-2 text-sm">{statusLabel}</p>
-          {activeTestimonial && (
-            <p className="text-muted-foreground mt-1 text-xs">
-              Periode: {activeTestimonial.periodLabel}
-            </p>
-          )}
-          {currentStatus === "confirmed" && (
-            <p className="mt-2 rounded-md bg-emerald-50 p-2 text-sm text-emerald-700">
-              Testimoni sudah dikonfirmasi. Admin dapat mengatur visibilitas di homepage.
-            </p>
-          )}
         </div>
 
         <div className="rounded-xl bg-white p-4 shadow-sm">
@@ -266,23 +238,6 @@ function TestimoniForm() {
           )}
         </div>
 
-        <div className="rounded-xl bg-white p-4 shadow-sm">
-          <h2 className="text-dark text-lg font-semibold">Riwayat Testimoni</h2>
-          {(data?.body.history ?? []).length === 0 ? (
-            <p className="text-muted-foreground mt-2 text-sm">Belum ada riwayat testimoni.</p>
-          ) : (
-            <ul className="mt-3 space-y-2 text-sm">
-              {data?.body.history.map((item) => (
-                <li key={item.id} className="rounded-md border p-2">
-                  <p className="font-medium">{item.periodLabel}</p>
-                  <p className="text-muted-foreground">
-                    Status: {statusLabelMap[item.status]} | Homepage: {item.isActive ? "Tampil" : "Tidak tampil"}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
       </div>
     </section>
   );
