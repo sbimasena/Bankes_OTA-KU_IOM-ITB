@@ -124,13 +124,18 @@ function GroupDetailPage() {
   const budgetProgress = Math.min((totalPledge / MIN_BUDGET) * 100, 100);
   const isBudgetMet = totalPledge >= MIN_BUDGET;
   const isGroupActive = group.status === "active";
-  const canPropose = isGroupActive && isBudgetMet;
+  const hasActiveProposal = (proposals ?? []).some(
+    (p) => p.status !== "rejected" && p.status !== "failed",
+  );
+  const canPropose = isGroupActive && isBudgetMet && !hasActiveProposal;
 
-  const proposeLockMessage = !isGroupActive
-    ? "Grup harus aktif dan mengumpulkan dana min. Rp800.000 untuk memilih mahasiswa."
-    : !isBudgetMet
-      ? `Dana grup belum mencukupi (${formatRp(totalPledge)} / ${formatRp(MIN_BUDGET)}). Ajak lebih banyak anggota untuk berkomitmen.`
-      : undefined;
+  const proposeLockMessage = hasActiveProposal
+    ? "Sudah ada proposal mahasiswa yang sedang berjalan."
+    : !isGroupActive
+      ? "Grup harus aktif dan mengumpulkan dana min. Rp800.000 untuk memilih mahasiswa."
+      : !isBudgetMet
+        ? `Dana grup belum mencukupi (${formatRp(totalPledge)} / ${formatRp(MIN_BUDGET)}). Ajak lebih banyak anggota untuk berkomitmen.`
+        : undefined;
 
   return (
     <div className="flex flex-col gap-6 p-8">
@@ -158,7 +163,11 @@ function GroupDetailPage() {
           {group.members.length < 8 && (
             <Dialog open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button
+                  variant="outline"
+                  disabled={hasActiveProposal}
+                  title={hasActiveProposal ? "Tidak bisa mengundang anggota saat ada proposal mahasiswa yang sedang berjalan." : undefined}
+                >
                   <UserPlus className="mr-2 h-4 w-4" />
                   Undang Anggota
                 </Button>
