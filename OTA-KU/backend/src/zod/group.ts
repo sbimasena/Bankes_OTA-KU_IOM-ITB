@@ -26,9 +26,9 @@ export const CreateGroupSchema = z.object({
 });
 
 export const InviteMemberSchema = z.object({
-  invitedOtaId: z.string().uuid().openapi({
-    description: "ID OTA yang diundang",
-    example: "123e4567-e89b-12d3-a456-426614174000",
+  email: z.string().email().openapi({
+    description: "Email OTA yang diundang",
+    example: "ota@example.com",
   }),
 });
 

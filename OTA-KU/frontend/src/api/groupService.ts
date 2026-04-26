@@ -93,12 +93,12 @@ export const groupService = {
 
   inviteMember: async (
     groupId: string,
-    invitedOtaId: string,
+    email: string,
   ): Promise<ApiResponse<unknown>> => {
     return request.request<ApiResponse<unknown>>({
       method: "POST",
       url: `/api/group/${groupId}/invite`,
-      formData: { invitedOtaId },
+      formData: { email },
       mediaType: "multipart/form-data",
     });
   },

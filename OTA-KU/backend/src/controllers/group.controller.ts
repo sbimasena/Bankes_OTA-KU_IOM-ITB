@@ -394,15 +394,26 @@ groupProtectedRouter.openapi(inviteMemberRoute, async (c) => {
   }
 
   const body = await c.req.formData();
-  const { invitedOtaId } = InviteMemberSchema.parse(Object.fromEntries(body.entries()));
+  const { email } = InviteMemberSchema.parse(Object.fromEntries(body.entries()));
 
   try {
+    const invitedUser = await prisma.user.findUnique({
+      where: { email },
+      include: { OtaProfile: true },
+    });
+
+    if (!invitedUser || !invitedUser.OtaProfile) {
+      return c.json({ success: false, message: "OTA dengan email tersebut tidak ditemukan", error: {} }, 404);
+    }
+
+    const invitedOtaId = invitedUser.id;
+
     const [group, invitedOta] = await Promise.all([
       prisma.otaGroup.findUnique({
         where: { id: groupId },
         include: { _count: { select: { Members: true } } },
       }),
-      prisma.otaProfile.findUnique({ where: { userId: invitedOtaId } }),
+      Promise.resolve(invitedUser.OtaProfile),
     ]);
 
     if (!group) {

@@ -147,15 +147,16 @@ function GroupDetailPage() {
                 <DialogHeader>
                   <DialogTitle>Undang Anggota Baru</DialogTitle>
                   <DialogDescription>
-                    Masukkan UUID OTA yang ingin diundang ke grup ini. Maksimal anggota grup adalah 8.
+                    Masukkan email OTA yang ingin diundang ke grup ini. Maksimal anggota grup adalah 8.
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleInvite} className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="inviteId">ID OTA (UUID)</Label>
+                    <Label htmlFor="inviteEmail">Email OTA</Label>
                     <Input
-                      id="inviteId"
-                      placeholder="Masukkan UUID OTA"
+                      id="inviteEmail"
+                      type="email"
+                      placeholder="contoh@email.com"
                       value={inviteEmailOrId}
                       onChange={(e) => setInviteEmailOrId(e.target.value)}
                       required
