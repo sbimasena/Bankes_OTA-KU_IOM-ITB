@@ -59,7 +59,7 @@ export const groupService = {
   getGroupDetail: async (id: string): Promise<GroupDetail> => {
     const response = await request.request<ApiResponse<GroupDetail>>({
       method: "GET",
-      url: `/api/group/${id}`,
+      url: `/api/group/detail/${id}`,
     });
 
     if (!response.body) {
@@ -80,12 +80,12 @@ export const groupService = {
 
   proposeStudent: async (
     groupId: string,
-    nim: string,
+    mahasiswaId: string,
   ): Promise<ApiResponse<unknown>> => {
     return request.request<ApiResponse<unknown>>({
       method: "POST",
       url: `/api/group/${groupId}/propose-student`,
-      formData: { nim },
+      formData: { mahasiswaId },
       mediaType: "multipart/form-data",
     });
   },

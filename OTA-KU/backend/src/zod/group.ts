@@ -26,9 +26,9 @@ export const CreateGroupSchema = z.object({
 });
 
 export const InviteMemberSchema = z.object({
-  invitedOtaId: z.string().openapi({
-    description: "ID OTA atau Email OTA yang diundang",
-    example: "123e4567-e89b-12d3-a456-426614174000 atau email@example.com",
+  invitedOtaId: z.string().uuid().openapi({
+    description: "ID OTA yang diundang",
+    example: "123e4567-e89b-12d3-a456-426614174000",
   }),
 });
 
@@ -102,7 +102,6 @@ export const GroupListResponse = z.object({
         status: z.enum(["forming", "active"]),
         memberCount: z.number(),
         activeConnectionCount: z.number(),
-        totalPledge: z.number(),
         createdAt: z.string().datetime(),
       }),
     ),
@@ -149,9 +148,9 @@ export const GroupSuccessResponse = z.object({
 // === Task 3: Proposal & Connection Schemas ===
 
 export const ProposeStudentSchema = z.object({
-  nim: z.string().openapi({
-    description: "NIM mahasiswa yang diusulkan untuk disponsori",
-    example: "13519001",
+  mahasiswaId: z.string().uuid().openapi({
+    description: "ID mahasiswa yang diusulkan untuk disponsori",
+    example: "123e4567-e89b-12d3-a456-426614174000",
   }),
 });
 
@@ -455,4 +454,5 @@ export const GroupTransactionAdminListResponse = z.object({
     ),
     totalData: z.number(),
   }),
+});
 });

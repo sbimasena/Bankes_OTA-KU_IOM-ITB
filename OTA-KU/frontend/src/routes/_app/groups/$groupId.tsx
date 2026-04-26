@@ -1,5 +1,4 @@
 import { groupService } from "@/api/groupService";
-import { api } from "@/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,19 +18,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Users, Calendar, Info, UserPlus, Lock, Coins } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useDebounce } from "use-debounce";
 
 export const Route = createFileRoute("/_app/groups/$groupId")({
   component: GroupDetailPage,
@@ -40,33 +31,12 @@ export const Route = createFileRoute("/_app/groups/$groupId")({
 const MIN_BUDGET = 800_000;
 const formatRp = (n: number) => `Rp${n.toLocaleString("id-ID")}`;
 
-const getErrorMessage = (error: unknown, fallback: string) => {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "response" in error &&
-    typeof error.response === "object" &&
-    error.response !== null &&
-    "data" in error.response &&
-    typeof error.response.data === "object" &&
-    error.response.data !== null &&
-    "message" in error.response.data &&
-    typeof error.response.data.message === "string"
-  ) {
-    return error.response.data.message;
-  }
-
-  return fallback;
-};
-
 function GroupDetailPage() {
   const { groupId } = Route.useParams();
   const queryClient = useQueryClient();
 
   const [isProposeModalOpen, setIsProposeModalOpen] = useState(false);
-  const [nimInput, setNimInput] = useState("");
-  const [studentSearchQuery, setStudentSearchQuery] = useState("");
-  const [debouncedStudentSearch] = useDebounce(studentSearchQuery, 300);
+  const [mahasiswaIdInput, setMahasiswaIdInput] = useState("");
 
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmailOrId, setInviteEmailOrId] = useState("");
@@ -82,29 +52,17 @@ function GroupDetailPage() {
     queryFn: () => groupService.getProposals(groupId),
   });
 
-  const { data: availableMahasiswaResponse, isLoading: isLoadingAvailableMahasiswa } = useQuery({
-    queryKey: ["availableMahasiswaForGroupPropose", groupId, debouncedStudentSearch],
-    queryFn: () =>
-      api.list.listMahasiswaOta({
-        q: debouncedStudentSearch || undefined,
-        page: 1,
-      }),
-    enabled: isProposeModalOpen,
-    staleTime: 30_000,
-  });
-
   // ── Mutations ─────────────────────────────────────────────────────────────
   const proposeMutation = useMutation({
-    mutationFn: (nim: string) => groupService.proposeStudent(groupId, nim),
+    mutationFn: (mahasiswaId: string) => groupService.proposeStudent(groupId, mahasiswaId),
     onSuccess: () => {
       toast.success("Mahasiswa berhasil diusulkan, menunggu persetujuan admin.");
       queryClient.invalidateQueries({ queryKey: ["groupProposals", groupId] });
       setIsProposeModalOpen(false);
-      setNimInput("");
-      setStudentSearchQuery("");
+      setMahasiswaIdInput("");
     },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Gagal mengusulkan mahasiswa"));
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message ?? "Gagal mengusulkan mahasiswa");
     },
   });
 
@@ -116,23 +74,15 @@ function GroupDetailPage() {
       setIsInviteModalOpen(false);
       setInviteEmailOrId("");
     },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Gagal mengirim undangan"));
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message ?? "Gagal mengirim undangan");
     },
   });
 
   const handlePropose = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nimInput) return;
-    proposeMutation.mutate(nimInput);
-  };
-
-  const handleProposeModalOpenChange = (open: boolean) => {
-    setIsProposeModalOpen(open);
-    if (!open) {
-      setNimInput("");
-      setStudentSearchQuery("");
-    }
+    if (!mahasiswaIdInput) return;
+    proposeMutation.mutate(mahasiswaIdInput);
   };
 
   const handleInvite = (e: React.FormEvent) => {
@@ -155,7 +105,6 @@ function GroupDetailPage() {
   const isBudgetMet = totalPledge >= MIN_BUDGET;
   const isGroupActive = group.status === "active";
   const canPropose = isGroupActive && isBudgetMet;
-  const availableMahasiswa = availableMahasiswaResponse?.body?.data ?? [];
 
   const proposeLockMessage = !isGroupActive
     ? "Grup harus aktif dan mengumpulkan dana min. Rp800.000 untuk memilih mahasiswa."
@@ -198,15 +147,15 @@ function GroupDetailPage() {
                 <DialogHeader>
                   <DialogTitle>Undang Anggota Baru</DialogTitle>
                   <DialogDescription>
-                    Masukkan Email atau UUID OTA yang ingin diundang ke grup ini. Maksimal anggota grup adalah 8.
+                    Masukkan UUID OTA yang ingin diundang ke grup ini. Maksimal anggota grup adalah 8.
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleInvite} className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="inviteId">Email / ID OTA (UUID)</Label>
+                    <Label htmlFor="inviteId">ID OTA (UUID)</Label>
                     <Input
                       id="inviteId"
-                      placeholder="Masukkan Email atau UUID OTA"
+                      placeholder="Masukkan UUID OTA"
                       value={inviteEmailOrId}
                       onChange={(e) => setInviteEmailOrId(e.target.value)}
                       required
@@ -220,7 +169,7 @@ function GroupDetailPage() {
             </Dialog>
           )}
 
-          <Dialog open={isProposeModalOpen} onOpenChange={handleProposeModalOpenChange}>
+          <Dialog open={isProposeModalOpen} onOpenChange={setIsProposeModalOpen}>
             <div className="flex flex-col items-end gap-1">
               <DialogTrigger asChild>
                 <Button disabled={!canPropose} title={proposeLockMessage}>
@@ -247,46 +196,16 @@ function GroupDetailPage() {
               </DialogHeader>
               <form onSubmit={handlePropose} className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="mhsSearch">Cari Mahasiswa</Label>
+                  <Label htmlFor="mhsId">ID Mahasiswa (UUID)</Label>
                   <Input
-                    id="mhsSearch"
-                    placeholder="Cari nama atau NIM mahasiswa"
-                    value={studentSearchQuery}
-                    onChange={(e) => setStudentSearchQuery(e.target.value)}
+                    id="mhsId"
+                    placeholder="Masukkan UUID mahasiswa"
+                    value={mahasiswaIdInput}
+                    onChange={(e) => setMahasiswaIdInput(e.target.value)}
+                    required
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Menampilkan maksimal 6 mahasiswa teratas. Ketik untuk mempersempit hasil.
-                  </p>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Pilih Mahasiswa Asuh</Label>
-                  <Select value={nimInput} onValueChange={setNimInput}>
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={isLoadingAvailableMahasiswa ? "Memuat daftar mahasiswa..." : "Pilih mahasiswa"}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableMahasiswa.map((mahasiswa) => (
-                        <SelectItem key={mahasiswa.accountId} value={mahasiswa.nim}>
-                          {mahasiswa.name} ({mahasiswa.nim})
-                        </SelectItem>
-                      ))}
-                      {!isLoadingAvailableMahasiswa && availableMahasiswa.length === 0 && (
-                        <div className="px-2 py-2 text-sm text-muted-foreground">
-                          Tidak ada mahasiswa yang tersedia.
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={proposeMutation.isPending || !nimInput}
-                >
+                <Button type="submit" className="w-full" disabled={proposeMutation.isPending}>
                   {proposeMutation.isPending ? "Mengirim..." : "Kirim Proposal ke Admin"}
                 </Button>
               </form>
@@ -318,9 +237,8 @@ function GroupDetailPage() {
           {/* Progress bar */}
           <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-700 ${
-                isBudgetMet ? "bg-green-500" : "bg-primary"
-              }`}
+              className={`h-full rounded-full transition-all duration-700 ${isBudgetMet ? "bg-green-500" : "bg-primary"
+                }`}
               style={{ width: `${budgetProgress}%` }}
             />
           </div>

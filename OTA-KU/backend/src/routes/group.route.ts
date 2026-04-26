@@ -103,7 +103,7 @@ export const getGroupDetailRoute = createRoute({
   operationId: "getGroupDetail",
   tags: ["Group"],
   method: "get",
-  path: "/:id",
+  path: "/detail/:id",
   description:
     "Detail grup OTA. OTA harus menjadi anggota grup untuk mengakses.",
   request: { params: GroupIdParamSchema },
