@@ -68,6 +68,24 @@ const isAdminRole = (type: string) =>
   type === "admin" || type === "bankes" || type === "pengurus";
 const isSystemAdmin = (type: string) => type === "admin";
 
+const maybeActivateGroupByPledge = async (
+  tx: any,
+  groupId: string,
+) => {
+  const aggregate = await tx.otaGroupMember.aggregate({
+    where: { groupId },
+    _sum: { pledgeAmount: true },
+  });
+
+  const totalPledge = aggregate._sum.pledgeAmount ?? 0;
+  if (totalPledge > MIN_GROUP_CONTRIBUTION) {
+    await tx.otaGroup.updateMany({
+      where: { id: groupId, status: "forming" },
+      data: { status: "active" },
+    });
+  }
+};
+
 // POST /group/create
 groupProtectedRouter.openapi(createGroupRoute, async (c) => {
   const user = c.var.user;
@@ -118,6 +136,8 @@ groupProtectedRouter.openapi(createGroupRoute, async (c) => {
         },
       },
     });
+
+    await maybeActivateGroupByPledge(prisma, group.id);
 
     return c.json(
       {
@@ -539,6 +559,12 @@ groupProtectedRouter.openapi(getGroupDetailRoute, async (c) => {
           where: { status: "pending" },
           include: { InvitedOta: { select: { name: true } } },
         },
+        Connections: {
+          include: {
+            Mahasiswa: { select: { userId: true, name: true, nim: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
         _count: {
           select: { Connections: { where: { connectionStatus: "accepted" } } },
         },
@@ -598,6 +624,14 @@ groupProtectedRouter.openapi(getGroupDetailRoute, async (c) => {
             invitationId: inv.id,
             invitedOtaId: inv.invitedOtaId,
             invitedOtaName: inv.InvitedOta.name ?? "",
+          })),
+          students: group.Connections.map((conn) => ({
+            connectionId: conn.id,
+            mahasiswaId: conn.Mahasiswa.userId,
+            mahasiswaName: conn.Mahasiswa.name ?? "",
+            mahasiswaNim: conn.Mahasiswa.nim,
+            connectionStatus: conn.connectionStatus,
+            createdAt: conn.createdAt.toISOString(),
           })),
           activeConnectionCount: group._count.Connections,
           totalPledge: group.Members.reduce((sum, m) => sum + m.pledgeAmount, 0),
@@ -844,6 +878,8 @@ groupProtectedRouter.openapi(respondInvitationRoute, async (c) => {
             pledgeAmount: pledgeAmount!,
           },
         });
+
+        await maybeActivateGroupByPledge(tx, invitation.groupId);
       }
     });
 
@@ -985,7 +1021,10 @@ groupProtectedRouter.openapi(proposeStudentRoute, async (c) => {
     const [group, mahasiswa] = await Promise.all([
       prisma.otaGroup.findUnique({
         where: { id: groupId },
-        include: { _count: { select: { Members: true } } },
+        include: {
+          _count: { select: { Members: true } },
+          Members: { select: { otaId: true, pledgeAmount: true } },
+        },
       }),
       prisma.mahasiswaProfile.findUnique({
         where: { userId: mahasiswaId },
@@ -1076,22 +1115,35 @@ groupProtectedRouter.openapi(proposeStudentRoute, async (c) => {
       );
     }
 
+    if (isAdminRole(user.type) && group.Members.length === 0) {
+      return c.json(
+        {
+          success: false,
+          message: "Grup tidak memiliki anggota untuk pendanaan auto-pair",
+          error: { code: "NO_GROUP_MEMBERS" },
+        },
+        400,
+      );
+    }
+
     const proposal = await prisma.$transaction(async (tx) => {
+      const isAutoApprovedByAdmin = isAdminRole(user.type);
+
       const createdProposal = await tx.groupStudentProposal.create({
         data: {
           groupId,
           mahasiswaId,
           proposedById: user.type === "ota" ? user.id : null,
-          status: "passed",
+          status: isAutoApprovedByAdmin ? "approved" : "passed",
         },
       });
 
-      await tx.groupConnection.create({
+      const createdConnection = await tx.groupConnection.create({
         data: {
           mahasiswaId,
           groupId,
           proposalId: createdProposal.id,
-          connectionStatus: "pending",
+          connectionStatus: isAutoApprovedByAdmin ? "accepted" : "pending",
           paidFor: 0,
         },
       });
@@ -1101,11 +1153,55 @@ groupProtectedRouter.openapi(proposeStudentRoute, async (c) => {
         data: { mahasiswaStatus: "active" },
       });
 
+      if (isAutoApprovedByAdmin) {
+        const contributions = group.Members.map((m) => ({
+          otaId: m.otaId,
+          amount: m.pledgeAmount,
+        }));
+
+        const totalBill = contributions.reduce((sum, item) => sum + item.amount, 0);
+        const transferDate = group.transferDate ?? 1;
+        const dueDate = setDate(addMonths(new Date(), 1), transferDate);
+
+        await tx.groupMemberContribution.createMany({
+          data: contributions.map((contrib) => ({
+            groupConnectionId: createdConnection.id,
+            otaId: contrib.otaId,
+            amount: contrib.amount,
+          })),
+          skipDuplicates: true,
+        });
+
+        const groupTx = await tx.groupTransaction.create({
+          data: {
+            mahasiswaId,
+            groupId,
+            groupConnectionId: createdConnection.id,
+            bill: totalBill,
+            dueDate,
+          },
+        });
+
+        await tx.groupMemberTransaction.createMany({
+          data: contributions.map((contrib) => ({
+            groupTransactionId: groupTx.id,
+            otaId: contrib.otaId,
+            expectedAmount: contrib.amount,
+          })),
+        });
+      }
+
       return createdProposal;
     });
 
     return c.json(
-      { success: true, message: "Proposal berhasil diajukan dan menunggu persetujuan admin", body: { proposalId: proposal.id } } as any,
+      {
+        success: true,
+        message: isAdminRole(user.type)
+          ? "Auto-pair berhasil: koneksi langsung disetujui"
+          : "Proposal berhasil diajukan dan menunggu persetujuan admin",
+        body: { proposalId: proposal.id },
+      } as any,
       200,
     );
   } catch (error) {

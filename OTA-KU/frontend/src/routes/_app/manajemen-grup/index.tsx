@@ -11,12 +11,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { AutoPairSuggestion } from "@/types/group";
+import type { AutoPairSuggestion, GroupDetail } from "@/types/group";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   BookUser,
   Check,
+  Eye,
   GraduationCap,
   Loader2,
   ShieldAlert,
@@ -121,8 +122,8 @@ function AutoPairModal({ suggestion, onClose, onConfirm, isPending }: AutoPairMo
             </div>
 
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
-              Setelah dikonfirmasi, koneksi akan berstatus <strong>pending</strong> dan perlu
-              disetujui di tab Persetujuan Koneksi.
+              Setelah dikonfirmasi oleh admin, koneksi langsung berstatus <strong>accepted</strong>
+              dan tidak memerlukan persetujuan ulang.
             </div>
           </div>
         )}
@@ -146,6 +147,113 @@ function AutoPairModal({ suggestion, onClose, onConfirm, isPending }: AutoPairMo
   );
 }
 
+interface GroupStatsModalProps {
+  open: boolean;
+  onClose: () => void;
+  isLoading: boolean;
+  detail?: GroupDetail;
+}
+
+function GroupStatsModal({ open, onClose, isLoading, detail }: GroupStatsModalProps) {
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Statistik Grup</DialogTitle>
+          <DialogDescription>
+            Menampilkan seluruh OTA anggota grup dan seluruh mahasiswa yang terhubung ke grup.
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="py-8 text-center text-muted-foreground">Memuat detail grup...</div>
+        ) : !detail ? (
+          <div className="py-8 text-center text-muted-foreground">Detail grup tidak tersedia.</div>
+        ) : (
+          <div className="space-y-4 py-1">
+            <div className="rounded-md bg-muted/50 px-3 py-2">
+              <p className="text-sm font-semibold">{detail.name}</p>
+              <p className="text-xs text-muted-foreground">
+                Total pledge: {formatRp(detail.totalPledge)} • Status: {detail.status}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold mb-2">OTA Anggota ({detail.members.length})</p>
+              {detail.members.length > 0 ? (
+                <div className="rounded-md border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 border-b">
+                      <tr>
+                        <th className="p-2 text-left font-medium">Nama OTA</th>
+                        <th className="p-2 text-left font-medium">Pledge</th>
+                        <th className="p-2 text-left font-medium">Joined</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detail.members.map((member) => (
+                        <tr key={member.otaId} className="border-b last:border-0">
+                          <td className="p-2">{member.name || "-"}</td>
+                          <td className="p-2">{formatRp(member.pledgeAmount ?? 0)}</td>
+                          <td className="p-2 text-muted-foreground">
+                            {new Date(member.joinedAt).toLocaleDateString("id-ID")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Belum ada anggota OTA.</p>
+              )}
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold mb-2">Mahasiswa di Grup ({detail.students.length})</p>
+              {detail.students.length > 0 ? (
+                <div className="rounded-md border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 border-b">
+                      <tr>
+                        <th className="p-2 text-left font-medium">Nama</th>
+                        <th className="p-2 text-left font-medium">NIM</th>
+                        <th className="p-2 text-left font-medium">Status</th>
+                        <th className="p-2 text-left font-medium">Dibuat</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detail.students.map((student) => (
+                        <tr key={student.connectionId} className="border-b last:border-0">
+                          <td className="p-2">{student.mahasiswaName || "-"}</td>
+                          <td className="p-2 font-mono">{student.mahasiswaNim}</td>
+                          <td className="p-2">
+                            <Badge variant={student.connectionStatus === "accepted" ? "default" : "secondary"}>
+                              {student.connectionStatus}
+                            </Badge>
+                          </td>
+                          <td className="p-2 text-muted-foreground">
+                            {new Date(student.createdAt).toLocaleDateString("id-ID")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Belum ada mahasiswa di grup ini.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Tutup</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 function AdminGroupManagement() {
@@ -154,6 +262,7 @@ function AdminGroupManagement() {
   // Auto-pair modal state
   const [autoPairSuggestion, setAutoPairSuggestion] = useState<AutoPairSuggestion | null>(null);
   const [loadingAutoPairGroupId, setLoadingAutoPairGroupId] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: groupsData, isLoading: isLoadingGroups } = useQuery({
@@ -164,6 +273,12 @@ function AdminGroupManagement() {
   const { data: pendingData, isLoading: isLoadingPending } = useQuery({
     queryKey: ["adminPendingConnections"],
     queryFn: () => groupService.getPendingConnections(),
+  });
+
+  const { data: selectedGroupDetail, isLoading: isLoadingSelectedGroupDetail } = useQuery({
+    queryKey: ["adminGroupDetail", selectedGroupId],
+    queryFn: () => groupService.getGroupDetail(selectedGroupId!),
+    enabled: !!selectedGroupId,
   });
 
   // ── Mutations ─────────────────────────────────────────────────────────────
@@ -201,7 +316,7 @@ function AdminGroupManagement() {
     mutationFn: ({ groupId, mahasiswaId }: { groupId: string; mahasiswaId: string }) =>
       groupService.confirmAutoPair(groupId, mahasiswaId),
     onSuccess: () => {
-      toast.success("Mahasiswa berhasil dipasangkan! Menunggu persetujuan admin.");
+      toast.success("Mahasiswa berhasil dipasangkan dan langsung disetujui.");
       setAutoPairSuggestion(null);
       queryClient.invalidateQueries({ queryKey: ["adminAllGroups"] });
       queryClient.invalidateQueries({ queryKey: ["adminPendingConnections"] });
@@ -261,6 +376,13 @@ function AdminGroupManagement() {
         onClose={() => setAutoPairSuggestion(null)}
         onConfirm={handleConfirmAutoPair}
         isPending={confirmAutoPairMutation.isPending}
+      />
+
+      <GroupStatsModal
+        open={!!selectedGroupId}
+        onClose={() => setSelectedGroupId(null)}
+        isLoading={isLoadingSelectedGroupDetail}
+        detail={selectedGroupDetail}
       />
 
       <Tabs defaultValue="pending" className="w-full">
@@ -451,13 +573,24 @@ function AdminGroupManagement() {
                               </Badge>
                             </td>
                             <td className="p-4">
-                              <div className="flex flex-col text-xs text-muted-foreground">
-                                <span>
-                                  <Users className="inline h-3 w-3 mr-1" />
-                                  {group.memberCount} Anggota
-                                </span>
-                                <span>{group.activeConnectionCount} Mhs Asuh</span>
-                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto px-2 py-1"
+                                onClick={() => setSelectedGroupId(group.id)}
+                              >
+                                <div className="flex flex-col text-left text-xs text-muted-foreground">
+                                  <span>
+                                    <Users className="inline h-3 w-3 mr-1" />
+                                    {group.memberCount} Anggota
+                                  </span>
+                                  <span className="inline-flex items-center gap-1">
+                                    {group.activeConnectionCount} Mhs Asuh
+                                    <Eye className="h-3 w-3" />
+                                  </span>
+                                </div>
+                              </Button>
                             </td>
                             <td className="p-4">
                               <div className="space-y-1 min-w-[160px]">

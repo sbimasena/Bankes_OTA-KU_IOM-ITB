@@ -179,6 +179,16 @@ export const GroupDetailResponse = z.object({
         invitedOtaName: z.string(),
       }),
     ),
+    students: z.array(
+      z.object({
+        connectionId: z.string().uuid(),
+        mahasiswaId: z.string().uuid(),
+        mahasiswaName: z.string(),
+        mahasiswaNim: z.string(),
+        connectionStatus: z.enum(["accepted", "pending", "rejected"]),
+        createdAt: z.string().datetime(),
+      }),
+    ),
     activeConnectionCount: z.number(),
     totalPledge: z.number(),
   }),

@@ -59,6 +59,15 @@ export interface GroupMember {
   joinedAt: string;
 }
 
+export interface GroupStudentConnection {
+  connectionId: string;
+  mahasiswaId: string;
+  mahasiswaName: string;
+  mahasiswaNim: string;
+  connectionStatus: "accepted" | "pending" | "rejected";
+  createdAt: string;
+}
+
 export interface GroupDetail {
   id: string;
   name: string;
@@ -69,6 +78,7 @@ export interface GroupDetail {
   createdAt: string;
   members: GroupMember[];
   pendingInvitations: { invitationId: string; invitedOtaId: string; invitedOtaName: string }[];
+  students: GroupStudentConnection[];
   activeConnectionCount: number;
   totalPledge: number;
 }
