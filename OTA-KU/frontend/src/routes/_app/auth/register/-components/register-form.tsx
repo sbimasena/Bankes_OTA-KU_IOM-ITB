@@ -135,7 +135,10 @@ export default function RegisterForm({
                     Nomor HP (Whatsapp)
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Masukkan nomor WA Anda" {...field} />
+                    <Input 
+                      placeholder="Masukkan nomor WA Anda" 
+                      inputmode="tel"
+                      {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
