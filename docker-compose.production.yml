@@ -1,0 +1,223 @@
+# =============================================================================
+# Production docker-compose: Bankes IOM-ITB + OTA-KU
+#
+# Usage:
+#   cp .env.production.example .env.production
+#   # Fill in all CHANGE_ME values in .env.production
+#   docker compose -f docker-compose.production.yml --env-file .env.production up -d --build
+#
+# First-time only (build takes ~5-10 min):
+#   docker compose -f docker-compose.production.yml --env-file .env.production up -d --build
+#
+# Updates (no rebuild needed unless code changed):
+#   docker compose -f docker-compose.production.yml --env-file .env.production up -d
+# =============================================================================
+
+services:
+
+  # ── Shared PostgreSQL ────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: iom-ota-postgres-prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - iom-ota-network
+
+  # ── MinIO Object Storage ─────────────────────────────────────────────────────
+  minio:
+    image: minio/minio
+    container_name: iom-ota-minio-prod
+    ports:
+      - "${MINIO_API_PORT:-19000}:9000"
+      - "${MINIO_CONSOLE_PORT:-19001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - iom-ota-network
+
+  # ── MinIO bucket init ────────────────────────────────────────────────────────
+  minio-init:
+    image: minio/mc
+    container_name: iom-ota-minio-init-prod
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - iom-ota-network
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+        mc mb --ignore-existing myminio/${MINIO_BUCKET_NAME};
+        mc anonymous set public myminio/${MINIO_BUCKET_NAME};
+        echo 'MinIO bucket ready';
+      "
+    restart: "no"
+
+  # ── Schema migration (runs once, no test seed) ───────────────────────────────
+  migrate:
+    image: node:22-alpine
+    container_name: iom-ota-migrate-prod
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - migrate-node-modules:/workspace/prisma/node_modules
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    command: >
+      sh -c "
+        cd /workspace/prisma &&
+        npm install --quiet &&
+        npx prisma generate &&
+        npx prisma db execute --url $$DATABASE_URL --file ./scripts/prepush-testimonial-backfill.sql &&
+        npx prisma db push &&
+        echo 'Schema ready'
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - iom-ota-network
+    restart: "no"
+
+  # ── Bankes IOM-ITB ───────────────────────────────────────────────────────────
+  # entrypoint.sh handles: wait for DB → migrate deploy → create admin → start
+  bankes:
+    build:
+      context: ./bankes_IOM-ITB
+      dockerfile: Dockerfile.prod
+    container_name: iom-bankes-app-prod
+    ports:
+      - "${BANKES_PORT:-13031}:3031"
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      DATABASE_URL: ${DATABASE_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXT_PUBLIC_NEXTAUTH_URL: ${NEXTAUTH_URL}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
+      AZURE_AD_CLIENT_ID: ${AZURE_AD_CLIENT_ID:-}
+      AZURE_AD_CLIENT_SECRET: ${AZURE_AD_CLIENT_SECRET:-}
+      AZURE_AD_TENANT_ID: ${AZURE_AD_TENANT_ID:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      ADMIN_NAME: ${ADMIN_NAME:-Administrator}
+      ADMIN_ROLE: ${ADMIN_ROLE:-Admin}
+      JWT_SECRET: ${JWT_SECRET}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+    networks:
+      - iom-ota-network
+    restart: unless-stopped
+
+  # ── OTA-KU Backend ───────────────────────────────────────────────────────────
+  ota-backend:
+    build:
+      context: ./OTA-KU/backend
+      dockerfile: Dockerfile
+    container_name: iom-ota-backend-prod
+    ports:
+      - "${OTA_BACKEND_PORT:-13000}:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      BACKEND_PORT: "3000"
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGINS: ${OTA_ALLOWED_ORIGINS}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-placeholder}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-placeholder}
+      VITE_PUBLIC_URL: ${OTA_FRONTEND_URL}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-placeholder}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-placeholder}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-placeholder}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_PUBLIC_HOST: ${SERVER_IP}
+      MINIO_PUBLIC_PORT: ${MINIO_API_PORT:-19000}
+      EMAIL: ${EMAIL}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      VAPID_MAILTO: ${VAPID_MAILTO}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      TEST_EMAIL: ${TEST_EMAIL}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-none}
+      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
+      MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY:-}
+      MIDTRANS_MERCHANT_ID: ${MIDTRANS_MERCHANT_ID:-}
+      MIDTRANS_IS_PRODUCTION: ${MIDTRANS_IS_PRODUCTION:-false}
+      WHATSAPP_API_URL: ${WHATSAPP_API_URL:-}
+      WHATSAPP_API_KEY: ${WHATSAPP_API_KEY:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+    networks:
+      - iom-ota-network
+    restart: unless-stopped
+
+  # ── OTA-KU Frontend ──────────────────────────────────────────────────────────
+  ota-frontend:
+    build:
+      context: ./OTA-KU/frontend
+      dockerfile: Dockerfile.production
+      args:
+        VITE_API_URL: ${OTA_FRONTEND_API_URL}
+        VITE_AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-placeholder}
+        VITE_APP_URL: ${OTA_FRONTEND_URL}
+        VITE_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+    container_name: iom-ota-frontend-prod
+    ports:
+      - "${OTA_FRONTEND_PORT:-15173}:3000"
+    depends_on:
+      - ota-backend
+    networks:
+      - iom-ota-network
+    restart: unless-stopped
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  postgres-data:
+  minio-data:
+  migrate-node-modules:
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  iom-ota-network:
+    driver: bridge

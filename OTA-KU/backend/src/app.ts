@@ -36,9 +36,9 @@ app.onError((err, c) => {
     {
       success: false,
       error: {
-        name: err.name,
-        message: err.message,
-        stack: err.stack,
+        name: env.NODE_ENV === "production" ? "InternalServerError" : err.name,
+        message:
+          env.NODE_ENV === "production" ? "Internal server error" : err.message,
       },
     },
     500
