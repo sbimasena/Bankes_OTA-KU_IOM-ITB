@@ -9,6 +9,10 @@ import { deadlineTransaksiEmail } from "../lib/email/deadline-transaksi.js";
 import { mahasiswaOutdatedEmail } from "../lib/email/mahasiswa-outdated.js";
 import { mahasiswaReapplyEmail } from "../lib/email/mahasiswa-reapply.js";
 import { sendWhatsApp } from "../lib/whatsapp.js";
+import {
+  groupPaymentReminderMessage,
+  paymentReminderMessage,
+} from "../lib/whatsapp/payment-reminder.js";
 
 export const dailyReminder30DaysCron = new CronJob(
   "0 0 * * *",
@@ -607,12 +611,13 @@ export async function runWhatsAppReminder3Days() {
         day: "numeric",
       });
 
-      const message =
-        `Yth. ${otaName},\n\n` +
-        `Ini adalah pengingat bahwa tagihan pembayaran bantuan untuk ${mahasiswaName} ` +
-        `sebesar Rp${Number(transaction.bill).toLocaleString("id-ID")} akan jatuh tempo pada ${dueDateStr} ` +
-        `(3 hari lagi).\n\n` +
-        `Mohon segera lakukan pembayaran melalui platform OTA-KU.\n\nTerima kasih.`;
+      const message = paymentReminderMessage({
+        otaName,
+        mahasiswaName,
+        bill: Number(transaction.bill),
+        dueDateStr,
+        daysLeft: 3,
+      });
 
       try {
         await sendWhatsApp({
@@ -665,12 +670,13 @@ export async function runWhatsAppReminder3Days() {
           day: "numeric",
         });
 
-        const message =
-          `Yth. ${otaName},\n\n` +
-          `Ini adalah pengingat bahwa tagihan pembayaran bantuan kelompok untuk ${mahasiswaName} ` +
-          `sebesar Rp${Number(memberPayment.expectedAmount).toLocaleString("id-ID")} akan jatuh tempo pada ${dueDateStr} ` +
-          `(3 hari lagi).\n\n` +
-          `Mohon segera lakukan pembayaran melalui platform OTA-KU.\n\nTerima kasih.`;
+        const message = groupPaymentReminderMessage({
+          otaName,
+          mahasiswaName,
+          amount: Number(memberPayment.expectedAmount),
+          dueDateStr,
+          daysLeft: 3,
+        });
 
         try {
           await sendWhatsApp({
