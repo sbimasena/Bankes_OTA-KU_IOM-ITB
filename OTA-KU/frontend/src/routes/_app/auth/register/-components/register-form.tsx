@@ -137,7 +137,7 @@ export default function RegisterForm({
                   <FormControl>
                     <Input 
                       placeholder="Masukkan nomor WA Anda" 
-                      inputmode="tel"
+                      inputMode="tel"
                       {...field} />
                   </FormControl>
                   <FormMessage />
