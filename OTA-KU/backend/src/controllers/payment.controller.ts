@@ -20,6 +20,8 @@ import {
 } from "../zod/payment.js";
 import { createAuthRouter, createRouter } from "./router-factory.js";
 import { env } from "../config/env.config.js";
+import { sendWhatsApp } from "../lib/whatsapp.js";
+import { paymentThankyouMessage } from "../lib/whatsapp/payment-thankyou.js";
 
 export const paymentRouter = createRouter();
 export const paymentProtectedRouter = createAuthRouter();
@@ -90,13 +92,19 @@ async function applyMidtransStatusToTransaction(input: {
     input.payload.fraud_status,
   );
   const isPaidStatus = nextStatus === "paid";
+  const paidAt = isPaidStatus ? new Date() : null;
+
+  const prevTransaction = await prisma.transaction.findUnique({
+    where: { id: input.foundTransaction.id },
+    select: { transactionStatus: true },
+  });
 
   await prisma.transaction.update({
     where: { id: input.foundTransaction.id },
     data: {
       transactionStatus: nextStatus,
       amountPaid: isPaidStatus ? input.foundTransaction.bill : 0,
-      paidAt: isPaidStatus ? new Date() : null,
+      paidAt,
       transactionReceipt: JSON.stringify({
         provider: "midtrans",
         orderId: input.payload.order_id,
@@ -112,6 +120,39 @@ async function applyMidtransStatusToTransaction(input: {
       }),
     },
   });
+
+  const wasAlreadyPaid = prevTransaction?.transactionStatus === "paid";
+  if (isPaidStatus && !wasAlreadyPaid) {
+    try {
+      const txWithRelations = await prisma.transaction.findUnique({
+        where: { id: input.foundTransaction.id },
+        include: {
+          OtaProfile: { include: { User: true } },
+          MahasiswaProfile: true,
+        },
+      });
+
+      const otaPhone = txWithRelations?.OtaProfile?.User?.phoneNumber;
+      const otaName = txWithRelations?.OtaProfile?.name ?? "OTA";
+      const mahasiswaName = txWithRelations?.MahasiswaProfile?.name ?? "mahasiswa";
+
+      if (otaPhone) {
+        await sendWhatsApp({
+          to: otaPhone,
+          message: paymentThankyouMessage({
+            otaName,
+            mahasiswaName,
+            amount: input.foundTransaction.bill,
+            paidAt: paidAt!,
+          }),
+          clientReference: `payment-thankyou-${input.foundTransaction.id}`,
+          idempotencyKey: `payment-thankyou-${input.foundTransaction.id}`,
+        });
+      }
+    } catch (err) {
+      console.error("[payment] Failed to send thankyou WA:", err);
+    }
+  }
 
   return nextStatus;
 }

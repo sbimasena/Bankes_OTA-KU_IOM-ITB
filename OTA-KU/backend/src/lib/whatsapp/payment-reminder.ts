@@ -1,7 +1,3 @@
-/**
- * Template pesan WhatsApp untuk reminder pembayaran H-3
- */
-
 export function paymentReminderMessage(params: {
   otaName: string;
   mahasiswaName: string;
