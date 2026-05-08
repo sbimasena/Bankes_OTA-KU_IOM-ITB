@@ -1,7 +1,6 @@
-import { PrismaClient } from "@prisma/client";
 import webPush from "web-push";
 
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 webPush.setVapidDetails(
   "mailto:your-email@example.com",

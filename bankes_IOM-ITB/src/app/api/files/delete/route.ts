@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/authOptions';
 import { BUCKET_NAME, minioClient } from '@/lib/storage';
 
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 /**
  * @swagger

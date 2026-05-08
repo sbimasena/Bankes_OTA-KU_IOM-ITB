@@ -1,9 +1,8 @@
 import { NextResponse, NextRequest } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/authOptions";
 
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 // Fetch student by period and passed for interview
 // api for penilaian "fetchStudentByPeriod()"

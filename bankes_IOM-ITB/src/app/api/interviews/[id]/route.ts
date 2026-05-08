@@ -1,9 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import { authOptions } from "../../auth/[...nextauth]/authOptions";
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 /**
  * NOTE: The old Interview aggregate model no longer exists in the unified schema.
