@@ -46,6 +46,10 @@ const EnvSchema = z.object({
     .transform((v) => v === "true"),
   WHATSAPP_API_URL: z.string().url().optional(),
   WHATSAPP_API_KEY: z.string().optional(),
+  COOKIE_SECURE: z
+    .string()
+    .default("true")
+    .transform((v) => v === "true"),
 });
 
 const result = EnvSchema.safeParse(process.env);
