@@ -172,7 +172,7 @@ authRouter.openapi(loginRoute, async (c) => {
 
     setCookie(c, "ota-ku.access-cookie", accessToken, {
       httpOnly: true,
-      secure: env.NODE_ENV === "production",
+      secure: env.COOKIE_SECURE,
       sameSite: "strict",
       maxAge: 60 * 60 * 24,
       path: "/",
@@ -306,7 +306,7 @@ authRouter.openapi(regisRoute, async (c) => {
 
     setCookie(c, "ota-ku.access-cookie", accessToken, {
       httpOnly: true,
-      secure: env.NODE_ENV === "production",
+      secure: env.COOKIE_SECURE,
       sameSite: "strict",
       maxAge: 60 * 60 * 24,
       path: "/",
@@ -438,13 +438,14 @@ authRouter.openapi(oauthRoute, async (c) => {
       env.JWT_SECRET,
     );
 
-    setCookie(c, "ota-ku.access-cookie", localToken, {
+setCookie(c, "ota-ku.access-cookie", localToken, {
       httpOnly: true,
-      secure: env.NODE_ENV === "production",
+      secure: env.COOKIE_SECURE,
       sameSite: "strict",
       maxAge: 60 * 60 * 24,
       path: "/",
     });
+   });
 
     return c.json(
       { success: true, message: "Login successful", body: { token: localToken } },
@@ -574,7 +575,7 @@ authProtectedRouter.openapi(otpRoute, async (c) => {
 
     setCookie(c, "ota-ku.access-cookie", accessToken, {
       httpOnly: true,
-      secure: env.NODE_ENV === "production",
+      secure: env.COOKIE_SECURE,
       sameSite: "strict",
       maxAge: 60 * 60 * 24,
       path: "/",

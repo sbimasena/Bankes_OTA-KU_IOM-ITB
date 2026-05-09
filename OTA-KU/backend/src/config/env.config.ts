@@ -52,6 +52,10 @@ const EnvSchema = z.object({
   KEYCLOAK_REDIRECT_URI: z.string().url(),
   SSO_API_URL: z.string().url(),
   REGISTER_API_KEY: z.string(),
+  COOKIE_SECURE: z
+    .string()
+    .default("true")
+    .transform((v) => v === "true"),
 });
 
 const result = EnvSchema.safeParse(process.env);

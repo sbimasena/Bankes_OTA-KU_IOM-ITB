@@ -12,8 +12,7 @@ export const GetMyTestimonialQuerySchema = z.object({
 export const UpsertTestimonialSchema = z.object({
   content: z
     .string({
-      required_error: "Isi testimoni harus diisi",
-      invalid_type_error: "Isi testimoni harus berupa string",
+      error: "Isi testimoni harus berupa string",
     })
     .min(20, { message: "Isi testimoni minimal 20 karakter" })
     .max(1000, { message: "Isi testimoni maksimal 1000 karakter" }),

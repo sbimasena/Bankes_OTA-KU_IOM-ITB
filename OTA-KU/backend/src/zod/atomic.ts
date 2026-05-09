@@ -29,8 +29,7 @@ export const ProfilePDFSchema = z.union([
 
 export const EmailSchema = z
   .string({
-    invalid_type_error: "Email harus berupa string",
-    required_error: "Email harus diisi",
+    error: "Email harus berupa string",
   })
   .email({
     message: "Format email tidak valid",
@@ -45,8 +44,7 @@ export const EmailSchema = z
 
 export const PhoneNumberSchema = z
   .string({
-    invalid_type_error: "Nomor telepon harus berupa string",
-    required_error: "Nomor telepon harus diisi",
+    error: "Nomor telepon harus berupa string",
   })
   .max(32, {
     message: "Nomor telepon terlalu panjang",
@@ -61,8 +59,7 @@ export const PhoneNumberSchema = z
 
 export const PasswordSchema = z
   .string({
-    invalid_type_error: "Password harus berupa string",
-    required_error: "Password harus diisi",
+    error: "Password harus berupa string",
   })
   .min(8, {
     message: "Password minimal 8 karakter",
@@ -104,8 +101,7 @@ export const validNimPrefixes = new Set([
 
 export const NIMSchema = z
   .string({
-    invalid_type_error: "NIM harus berupa string",
-    required_error: "NIM harus diisi",
+    error: "NIM harus berupa string",
   })
   .length(8, {
     message: "NIM harus 8 karakter",
@@ -121,8 +117,7 @@ export const NIMSchema = z
 export function minioUrlSchema(description: string) {
   return z
     .string({
-      required_error: `${description} harus diisi`,
-      invalid_type_error: `${description} harus berupa string`,
+      error: `${description} harus berupa string`,
     })
     .url({ message: `${description} harus berupa URL` })
     .openapi({

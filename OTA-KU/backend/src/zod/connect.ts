@@ -4,8 +4,7 @@ import { z } from "@hono/zod-openapi";
 export const MahasiwaConnectSchema = z.object({
   otaId: z
     .string({
-      required_error: "ID orang tua asuh harus diisi",
-      invalid_type_error: "ID orang tua asuh harus berupa string",
+      error: "ID orang tua asuh harus berupa string",
     })
     .uuid({
       message: "ID orang tua asuh tidak valid",
@@ -16,8 +15,7 @@ export const MahasiwaConnectSchema = z.object({
     }),
   mahasiswaId: z
     .string({
-      required_error: "ID mahasiswa asuh harus diisi",
-      invalid_type_error: "ID mahasiswa asuh harus berupa string",
+      error: "ID mahasiswa asuh harus berupa string",
     })
     .uuid({
       message: "ID mahasiswa asuh tidak valid",

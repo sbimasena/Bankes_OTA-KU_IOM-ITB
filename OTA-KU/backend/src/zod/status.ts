@@ -21,8 +21,7 @@ export const ApplicationStatusSchema = z.object({
     }),
   bill: z.coerce
     .number({
-      invalid_type_error: "Tagihan harus berupa angka",
-      required_error: "Tagihan harus diisi",
+      error: "Tagihan harus berupa angka",
     })
     .min(0, {
       message: "Tagihan tidak boleh kurang dari 0",
@@ -30,8 +29,7 @@ export const ApplicationStatusSchema = z.object({
     .optional(),
   notes: z
     .string({
-      invalid_type_error: "Catatan untuk Orang Tua Asuh harus berupa string",
-      required_error: "Catatan untuk Orang Tua Asuh harus diisi",
+      error: "Catatan untuk Orang Tua Asuh harus berupa string",
     })
     .min(1, {
       message: "Catatan untuk Orang Tua Asuh tidak boleh kosong",
@@ -39,8 +37,7 @@ export const ApplicationStatusSchema = z.object({
     .optional(),
   adminOnlyNotes: z
     .string({
-      invalid_type_error: "Catatan khusus Admin harus berupa string",
-      required_error: "Catatan khusus Admin harus diisi",
+      error: "Catatan khusus Admin harus berupa string",
     })
     .min(1, {
       message: "Catatan khusus Admin tidak boleh kosong",

@@ -3,8 +3,7 @@ import { z } from "@hono/zod-openapi";
 export const CreateVAPaymentSchema = z.object({
   transactionId: z
     .string({
-      required_error: "ID transaksi harus diisi",
-      invalid_type_error: "ID transaksi harus berupa string",
+      error: "ID transaksi harus berupa string",
     })
     .uuid({ message: "ID transaksi tidak valid" })
     .openapi({
@@ -70,8 +69,7 @@ export const MidtransWebhookResponse = z.object({
 export const VerifyMidtransPaymentSchema = z.object({
   transactionId: z
     .string({
-      required_error: "ID transaksi harus diisi",
-      invalid_type_error: "ID transaksi harus berupa string",
+      error: "ID transaksi harus berupa string",
     })
     .uuid({ message: "ID transaksi tidak valid" })
     .openapi({

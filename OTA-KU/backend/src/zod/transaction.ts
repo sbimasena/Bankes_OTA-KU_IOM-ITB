@@ -5,8 +5,7 @@ import { NIMSchema, PhoneNumberSchema } from "./atomic.js";
 export const TransactionListOTAQuerySchema = z.object({
   year: z.coerce
     .number({
-      required_error: "Year is required",
-      invalid_type_error: "Year must be a number",
+      error: "Year must be a number",
     })
     .optional()
     .openapi({
@@ -15,8 +14,7 @@ export const TransactionListOTAQuerySchema = z.object({
     }),
   month: z.coerce
     .number({
-      required_error: "Month is required",
-      invalid_type_error: "Month must be a number",
+      error: "Month must be a number",
     })
     .optional()
     .openapi({
@@ -182,8 +180,7 @@ export const TransactionListVerificationAdminQuerySchema = z.object({
   }),
   year: z.coerce
     .number({
-      required_error: "Year is required",
-      invalid_type_error: "Year must be a number",
+      error: "Year must be a number",
     })
     .optional()
     .openapi({
@@ -192,8 +189,7 @@ export const TransactionListVerificationAdminQuerySchema = z.object({
     }),
   month: z.coerce
     .number({
-      required_error: "Month is required",
-      invalid_type_error: "Month must be a number",
+      error: "Month must be a number",
     })
     .optional()
     .openapi({
@@ -302,8 +298,7 @@ export const DetailTransactionParams = z.object({
 export const UploadReceiptSchema = z.object({
   ids: z
     .string({
-      required_error: "ID transaksi harus diisi",
-      invalid_type_error: "ID transaksi harus berupa string",
+      error: "ID transaksi harus berupa string",
     })
     .transform((val) => {
       try {
@@ -358,8 +353,7 @@ export const UploadReceiptResponse = z.object({
 export const VerifyTransactionAcceptSchema = z.object({
   ids: z
     .string({
-      required_error: "ID transaksi harus diisi",
-      invalid_type_error: "ID transaksi harus berupa string",
+      error: "ID transaksi harus berupa string",
     })
     .transform((val) => {
       try {
@@ -383,8 +377,7 @@ export const VerifyTransactionAcceptSchema = z.object({
     }),
   otaId: z
     .string({
-      required_error: "ID orang tua asuh harus diisi",
-      invalid_type_error: "ID orang tua asuh harus berupa string",
+      error: "ID orang tua asuh harus berupa string",
     })
     .uuid({
       message: "ID orang tua asuh tidak valid",
@@ -398,8 +391,7 @@ export const VerifyTransactionAcceptSchema = z.object({
 export const VerifyTransactionRejectSchema = z.object({
   ids: z
     .string({
-      required_error: "ID transaksi harus diisi",
-      invalid_type_error: "ID transaksi harus berupa string",
+      error: "ID transaksi harus berupa string",
     })
     .transform((val) => {
       try {
@@ -423,8 +415,7 @@ export const VerifyTransactionRejectSchema = z.object({
     }),
   otaId: z
     .string({
-      required_error: "ID orang tua asuh harus diisi",
-      invalid_type_error: "ID orang tua asuh harus berupa string",
+      error: "ID orang tua asuh harus berupa string",
     })
     .uuid({
       message: "ID orang tua asuh tidak valid",
@@ -455,8 +446,7 @@ export const VerifyTransactionAccResponse = z.object({
   body: z.object({
     ids: z
       .string({
-        required_error: "ID transaksi harus diisi",
-        invalid_type_error: "ID transaksi harus berupa string",
+        error: "ID transaksi harus berupa string",
       })
       .transform((val) => {
         try {
@@ -500,8 +490,7 @@ export const VerifyTransactionRejectResponse = z.object({
   body: z.object({
     ids: z
       .string({
-        required_error: "ID transaksi harus diisi",
-        invalid_type_error: "ID transaksi harus berupa string",
+        error: "ID transaksi harus berupa string",
       })
       .transform((val) => {
         try {
@@ -545,8 +534,7 @@ export const VerifyTransactionRejectResponse = z.object({
 export const AcceptTransferStatusSchema = z.object({
   id: z
     .string({
-      required_error: "ID transaksi harus diisi",
-      invalid_type_error: "ID transaksi harus berupa string",
+      error: "ID transaksi harus berupa string",
     })
     .uuid({
       message: "ID transaksi tidak valid",
