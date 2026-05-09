@@ -6,12 +6,8 @@ const dashboardRouter = createRouter();
 
 dashboardRouter.openapi(dashboardOtaRoute, async (c) => {
   try {
-    // Ambil semua OTA yang sudah memiliki profil lengkap
+    // name & job di OtaProfile adalah non-nullable String — tidak perlu filter { not: null }
     const otaList = await prisma.otaProfile.findMany({
-      where: {
-        name: { not: null },
-        job: { not: null },
-      },
       select: {
         userId: true,
         name: true,
@@ -26,12 +22,12 @@ dashboardRouter.openapi(dashboardOtaRoute, async (c) => {
 
     const data = otaList.map((ota) => ({
       id: ota.userId,
-      name: ota.name ?? "",
-      job: ota.job ?? "",
-      funds: ota.funds ? Number(ota.funds) : 0,
-      maxCapacity: ota.maxCapacity ? Number(ota.maxCapacity) : 0,
-      criteria: ota.criteria ?? "",
-      isDetailVisible: ota.isDetailVisible ?? true,
+      name: ota.name,
+      job: ota.job,
+      funds: ota.funds,           // Int — sudah number, tidak perlu cast
+      maxCapacity: ota.maxCapacity, // Int — sudah number
+      criteria: ota.criteria,
+      isDetailVisible: ota.isDetailVisible,
     }));
 
     return c.json(
