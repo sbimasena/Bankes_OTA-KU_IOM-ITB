@@ -13,8 +13,6 @@ const EnvSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
-  AZURE_CLIENT_ID: z.string(),
-  AZURE_CLIENT_SECRET: z.string(),
   VITE_PUBLIC_URL: z.string().url(),
   CLOUDINARY_CLOUD_NAME: z.string(),
   CLOUDINARY_API_KEY: z.string(),
@@ -46,6 +44,14 @@ const EnvSchema = z.object({
     .transform((v) => v === "true"),
   WHATSAPP_API_URL: z.string().url().optional(),
   WHATSAPP_API_KEY: z.string().optional(),
+  // SSO — Keycloak
+  KEYCLOAK_CLIENT_ID: z.string(),
+  KEYCLOAK_CLIENT_SECRET: z.string(),
+  KEYCLOAK_ISSUER_URL: z.string().url(),
+  KEYCLOAK_JWKS_URI: z.string().url(),
+  KEYCLOAK_REDIRECT_URI: z.string().url(),
+  SSO_API_URL: z.string().url(),
+  REGISTER_API_KEY: z.string(),
 });
 
 const result = EnvSchema.safeParse(process.env);
