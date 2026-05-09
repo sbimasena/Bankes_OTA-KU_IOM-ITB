@@ -1,12 +1,10 @@
 import { NextAuthOptions, Account, Profile } from "next-auth";
 // import AzureADProvider from "next-auth/providers/azure-ad";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { JWT } from "next-auth/jwt";
 import { Session } from "next-auth";
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 const mappingFakultasProdi : { [key: string]: { fakultas: string; prodi: string } } = {
   "101": { fakultas: "Fakultas Matematika dan Ilmu Pengetahuan Alam", prodi: "Matematika" },

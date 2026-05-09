@@ -137,8 +137,8 @@ export const UserAuthenticatedResponse = z.object({
         .enum(["mahasiswa", "ota", "admin", "bankes", "pengurus"])
         .openapi({ example: "mahasiswa" }),
       provider: z
-        .enum(["credentials", "azure"])
-        .openapi({ example: "credentials" }),
+            .enum(["credentials", "azure", "keycloak"])
+            .openapi({ example: "credentials" }),
       oid: z.string().nullable().openapi({ example: "1" }),
       createdAt: z.string().openapi({ example: "2023-10-01T00:00:00.000Z" }),
       iat: z.number().openapi({ example: 1630000000 }),
@@ -169,7 +169,7 @@ export const JWTPayloadSchema = z
       .enum(["mahasiswa", "ota", "admin", "bankes", "pengurus"])
       .openapi({ example: "mahasiswa" }),
     provider: z
-      .enum(["credentials", "azure"])
+      .enum(["credentials", "azure", "keycloak"])
       .openapi({ example: "credentials" }),
     oid: z.string().nullable().openapi({ example: "1" }),
     createdAt: z.string().openapi({ example: "2023-10-01T00:00:00.000Z" }),
