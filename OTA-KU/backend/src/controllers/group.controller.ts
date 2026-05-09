@@ -1268,23 +1268,23 @@ groupProtectedRouter.openapi(listProposalsRoute, async (c) => {
             else if (p.Connection?.connectionStatus === "rejected") effectiveStatus = "rejected";
 
             return {
-            id: p.id,
-            mahasiswaId: p.mahasiswaId,
-            mahasiswaName: p.Mahasiswa.name ?? "",
-            mahasiswaNim: p.Mahasiswa.nim,
-            proposedById: p.proposedById,
-            proposedByName: p.ProposedBy?.name ?? null,
-            status: effectiveStatus,
-            votes: p.Votes.map((v) => ({
-              otaId: v.otaId,
-              otaName: v.Ota.name ?? "",
-              approve: v.approve,
-              pledgeAmount: v.pledgeAmount,
-            })),
-            totalPledge: p.Votes.filter((v) => v.approve).reduce((s, v) => s + v.pledgeAmount, 0),
-            memberCount: group._count.Members,
-            createdAt: p.createdAt.toISOString(),
-          };
+              id: p.id,
+              mahasiswaId: p.mahasiswaId,
+              mahasiswaName: p.Mahasiswa.name ?? "",
+              mahasiswaNim: p.Mahasiswa.nim,
+              proposedById: p.proposedById,
+              proposedByName: p.ProposedBy?.name ?? null,
+              status: effectiveStatus,
+              votes: p.Votes.map((v) => ({
+                otaId: v.otaId,
+                otaName: v.Ota.name ?? "",
+                approve: v.approve,
+                pledgeAmount: v.pledgeAmount,
+              })),
+              totalPledge: p.Votes.filter((v) => v.approve).reduce((s, v) => s + v.pledgeAmount, 0),
+              memberCount: group._count.Members,
+              createdAt: p.createdAt.toISOString(),
+            };
           }),
         },
       },
@@ -1504,7 +1504,7 @@ groupProtectedRouter.openapi(verifyGroupConnectionAccRoute, async (c) => {
     const existingMahasiswaGroupConn = await prisma.groupConnection.findFirst({
       where: { mahasiswaId: groupConn.mahasiswaId, connectionStatus: "accepted" },
     });
-    
+
     const existingMahasiswaIndividualConn = await prisma.connection.findFirst({
       where: { mahasiswaId: groupConn.mahasiswaId, connectionStatus: "accepted" },
     });
