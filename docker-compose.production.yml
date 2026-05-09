@@ -76,23 +76,12 @@ services:
 
   # ── Schema migration (runs once, no test seed) ───────────────────────────────
   migrate:
-    image: node:22-alpine
+    build:
+      context: ./prisma
+      dockerfile: Dockerfile.migrate
     container_name: iom-ota-migrate-prod
-    working_dir: /workspace
-    volumes:
-      - .:/workspace
-      - migrate-node-modules:/workspace/prisma/node_modules
     environment:
       DATABASE_URL: ${DATABASE_URL}
-    command: >
-      sh -c "
-        cd /workspace/prisma &&
-        npm install --quiet &&
-        npx prisma generate &&
-        npx prisma db execute --url $$DATABASE_URL --file ./scripts/prepush-testimonial-backfill.sql &&
-        npx prisma db push &&
-        echo 'Schema ready'
-      "
     depends_on:
       postgres:
         condition: service_healthy
@@ -215,7 +204,6 @@ services:
 volumes:
   postgres-data:
   minio-data:
-  migrate-node-modules:
 
 # ── Networks ──────────────────────────────────────────────────────────────────
 networks:
