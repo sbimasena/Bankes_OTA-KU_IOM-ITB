@@ -5,63 +5,47 @@ import { prisma } from "@/lib/prisma";
  * GET /api/dashboard/mahasiswa
  *
  * Endpoint publik untuk kelompok lain yang membutuhkan data mahasiswa dari sistem Bankes.
- * Tidak memerlukan autentikasi — hanya mengembalikan data yang aman untuk dikonsumsi eksternal.
+ * Tidak memerlukan autentikasi.
  *
- * Response JSON:
- * {
- *   "status": "success",
- *   "message": "Data berhasil diambil",
- *   "data": [
- *     {
- *       "id": "<uuid>",
- *       "nim": "13520001",
- *       "name": "Budi Santoso",
- *       "faculty": "STEI_K",
- *       "major": "Teknik_Informatika",
- *       "gpa": 3.85,
- *       "bankesStatus": "verified",
- *       "billAmount": 0,
- *       "applicationStatus": "pending"
- *     }
- *   ]
- * }
+ * Strategi query:
+ *   - Query dari tabel `User` dengan role "Mahasiswa" (bukan dari MahasiswaProfile)
+ *   - Sehingga semua akun mahasiswa tampil, meski belum mengisi profil lengkap
+ *   - Data profil (nim, name, faculty, dll) diambil dari relasi MahasiswaProfile
  */
 export async function GET() {
   try {
-    // Ambil semua mahasiswa yang sudah mengisi profil (minimal memiliki nim & name)
-    const mahasiswaList = await prisma.mahasiswaProfile.findMany({
+    const userList = await prisma.user.findMany({
       where: {
-        name: { not: null },
+        role: "Mahasiswa",
       },
       select: {
-        userId: true,
-        nim: true,
-        name: true,
-        faculty: true,
-        major: true,
-        gpa: true,
-        bill: true,
-        // Ambil verificationStatus dan applicationStatus dari tabel User (relasi)
-        User: {
+        id: true,
+        verificationStatus: true,
+        applicationStatus: true,
+        MahasiswaProfile: {
           select: {
-            verificationStatus: true,
-            applicationStatus: true,
+            nim: true,
+            name: true,
+            faculty: true,
+            major: true,
+            gpa: true,
+            bill: true,
           },
         },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    const data = mahasiswaList.map((m) => ({
-      id: m.userId,
-      nim: m.nim,
-      name: m.name ?? "",
-      faculty: m.faculty ?? null,   // e.g. "STEI_K"
-      major: m.major ?? null,       // e.g. "Teknik_Informatika"
-      gpa: m.gpa ? Number(m.gpa) : null,
-      bankesStatus: m.User.verificationStatus,   // "verified" | "unverified"
-      billAmount: m.bill,
-      applicationStatus: m.User.applicationStatus, // "pending" | "accepted" | "rejected" | ...
+    const data = userList.map((u) => ({
+      id: u.id,
+      nim: u.MahasiswaProfile?.nim ?? "",
+      name: u.MahasiswaProfile?.name ?? "",
+      faculty: u.MahasiswaProfile?.faculty ?? null,
+      major: u.MahasiswaProfile?.major ?? null,
+      gpa: u.MahasiswaProfile?.gpa ? Number(u.MahasiswaProfile.gpa) : null,
+      bankesStatus: u.verificationStatus,       // "verified" | "unverified"
+      billAmount: u.MahasiswaProfile?.bill ?? 0,
+      applicationStatus: u.applicationStatus,   // "pending" | "accepted" | ...
     }));
 
     return NextResponse.json(

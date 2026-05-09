@@ -6,29 +6,40 @@ const dashboardRouter = createRouter();
 
 dashboardRouter.openapi(dashboardOtaRoute, async (c) => {
   try {
-    // name & job di OtaProfile adalah non-nullable String — tidak perlu filter { not: null }
-    const otaList = await prisma.otaProfile.findMany({
+    // Query dari User table dengan role OrangTuaAsuh
+    // sehingga semua akun OTA muncul meski belum isi profil lengkap
+    const userList = await prisma.user.findMany({
+      where: {
+        role: "OrangTuaAsuh",
+      },
       select: {
-        userId: true,
-        name: true,
-        job: true,
-        funds: true,
-        maxCapacity: true,
-        criteria: true,
-        isDetailVisible: true,
+        id: true,
+        OtaProfile: {
+          select: {
+            name: true,
+            job: true,
+            funds: true,
+            maxCapacity: true,
+            criteria: true,
+            isDetailVisible: true,
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    const data = otaList.map((ota) => ({
-      id: ota.userId,
-      name: ota.name,
-      job: ota.job,
-      funds: ota.funds,           // Int — sudah number, tidak perlu cast
-      maxCapacity: ota.maxCapacity, // Int — sudah number
-      criteria: ota.criteria,
-      isDetailVisible: ota.isDetailVisible,
-    }));
+    const data = userList
+      // hanya tampilkan yang sudah punya profil OTA
+      .filter((u) => u.OtaProfile !== null)
+      .map((u) => ({
+        id: u.id,
+        name: u.OtaProfile!.name,
+        job: u.OtaProfile!.job,
+        funds: u.OtaProfile!.funds,
+        maxCapacity: u.OtaProfile!.maxCapacity,
+        criteria: u.OtaProfile!.criteria,
+        isDetailVisible: u.OtaProfile!.isDetailVisible,
+      }));
 
     return c.json(
       {
