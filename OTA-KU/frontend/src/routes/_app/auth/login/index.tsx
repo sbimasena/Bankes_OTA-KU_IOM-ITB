@@ -33,6 +33,18 @@ export const Route = createFileRoute("/_app/auth/login/")({
 
 type UserLoginFormValues = z.infer<typeof UserLoginRequestSchema>;
 
+function getKeycloakLoginUrl(): string {
+  const KEYCLOAK_AUTH_URL =
+    "https://iom-sso.kirisame.jp.net/realms/iom-itb-sso/protocol/openid-connect/auth";
+  const params = new URLSearchParams({
+    client_id: import.meta.env.VITE_KEYCLOAK_CLIENT_ID,
+    redirect_uri: import.meta.env.VITE_KEYCLOAK_REDIRECT_URI,
+    response_type: "code",
+    scope: "openid email profile",
+  });
+  return `${KEYCLOAK_AUTH_URL}?${params.toString()}`;
+}
+
 function RouteComponent() {
   const navigate = useNavigate();
   const loginCallbackMutation = useMutation({
@@ -144,6 +156,18 @@ function RouteComponent() {
 
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 Masuk
+              </Button>
+
+              <p className="text-primary text-center">atau</p>
+              <Button
+                type="button"
+                disabled={form.formState.isSubmitting}
+                asChild
+                variant={"outline"}
+              >
+                <a href={getKeycloakLoginUrl()}>
+                  Login dengan SSO IOM-ITB
+                </a>
               </Button>
 
               <p className="text-primary text-center text-base">
