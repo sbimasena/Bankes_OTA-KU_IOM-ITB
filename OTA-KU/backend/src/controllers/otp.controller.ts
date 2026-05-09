@@ -3,22 +3,17 @@ import { prisma } from "../db/prisma.js";
 import { generateOTP } from "../lib/otp.js";
 import { sendWhatsApp } from "../lib/whatsapp.js";
 import { getOtpExpiredDateRoute, sendOtpRoute } from "../routes/otp.route.js";
-import { SendOtpRequestSchema } from "../zod/otp.js";
 import { createAuthRouter, createRouter } from "./router-factory.js";
 
 export const otpRouter = createRouter();
 export const otpProtectedRouter = createAuthRouter();
 
 otpProtectedRouter.openapi(sendOtpRoute, async (c) => {
-  const body = await c.req.formData();
-  const data = Object.fromEntries(body.entries());
-
-  const zodParseResult = SendOtpRequestSchema.parse(data);
-  const { email } = zodParseResult;
+  const { id } = c.var.user;
 
   try {
     const user = await prisma.user.findFirst({
-      where: { email },
+      where: { id },
       include: { OTPs: true },
     });
 
