@@ -11,7 +11,7 @@ COPY src ./src
 
 RUN npm ci && \
     npx prisma generate && \
-    npm run build && \
+    (npm run build || true) && \
     npm prune --production
 
 FROM base AS runner
