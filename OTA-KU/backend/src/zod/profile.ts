@@ -19,8 +19,7 @@ export const MahasiswaRegistrationParams = z.object({
 export const MahasiswaRegistrationSchema = z.object({
   name: z
     .string({
-      invalid_type_error: "Nama harus berupa string",
-      required_error: "Nama harus diisi",
+      error: "Nama harus berupa string",
     })
     .min(3, { message: "Nama terlalu pendek" })
     .max(255, { message: "Nama terlalu panjang" })
@@ -81,8 +80,7 @@ export const MahasiswaRegistrationSchema = z.object({
       "Kewirausahaan",
       "TPB",
     ] as [string, ...string[]], {
-      required_error: "Jurusan harus dipilih",
-      invalid_type_error: "Jurusan tidak valid",
+      error: "Jurusan tidak valid",
     })
     .openapi({
       example: "Teknik Informatika",
@@ -105,8 +103,7 @@ export const MahasiswaRegistrationSchema = z.object({
       "SITH-R",
       "SAPPK",
     ] as [string, ...string[]], {
-      required_error: "Fakultas harus dipilih",
-      invalid_type_error: "Fakultas tidak valid",
+      error: "Fakultas tidak valid",
     })
     .openapi({ example: "STEI-R", description: "Fakultas mahasiswa" }),
   cityOfOrigin: z
@@ -134,8 +131,6 @@ export const MahasiswaRegistrationSchema = z.object({
   gender: z.enum(["M", "F"]).openapi({ example: "M" }),
   gpa: z.coerce
     .number({
-      invalid_type_error: "IPK harus berupa angka",
-      required_error: "IPK harus diisi",
       message: "IPK harus berupa angka",
     })
     .nonnegative({
@@ -145,8 +140,7 @@ export const MahasiswaRegistrationSchema = z.object({
     .openapi({ example: 3.5, description: "IPK mahasiswa" }),
   description: z
     .string({
-      required_error: "Deskripsi harus diisi",
-      invalid_type_error: "Deskripsi harus berupa string",
+      error: "Deskripsi harus berupa string",
     })
     .min(3, { message: "Deskripsi terlalu pendek" })
     .openapi({ example: "Mahasiswa baru", description: "Deskripsi mahasiswa" }),
@@ -164,8 +158,7 @@ export const MahasiswaRegistrationSchema = z.object({
 export const MahasiswaRegistrationFormSchema = z.object({
   name: z
     .string({
-      invalid_type_error: "Nama harus berupa string",
-      required_error: "Nama harus diisi",
+      error: "Nama harus berupa string",
     })
     .min(3, { message: "Nama terlalu pendek" })
     .max(255, { message: "Nama terlalu panjang" })
@@ -227,8 +220,7 @@ export const MahasiswaRegistrationFormSchema = z.object({
       "Kewirausahaan",
       "TPB",
     ] as [string, ...string[]], {
-      required_error: "Jurusan harus dipilih",
-      invalid_type_error: "Jurusan tidak valid",
+      error: "Jurusan tidak valid",
     })
     .openapi({
       example: "Teknik Informatika",
@@ -251,8 +243,7 @@ export const MahasiswaRegistrationFormSchema = z.object({
       "SITH-R",
       "SAPPK",
     ] as [string, ...string[]], {
-      required_error: "Fakultas harus dipilih",
-      invalid_type_error: "Fakultas tidak valid",
+      error: "Fakultas tidak valid",
     })
     .openapi({ example: "STEI-R", description: "Fakultas mahasiswa" }),
   cityOfOrigin: z
@@ -280,8 +271,6 @@ export const MahasiswaRegistrationFormSchema = z.object({
   gender: z.enum(["M", "F"]).openapi({ example: "M" }),
   gpa: z.coerce
     .number({
-      invalid_type_error: "IPK harus berupa angka",
-      required_error: "IPK harus diisi",
       message: "IPK harus berupa angka",
     })
     .nonnegative({
@@ -291,8 +280,7 @@ export const MahasiswaRegistrationFormSchema = z.object({
     .openapi({ example: 3.5, description: "IPK mahasiswa" }),
   description: z
     .string({
-      required_error: "Deskripsi harus diisi",
-      invalid_type_error: "Deskripsi harus berupa string",
+      error: "Deskripsi harus berupa string",
     })
     .min(3, { message: "Deskripsi terlalu pendek" })
     .openapi({ example: "Mahasiswa baru", description: "Deskripsi mahasiswa" }),
@@ -314,8 +302,7 @@ export const MahasiswaRegistrationFormSchema = z.object({
 export const MahasiswaProfileFormSchema = z.object({
   name: z
     .string({
-      invalid_type_error: "Nama harus berupa string",
-      required_error: "Nama harus diisi",
+      error: "Nama harus berupa string",
     })
     .min(3, { message: "Nama terlalu pendek" })
     .max(255, { message: "Nama terlalu panjang" })
@@ -377,8 +364,7 @@ export const MahasiswaProfileFormSchema = z.object({
       "Kewirausahaan",
       "TPB",
     ] as [string, ...string[]], {
-      required_error: "Jurusan harus dipilih",
-      invalid_type_error: "Jurusan tidak valid",
+      error: "Jurusan tidak valid",
     })
     .openapi({
       example: "Teknik Informatika",
@@ -401,8 +387,7 @@ export const MahasiswaProfileFormSchema = z.object({
       "SITH-R",
       "SAPPK",
     ] as [string, ...string[]], {
-      required_error: "Fakultas harus dipilih",
-      invalid_type_error: "Fakultas tidak valid",
+      error: "Fakultas tidak valid",
     })
     .openapi({ example: "STEI-R", description: "Fakultas mahasiswa" }),
   cityOfOrigin: z
@@ -430,8 +415,6 @@ export const MahasiswaProfileFormSchema = z.object({
   gender: z.enum(["M", "F"]).openapi({ example: "M" }),
   gpa: z.coerce
     .number({
-      invalid_type_error: "IPK harus berupa angka",
-      required_error: "IPK harus diisi",
       message: "IPK harus berupa angka",
     })
     .nonnegative({
@@ -441,8 +424,7 @@ export const MahasiswaProfileFormSchema = z.object({
     .openapi({ example: 3.5, description: "IPK mahasiswa" }),
   description: z
     .string({
-      required_error: "Deskripsi harus diisi",
-      invalid_type_error: "Deskripsi harus berupa string",
+      error: "Deskripsi harus berupa string",
     })
     .min(3, { message: "Deskripsi terlalu pendek" })
     .openapi({ example: "Mahasiswa baru", description: "Deskripsi mahasiswa" }),
@@ -505,8 +487,7 @@ export const OrangTuaRegistrationParams = z.object({
 export const OrangTuaRegistrationSchema = z.object({
   name: z
     .string({
-      invalid_type_error: "Nama harus berupa string",
-      required_error: "Nama harus diisi",
+      error: "Nama harus berupa string",
     })
     .min(3, {
       message: "Nama terlalu pendek",
@@ -517,8 +498,7 @@ export const OrangTuaRegistrationSchema = z.object({
     .openapi({ example: "John Doe", description: "Nama orang tua" }),
   job: z
     .string({
-      invalid_type_error: "Pekerjaan harus berupa string",
-      required_error: "Pekerjaan harus diisi",
+      error: "Pekerjaan harus berupa string",
     })
     .min(3, {
       message: "Pekerjaan terlalu pendek",
@@ -529,8 +509,7 @@ export const OrangTuaRegistrationSchema = z.object({
     .openapi({ example: "Guru", description: "Pekerjaan orang tua" }),
   address: z
     .string({
-      invalid_type_error: "Alamat harus berupa string",
-      required_error: "Alamat harus diisi",
+      error: "Alamat harus berupa string",
     })
     .min(3, {
       message: "Alamat terlalu pendek",
@@ -546,8 +525,6 @@ export const OrangTuaRegistrationSchema = z.object({
   funds: z.coerce
     //TODO: gimana caranya biar ini facilitate integer values only tapi ga float
     .number({
-      invalid_type_error: "Dana harus berupa angka",
-      required_error: "Dana harus diisi",
       message: "Dana harus berupa angka",
     })
     .nonnegative({
@@ -559,8 +536,6 @@ export const OrangTuaRegistrationSchema = z.object({
     .openapi({ example: 1000000, description: "Dana yang disediakan" }),
   maxCapacity: z.coerce
     .number({
-      invalid_type_error: "Kapasitas maksimal harus berupa angka",
-      required_error: "Kapasitas maksimal harus diisi",
       message: "Kapasitas maksimal harus berupa angka",
     })
     .nonnegative({
@@ -569,8 +544,6 @@ export const OrangTuaRegistrationSchema = z.object({
     .openapi({ example: 10, description: "Kapasitas maksimal" }),
   startDate: z
     .string({
-      invalid_type_error: "Tanggal invalid",
-      required_error: "Tanggal harus diisi",
       message: "Tanggal harus berupa string",
     })
     .refine(
@@ -586,8 +559,6 @@ export const OrangTuaRegistrationSchema = z.object({
     .openapi({ example: "2022-01-01", description: "Tanggal mulai" }),
   maxSemester: z.coerce
     .number({
-      invalid_type_error: "Semester maksimal harus berupa angka",
-      required_error: "Semester maksimal harus diisi",
       message: "Semester maksimal harus berupa angka",
     })
     .nonnegative({
@@ -596,8 +567,6 @@ export const OrangTuaRegistrationSchema = z.object({
     .openapi({ example: 8, description: "Semester maksimal" }),
   transferDate: z.coerce
     .number({
-      invalid_type_error: "Tanggal transfer harus berupa angka",
-      required_error: "Tanggal transfer harus diisi",
       message: "Tanggal transfer harus berupa angka",
     })
     .nonnegative({
@@ -613,8 +582,7 @@ export const OrangTuaRegistrationSchema = z.object({
     .openapi({ example: "Mahasiswa dari daerah Indonesia Timur" }),
   isDetailVisible: z
     .enum(["true", "false"], {
-      required_error: "Checkbox harus diisi",
-      invalid_type_error: "Checkbox tidak valid",
+      error: "Checkbox tidak valid",
     })
     .default("false")
     .openapi({
@@ -622,8 +590,7 @@ export const OrangTuaRegistrationSchema = z.object({
     }),
   allowAdminSelection: z
     .enum(["true", "false"], {
-      required_error: "Checkbox harus diisi",
-      invalid_type_error: "Checkbox tidak valid",
+      error: "Checkbox tidak valid",
     })
     .default("false")
     .openapi({
@@ -634,8 +601,7 @@ export const OrangTuaRegistrationSchema = z.object({
 export const createBankesPengurusSchema = z.object({
   name: z
     .string({
-      invalid_type_error: "Nama harus berupa string",
-      required_error: "Nama harus diisi",
+      error: "Nama harus berupa string",
     })
     .min(3, {
       message: "Nama terlalu pendek",
@@ -660,8 +626,7 @@ export const createBankesPengurusResponse = z.object({
     id: z.string().openapi({ description: "ID akun" }), 
     name: z
       .string({
-        invalid_type_error: "Nama harus berupa string",
-        required_error: "Nama harus diisi",
+        error: "Nama harus berupa string",
       })
       .min(3, {
         message: "Nama terlalu pendek",
@@ -731,7 +696,7 @@ export const ProfileOrangTuaResponse = z.object({
       .openapi({ example: "Mahasiswa dari daerah Indonesia Timur" }),
     isDetailVisible: z
       .boolean({
-        required_error: "Checkbox harus diisi",
+        error: "Checkbox harus diisi",
       })
       .optional()
       .openapi({
@@ -739,7 +704,7 @@ export const ProfileOrangTuaResponse = z.object({
       }),
     allowAdminSelection: z
       .boolean({
-        required_error: "Checkbox harus diisi",
+        error: "Checkbox harus diisi",
       })
       .optional()
       .openapi({
