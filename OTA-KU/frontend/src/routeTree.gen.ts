@@ -36,6 +36,7 @@ import { Route as AppAuthLupaPasswordIndexRouteImport } from './routes/_app/auth
 import { Route as AppAuthLoginIndexRouteImport } from './routes/_app/auth/login/index'
 import { Route as AppDetailMahasiswaDetailIdRouteImport } from './routes/_app/detail/mahasiswa/$detailId'
 import { Route as AppIntegrationsAzureKeyVaultOauth2CallbackIndexRouteImport } from './routes/_app/integrations/azure-key-vault/oauth2/callback/index'
+import { Route as AppIntegrationsKeycloakCallbackIndexRouteImport } from './routes/_app/integrations/keycloak/callback/index'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -183,6 +184,12 @@ const AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute =
     path: '/integrations/azure-key-vault/oauth2/callback/',
     getParentRoute: () => AppRoute,
   } as any)
+const AppIntegrationsKeycloakCallbackIndexRoute =
+  AppIntegrationsKeycloakCallbackIndexRouteImport.update({
+    id: '/_app/integrations/keycloak/callback/',
+    path: '/integrations/keycloak/callback/',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/auth/register/': typeof AppAuthRegisterIndexRoute
   '/daftar/terminasi-mahasiswa/': typeof AppDaftarTerminasiMahasiswaIndexRoute
   '/integrations/azure-key-vault/oauth2/callback/': typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute
+  '/integrations/keycloak/callback/': typeof AppIntegrationsKeycloakCallbackIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
@@ -239,6 +247,7 @@ export interface FileRoutesByTo {
   '/auth/register': typeof AppAuthRegisterIndexRoute
   '/daftar/terminasi-mahasiswa': typeof AppDaftarTerminasiMahasiswaIndexRoute
   '/integrations/azure-key-vault/oauth2/callback': typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute
+  '/integrations/keycloak/callback': typeof AppIntegrationsKeycloakCallbackIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -269,6 +278,7 @@ export interface FileRoutesById {
   '/_app/auth/register/': typeof AppAuthRegisterIndexRoute
   '/_app/daftar/terminasi-mahasiswa/': typeof AppDaftarTerminasiMahasiswaIndexRoute
   '/_app/integrations/azure-key-vault/oauth2/callback/': typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute
+  '/_app/integrations/keycloak/callback/': typeof AppIntegrationsKeycloakCallbackIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -299,6 +309,7 @@ export interface FileRouteTypes {
     | '/auth/register/'
     | '/daftar/terminasi-mahasiswa/'
     | '/integrations/azure-key-vault/oauth2/callback/'
+    | '/integrations/keycloak/callback/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -327,6 +338,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/daftar/terminasi-mahasiswa'
     | '/integrations/azure-key-vault/oauth2/callback'
+    | '/integrations/keycloak/callback'
   id:
     | '__root__'
     | '/_app'
@@ -356,6 +368,7 @@ export interface FileRouteTypes {
     | '/_app/auth/register/'
     | '/_app/daftar/terminasi-mahasiswa/'
     | '/_app/integrations/azure-key-vault/oauth2/callback/'
+    | '/_app/integrations/keycloak/callback/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -553,6 +566,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/integrations/keycloak/callback/': {
+      id: '/_app/integrations/keycloak/callback/'
+      path: '/integrations/keycloak/callback'
+      fullPath: '/integrations/keycloak/callback/'
+      preLoaderRoute: typeof AppIntegrationsKeycloakCallbackIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -583,6 +603,7 @@ interface AppRouteChildren {
   AppAuthRegisterIndexRoute: typeof AppAuthRegisterIndexRoute
   AppDaftarTerminasiMahasiswaIndexRoute: typeof AppDaftarTerminasiMahasiswaIndexRoute
   AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute: typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute
+  AppIntegrationsKeycloakCallbackIndexRoute: typeof AppIntegrationsKeycloakCallbackIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -613,6 +634,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppDaftarTerminasiMahasiswaIndexRoute: AppDaftarTerminasiMahasiswaIndexRoute,
   AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute:
     AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute,
+  AppIntegrationsKeycloakCallbackIndexRoute:
+    AppIntegrationsKeycloakCallbackIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -643,6 +666,7 @@ export interface FileRoutesByFullPath {
   '/auth/register': typeof AppAuthRegisterIndexRoute
   '/daftar/terminasi-mahasiswa': typeof AppDaftarTerminasiMahasiswaIndexRoute
   '/integrations/azure-key-vault/oauth2/callback': typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute
+  '/integrations/keycloak/callback': typeof AppIntegrationsKeycloakCallbackIndexRoute
 }
 
 export interface FileRoutesByTo {
@@ -670,6 +694,7 @@ export interface FileRoutesByTo {
   '/auth/register': typeof AppAuthRegisterIndexRoute
   '/daftar/terminasi-mahasiswa': typeof AppDaftarTerminasiMahasiswaIndexRoute
   '/integrations/azure-key-vault/oauth2/callback': typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute
+  '/integrations/keycloak/callback': typeof AppIntegrationsKeycloakCallbackIndexRoute
 }
 
 export interface FileRoutesById {
@@ -699,6 +724,7 @@ export interface FileRoutesById {
   '/_app/auth/register/': typeof AppAuthRegisterIndexRoute
   '/_app/daftar/terminasi-mahasiswa/': typeof AppDaftarTerminasiMahasiswaIndexRoute
   '/_app/integrations/azure-key-vault/oauth2/callback/': typeof AppIntegrationsAzureKeyVaultOauth2CallbackIndexRoute
+  '/_app/integrations/keycloak/callback/': typeof AppIntegrationsKeycloakCallbackIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -729,6 +755,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/daftar/terminasi-mahasiswa'
     | '/integrations/azure-key-vault/oauth2/callback'
+    | '/integrations/keycloak/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -755,6 +782,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/daftar/terminasi-mahasiswa'
     | '/integrations/azure-key-vault/oauth2/callback'
+    | '/integrations/keycloak/callback'
   id:
     | '__root__'
     | '/_app'
@@ -782,6 +810,7 @@ export interface FileRouteTypes {
     | '/_app/auth/register/'
     | '/_app/daftar/terminasi-mahasiswa/'
     | '/_app/integrations/azure-key-vault/oauth2/callback/'
+    | '/_app/integrations/keycloak/callback/'
   fileRoutesById: FileRoutesById
 }
 
@@ -938,6 +967,10 @@ export const routeTree = rootRouteImport
     },
     "/_app/integrations/azure-key-vault/oauth2/callback/": {
       "filePath": "_app/integrations/azure-key-vault/oauth2/callback/index.tsx",
+      "parent": "/_app"
+    },
+    "/_app/integrations/keycloak/callback/": {
+      "filePath": "_app/integrations/keycloak/callback/index.tsx",
       "parent": "/_app"
     }
   }
