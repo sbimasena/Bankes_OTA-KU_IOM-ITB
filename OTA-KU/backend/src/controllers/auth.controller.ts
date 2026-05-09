@@ -445,7 +445,6 @@ setCookie(c, "ota-ku.access-cookie", localToken, {
       maxAge: 60 * 60 * 24,
       path: "/",
     });
-   });
 
     return c.json(
       { success: true, message: "Login successful", body: { token: localToken } },
