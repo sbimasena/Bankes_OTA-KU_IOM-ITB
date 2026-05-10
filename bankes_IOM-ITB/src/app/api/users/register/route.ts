@@ -6,7 +6,7 @@ import {
   
 } from "@/utils/_validation";
 
-
+import { createSsoAccount } from "@/lib/sso";
 import { prisma } from "@/lib/prisma";
 
 type Errors = {
@@ -142,10 +142,13 @@ export async function POST(req: Request) {
     const saltRounds = 10; 
     const hashedPassword = await bcrypt.hash(password, saltRounds); 
 
+    // Normalize email to lowercase for consistency
+    const normalizedEmail = email.toLowerCase();
+
     // check the email is already registered or not 
     const isUserExists = await prisma.user.findFirst({
       where: {
-        email: email
+        email: normalizedEmail
       }
     })
 
@@ -154,18 +157,19 @@ export async function POST(req: Request) {
       return NextResponse.json(errors, { status: 400 });
     }
 
+    // Create local user first with Guest role
     const newUser = await prisma.user.create({
       data:{
         name: name, 
-        email: email, 
+        email: normalizedEmail, 
         password: hashedPassword,
         role: "Guest"
       }
     });
 
     /**
-     * this is the response that will be sent to the client 
-     * after the user is successfully created
+     * User is created as Guest without Keycloak account.
+     * Admin will review and approve, then create Keycloak account during approval.
      */
 
     if (!newUser) {
@@ -173,8 +177,19 @@ export async function POST(req: Request) {
       return NextResponse.json(errors, { status: 400 });
     }
     else{
-      return NextResponse.json({ success: true, message: "User created successfully" }, { status: 201 });
+      return NextResponse.json({ 
+        success: true, 
+        message: "Akun berhasil dibuat sebagai Guest. Silahkan tunggu persetujuan admin untuk assign role dan dapat akses SSO.",
+        user: {
+          id: newUser.id,
+          email: normalizedEmail,
+          name: name,
+          role: "Guest",
+          status: "Menunggu persetujuan admin"
+        }
+      }, { status: 201 });
     }
+
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Failed to create user." }, { status: 500 });
