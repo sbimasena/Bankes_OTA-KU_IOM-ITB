@@ -188,6 +188,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     // Update role di Keycloak jika user sudah punya oid
     if (user.oid) {
       try {
+        console.log(`[PATCH users/${userId}] Updating SSO role: oid=${user.oid}, role=${localRoleToKeycloak(role)}`);
         await updateSsoRole({
           keycloakUserId: user.oid,
           role: localRoleToKeycloak(role),

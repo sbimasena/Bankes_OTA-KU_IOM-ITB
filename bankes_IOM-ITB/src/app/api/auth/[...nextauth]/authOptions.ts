@@ -168,13 +168,8 @@ export const authOptions: NextAuthOptions = {
             });
           }
         } else {
-          // User sudah ada dengan ssoId, update role jika perlu
-          if (user.role !== localRole) {
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: { role: localRole as any },
-            });
-          }
+          // User sudah ada dengan ssoId — pakai role dari DB sebagai source of truth
+          // Role dikelola oleh admin approval flow, bukan disync dari Keycloak
         }
 
         token.id    = user.id;
