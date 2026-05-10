@@ -424,7 +424,9 @@ authRouter.openapi(oauthRoute, async (c) => {
 
     // Pengurus IOM registers via Bankes without a phone number, so they cannot
     // receive OTP via WhatsApp. Auto-verify them upon SSO login.
-    if (localRole === "Pengurus_IOM" && accountData.verificationStatus !== "verified") {
+    // Use accountData.role (from DB) not localRole (from Keycloak token) since
+    // Keycloak may not always return realm roles in the token payload.
+    if (accountData.role === "Pengurus_IOM" && accountData.verificationStatus !== "verified") {
       accountData = await prisma.user.update({
         where: { id: accountData.id },
         data: { verificationStatus: "verified" },
