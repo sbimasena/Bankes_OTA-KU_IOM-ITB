@@ -31,7 +31,8 @@ services:
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
       - TEST_EMAIL=${TEST_EMAIL}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - app-network
     restart: unless-stopped
