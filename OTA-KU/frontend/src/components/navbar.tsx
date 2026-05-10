@@ -12,7 +12,7 @@ import { SessionContext } from "@/context/session";
 import { useSidebar } from "@/context/sidebar-context";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Bell, BellOff } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -23,8 +23,6 @@ import { Button } from "./ui/button";
 export default function NavBar() {
   const session = useContext(SessionContext);
   const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
-  const navigate = useNavigate();
-
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const isLoggedIn = !!session;
