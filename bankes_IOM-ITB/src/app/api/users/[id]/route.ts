@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/authOptions';
 import { prisma } from '@/lib/prisma';
+import { updateSsoRole, localRoleToKeycloak } from '@/lib/sso';
 
 /**
  * @swagger
@@ -179,10 +180,33 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   }
 
   try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
+    }
+
+    // Update role di Keycloak jika user sudah punya oid
+    if (user.oid) {
+      try {
+        await updateSsoRole({
+          keycloakUserId: user.oid,
+          role: localRoleToKeycloak(role),
+        });
+      } catch (ssoError) {
+        console.error("Failed to update Keycloak role:", ssoError);
+        return NextResponse.json(
+          { success: false, error: `Gagal update role SSO: ${(ssoError as Error).message}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Update role di DB lokal
     await prisma.user.update({
       where: { id: userId },
-      data: { role: role },
+      data: { role: role as any },
     });
+
     return NextResponse.json({ message: "User role updated successfully" });
   } catch (error) {
     console.error(error);

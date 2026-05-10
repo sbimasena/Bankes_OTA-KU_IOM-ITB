@@ -147,9 +147,7 @@ export async function POST(req: Request) {
 
     // check the email is already registered or not 
     const isUserExists = await prisma.user.findFirst({
-      where: {
-        email: normalizedEmail
-      }
+      where: { email: normalizedEmail }
     })
 
     if(isUserExists){
@@ -157,38 +155,57 @@ export async function POST(req: Request) {
       return NextResponse.json(errors, { status: 400 });
     }
 
-    // Create local user first with Guest role
+    // Register ke Keycloak dengan role "user" (Guest) menggunakan password asli
+    const nameParts = name.trim().split(" ");
+    const firstName = nameParts[0] ?? "";
+    const lastName = nameParts.slice(1).join(" ") || undefined;
+
+    let keycloakUserId: string;
+    try {
+      const ssoResult = await createSsoAccount({
+        email: normalizedEmail,
+        password, // password asli, bukan hash
+        role: "user", // role default Guest di Keycloak
+        firstName,
+        lastName,
+      });
+      keycloakUserId = ssoResult.userId;
+    } catch (ssoError) {
+      console.error("SSO registration failed:", ssoError);
+      return NextResponse.json(
+        { general: [`Gagal mendaftarkan akun SSO: ${(ssoError as Error).message}`] },
+        { status: 500 }
+      );
+    }
+
+    // Simpan user lokal dengan oid dari Keycloak
     const newUser = await prisma.user.create({
-      data:{
-        name: name, 
-        email: normalizedEmail, 
+      data: {
+        name,
+        email: normalizedEmail,
         password: hashedPassword,
-        role: "Guest"
+        role: "Guest",
+        provider: "keycloak",
+        oid: keycloakUserId,
       }
     });
-
-    /**
-     * User is created as Guest without Keycloak account.
-     * Admin will review and approve, then create Keycloak account during approval.
-     */
 
     if (!newUser) {
       errors.general = ["Failed to create user"];
       return NextResponse.json(errors, { status: 400 });
     }
-    else{
-      return NextResponse.json({ 
-        success: true, 
-        message: "Akun berhasil dibuat sebagai Guest. Silahkan tunggu persetujuan admin untuk assign role dan dapat akses SSO.",
-        user: {
-          id: newUser.id,
-          email: normalizedEmail,
-          name: name,
-          role: "Guest",
-          status: "Menunggu persetujuan admin"
-        }
-      }, { status: 201 });
-    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Akun berhasil dibuat. Silahkan tunggu persetujuan admin sebelum dapat login.",
+      user: {
+        id: newUser.id,
+        email: normalizedEmail,
+        name,
+        role: "Guest",
+        status: "Menunggu persetujuan admin"
+      }
+    }, { status: 201 });
 
   } catch (error) {
     console.error(error);

@@ -108,3 +108,43 @@ export function localRoleToKeycloak(localRole: string): string {
 
   return mapping[localRole] || "user";
 }
+
+/**
+ * Update role user yang sudah ada di Keycloak
+ * Dipanggil saat admin approve dan assign role ke user
+ *
+ * @param keycloakUserId - UUID user di Keycloak (oid)
+ * @param role - Role Keycloak baru
+ */
+export async function updateSsoRole({
+  keycloakUserId,
+  role,
+}: {
+  keycloakUserId: string;
+  role: string;
+}): Promise<void> {
+  const ssoApiUrl = process.env.SSO_API_URL;
+  const registerApiKey = process.env.REGISTER_API_KEY;
+
+  if (!ssoApiUrl || !registerApiKey) {
+    throw new Error(
+      "SSO_API_URL or REGISTER_API_KEY environment variables are not set"
+    );
+  }
+
+  const res = await fetch(`${ssoApiUrl}/auth/users/${keycloakUserId}/role`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Api-Key": registerApiKey,
+    },
+    body: JSON.stringify({ role }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      err.message ?? `SSO role update failed with status ${res.status}`
+    );
+  }
+}
