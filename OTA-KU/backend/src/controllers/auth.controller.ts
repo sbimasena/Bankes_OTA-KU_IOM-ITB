@@ -439,7 +439,7 @@ authRouter.openapi(oauthRoute, async (c) => {
         name: name ?? null,
         email: accountData.email,
         phoneNumber: accountData.phoneNumber ?? null,
-        type: jwtType,
+        type: roleToJwtType(accountData.role),
         provider: "keycloak",
         oid: sub,
         createdAt: accountData.createdAt,
