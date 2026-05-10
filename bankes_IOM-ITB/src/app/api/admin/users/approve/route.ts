@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { createSsoAccount } from "@/lib/sso";
+import { updateSsoRole } from "@/lib/sso";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 
 type ApproveRequest = {
   userId: string;
   role: "Mahasiswa" | "Pewawancara" | "Pengurus_IOM";
-  temporaryPassword?: string;
 };
 
 /**
@@ -33,7 +32,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { userId, role, temporaryPassword } = (await req.json()) as ApproveRequest;
+    const { userId, role } = (await req.json()) as ApproveRequest;
 
     if (!userId || !role) {
       return NextResponse.json(
@@ -56,35 +55,33 @@ export async function POST(req: Request) {
       );
     }
 
-    if (user.oid) {
+    if (!user.oid) {
       return NextResponse.json(
-        { error: "User already has Keycloak account (already approved)" },
+        { error: "User does not have a Keycloak account yet" },
         { status: 400 }
       );
     }
 
-    // Use provided password or user's local password for Keycloak
-    const password = temporaryPassword || user.password || Math.random().toString(36).slice(-12);
+    if (user.verificationStatus === "verified") {
+      return NextResponse.json(
+        { error: "User already approved" },
+        { status: 400 }
+      );
+    }
 
-    console.log(`[Admin Approve] Creating Keycloak account for ${user.email}`);
+    console.log(`[Admin Approve] Updating Keycloak role for ${user.email}`);
 
-    // Call SSO API to create Keycloak account
-    const ssoUser = await createSsoAccount({
-      email: user.email,
-      password: password,
+    await updateSsoRole({
+      keycloakUserId: user.oid,
       role: roleToKeycloak(role),
-      firstName: user.name?.split(" ")[0] || user.name,
-      lastName: user.name?.split(" ").slice(1).join(" ") || ""
     });
 
-    console.log(`[Admin Approve] Keycloak account created:`, ssoUser.userId);
+    console.log(`[Admin Approve] Keycloak role updated`);
 
     // Update local user
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        oid: ssoUser.userId,
-        provider: "keycloak" as any,
         role: role as any,
         verificationStatus: "verified" as any
       }
