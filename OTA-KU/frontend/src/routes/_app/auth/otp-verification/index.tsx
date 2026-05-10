@@ -94,7 +94,7 @@ function RouteComponent() {
     onSuccess: (_data, _variables, context) => {
       toast.dismiss(context);
       toast.success("Berhasil mengirim ulang OTP", {
-        description: "Silakan cek email Anda",
+        description: "Silakan cek whatsapp Anda",
       });
     },
     onError: (error, _variables, context) => {
@@ -148,15 +148,15 @@ function RouteComponent() {
           <h1 className="text-3xl font-bold md:text-4xl xl:text-5xl">
             Verifikasi Kode OTP
           </h1>
-          <p className="my-6 text-xl md:text-2xl xl:text-3xl">Cek Email Anda</p>
+          <p className="my-6 text-xl md:text-2xl xl:text-3xl">Cek WhatsApp Anda</p>
         </div>
 
         <div className="text-center text-sm md:text-base xl:text-lg">
           <div className="mb-6">
             <p className="">
-              Kami telah mengirimkan kode 6 digit ke email Anda:
+              Kami telah mengirimkan kode 6 digit ke WhatsApp Anda:
             </p>
-            <p className="mt-1 font-medium">{session?.email}</p>
+            <p className="mt-1 font-medium">{session?.phoneNumber}</p>
             <p className="mt-1">
               Silahkan masukkan kode tersebut untuk melanjutkan
             </p>

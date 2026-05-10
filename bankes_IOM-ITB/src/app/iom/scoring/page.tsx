@@ -155,8 +155,11 @@ export default function Scoring() {
       setLoading(true);
       
       try {
-        // Existing code for fetching periods, students, etc.
-        const fetchedPeriods = await fetchPeriods();
+        const [fetchedPeriods, fetchedQuestions] = await Promise.all([
+          fetchPeriods(),
+          fetchQuestions(),
+        ]);
+
         if (fetchedPeriods) {
           const currentPeriod = fetchedPeriods.find((period) => period.isCurrent);
           setSelectedPeriod(currentPeriod || null);
@@ -166,25 +169,19 @@ export default function Scoring() {
               const defaultStudent = fetchedStudents[0];
               setCurrentStudent(defaultStudent.userId);
               
-              // Fetch questions
-              const questions = await fetchQuestions();
-              setQuestions(questions);
+              setQuestions(fetchedQuestions);
               
-              // Fetch score matrix
-              const defaultStudentScoreMatrix = await fetchScoreMatrix(defaultStudent);
+              const [defaultStudentScoreMatrix, statusResponse] = await Promise.all([
+                fetchScoreMatrix(defaultStudent),
+                fetch(`/api/status/${defaultStudent.userId}/${currentPeriod.id}`),
+              ]);
+
               setScoreMatrix(defaultStudentScoreMatrix);
-              
-              // Fetch status to get amount
-              try {
-                const statusResponse = await fetch(`/api/status/${defaultStudent.userId}/${currentPeriod.id}`);
-                if (statusResponse.ok) {
-                  const statusData = await statusResponse.json();
-                  setAidAmount(statusData.amount !== null ? statusData.amount.toString() : "0");
-                } else {
-                  setAidAmount("0");
-                }
-              } catch (error) {
-                console.error("Error fetching status:", error);
+
+              if (statusResponse.ok) {
+                const statusData = await statusResponse.json();
+                setAidAmount(statusData.amount !== null ? statusData.amount.toString() : "0");
+              } else {
                 setAidAmount("0");
               }
             }
@@ -226,25 +223,23 @@ export default function Scoring() {
     }
   };
   
-  // Update the handleStudentClick function to fetch the status record as well
   const handleStudentClick = async (student: Student) => {
     const studentId = student.userId;
     setCurrentStudent(studentId);
     setLoading(true);
     
     try {
-      // Fetch score matrix
-      const scoreMatrixResponse = await fetchScoreMatrix(student);
+      const [scoreMatrixResponse, statusResponse] = await Promise.all([
+        fetchScoreMatrix(student),
+        fetch(`/api/status/${studentId}/${selectedPeriod?.id}`),
+      ]);
+
       setScoreMatrix(scoreMatrixResponse);
-      
-      // Fetch the student's status to get the amount
-      const statusResponse = await fetch(`/api/status/${studentId}/${selectedPeriod?.id}`);
+
       if (statusResponse.ok) {
         const statusData = await statusResponse.json();
-        // Set the amount from the status record, defaulting to "0" if it's null
         setAidAmount(statusData.amount !== null ? statusData.amount.toString() : "0");
       } else {
-        // If there's an error or no status record, default to "0"
         setAidAmount("0");
       }
     } catch (error) {

@@ -27,15 +27,17 @@ export default function PeriodPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const periodsResponse = await fetch("/api/periods");
-        const periodsData: Period[] = await periodsResponse.json();
+        const [periodsResponse, currentResponse] = await Promise.all([
+          fetch("/api/periods"),
+          fetch("/api/periods/current"),
+        ]);
 
+        const periodsData: Period[] = await periodsResponse.json();
         const sortedPeriods = [...periodsData].sort((a, b) =>
           new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
         );
         setPeriods(sortedPeriods);
 
-        const currentResponse = await fetch("/api/periods/current");
         const currentData: Period | null = await currentResponse.json();
         setCurrentPeriod(currentData);
       } catch (error) {

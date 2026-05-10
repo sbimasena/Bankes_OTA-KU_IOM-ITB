@@ -50,7 +50,7 @@ export default function RegisterForm({
     onSuccess: (_data, _variables, context) => {
       toast.dismiss(context);
       toast.success("Berhasil melakukan registrasi", {
-        description: "Silakan cek email Anda untuk verifikasi",
+        description: "Silakan cek whatsapp Anda untuk verifikasi",
       });
 
       queryClient.invalidateQueries({ queryKey: ["verify"] });
