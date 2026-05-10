@@ -12,7 +12,7 @@ export const GetMyTestimonialQuerySchema = z.object({
 export const UpsertTestimonialSchema = z.object({
   content: z
     .string({
-      error: "Isi testimoni harus berupa string",
+      invalid_type_error: "Isi testimoni harus berupa string",
     })
     .min(20, { message: "Isi testimoni minimal 20 karakter" })
     .max(1000, { message: "Isi testimoni maksimal 1000 karakter" }),
@@ -33,7 +33,8 @@ export const TestimonialMeResponseSchema = z.object({
       testimonial: z
         .object({
           id: z.string().uuid(),
-          otaId: z.string().uuid(),
+          otaId: z.string().uuid().nullable(),
+          groupId: z.string().uuid().nullable(),
           content: z.string(),
           images: z.array(z.string()).openapi({ example: [] }),
           status: TestimonialStatusSchema,
@@ -50,7 +51,8 @@ export const UpsertTestimonialResponseSchema = z.object({
   message: z.string().openapi({ example: "Berhasil menyimpan testimoni" }),
   body: z.object({
     id: z.string().uuid(),
-    otaId: z.string().uuid(),
+    otaId: z.string().uuid().nullable(),
+    groupId: z.string().uuid().nullable(),
     status: TestimonialStatusSchema,
   }),
 });
@@ -73,8 +75,12 @@ export const ListModerationTestimonialResponseSchema = z.object({
         .object({
           id: z.string().uuid(),
           mahasiswaId: z.string().uuid(),
-          otaId: z.string().uuid(),
+          otaId: z.string().uuid().nullable(),
+          groupId: z.string().uuid().nullable(),
           otaName: z.string().nullable(),
+          otaMembers: z
+            .array(z.object({ otaId: z.string().uuid(), name: z.string() }))
+            .nullable(),
           name: z.string(),
           nim: z.string(),
           major: z.string().nullable(),

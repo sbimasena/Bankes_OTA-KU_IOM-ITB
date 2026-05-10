@@ -397,7 +397,8 @@ model Transaction {
 model Testimonial {
   id              String            @id @default(uuid()) @db.Uuid
   mahasiswaId     String            @db.Uuid
-  otaId           String            @db.Uuid
+  otaId           String?           @db.Uuid
+  groupId         String?           @db.Uuid
   content         String
   imageUrls       String[]
   status          TestimonialStatus @default(not_shown)
@@ -406,8 +407,9 @@ model Testimonial {
   updatedAt       DateTime          @updatedAt
 
   MahasiswaProfile MahasiswaProfile @relation(fields: [mahasiswaId], references: [userId], onDelete: Cascade)
-  OtaProfile       OtaProfile       @relation(fields: [otaId], references: [userId], onDelete: Cascade)
-  
+  OtaProfile       OtaProfile?      @relation(fields: [otaId], references: [userId], onDelete: Cascade)
+  OtaGroup         OtaGroup?        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
   @@unique([mahasiswaId])
   @@index([status, isActive, updatedAt])
   @@map("testimonial")
@@ -458,6 +460,7 @@ model OtaGroup {
   Proposals    GroupStudentProposal[]
   Connections  GroupConnection[]
   Transactions GroupTransaction[]
+  Testimonials Testimonial[]
 
   @@map("ota_group")
 }

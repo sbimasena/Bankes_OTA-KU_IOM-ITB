@@ -1,31 +1,28 @@
 import { PrismaClient } from "../../generated/prisma";
-import { seedUsers } from "./users";
-import { seedOtaProfiles } from "./ota-profiles";
-import { seedPeriods } from "./periods";
-import { seedConnections } from "./connections";
-import { seedTestimonials } from "./testimonials";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Starting unified database seed...\n");
+  console.log("🌱 Seeding admin account...\n");
 
-  // 1. Users + MahasiswaProfiles (shared — Bankes & OTA)
-  await seedUsers(prisma);
+  const adminPassword = await bcrypt.hash("Admin123!", 10);
 
-  // 2. OTA Donor profiles
-  await seedOtaProfiles(prisma);
+  await prisma.user.upsert({
+    where: { email: "admin@itb.ac.id" },
+    update: {},
+    create: {
+      email: "admin@itb.ac.id",
+      password: adminPassword,
+      name: "Admin",
+      role: "Admin",
+      verificationStatus: "verified",
+      applicationStatus: "accepted",
+      AdminProfile: { create: { name: "Admin" } },
+    },
+  });
 
-  // 3. Periods, BankesStatus, Questions (Bankes-specific)
-  await seedPeriods(prisma);
-
-  // 4. OTA Connections + Transactions (OTA-specific)
-  await seedConnections(prisma);
-
-  // 5. OTA Testimonials
-  await seedTestimonials(prisma);
-
-  console.log("\n✅ All seeds completed successfully!");
+  console.log("✅ Admin account seeded (admin@itb.ac.id / Admin123!)");
 }
 
 main()

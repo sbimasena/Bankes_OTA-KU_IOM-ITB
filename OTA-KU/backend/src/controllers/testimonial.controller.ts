@@ -109,6 +109,7 @@ testimonialProtectedRouter.openapi(getMyTestimonialRoute, async (c) => {
             ? {
                 id: testimonial.id,
                 otaId: testimonial.otaId,
+                groupId: testimonial.groupId,
                 content: testimonial.content,
                 images: testimonial.imageUrls,
                 status: testimonial.status,
@@ -151,16 +152,20 @@ testimonialProtectedRouter.openapi(upsertMyTestimonialRoute, async (c) => {
   }
 
   try {
-    const activeConnection = await prisma.connection.findFirst({
-      where: {
-        mahasiswaId: user.id,
-        connectionStatus: "accepted",
-      },
-      orderBy: { updatedAt: "desc" },
-      select: { otaId: true },
-    });
+    const [individualConnection, groupConnection] = await Promise.all([
+      prisma.connection.findFirst({
+        where: { mahasiswaId: user.id, connectionStatus: "accepted" },
+        orderBy: { updatedAt: "desc" },
+        select: { otaId: true },
+      }),
+      prisma.groupConnection.findFirst({
+        where: { mahasiswaId: user.id, connectionStatus: "accepted" },
+        orderBy: { updatedAt: "desc" },
+        select: { groupId: true },
+      }),
+    ]);
 
-    if (!activeConnection) {
+    if (!individualConnection && !groupConnection) {
       return c.json(
         {
           success: false,
@@ -171,29 +176,6 @@ testimonialProtectedRouter.openapi(upsertMyTestimonialRoute, async (c) => {
           },
         },
         400,
-      );
-    }
-
-    const hasAcceptedConnection = await prisma.connection.findFirst({
-      where: {
-        mahasiswaId: user.id,
-        connectionStatus: "accepted",
-      },
-      select: { mahasiswaId: true },
-    });
-
-    if (!hasAcceptedConnection) {
-      return c.json(
-        {
-          success: false,
-          message: "Forbidden",
-          error: {
-            code: "Forbidden",
-            message:
-              "Mahasiswa harus memiliki hubungan asuh accepted untuk mengirim testimoni",
-          },
-        },
-        403,
       );
     }
 
@@ -218,13 +200,13 @@ testimonialProtectedRouter.openapi(upsertMyTestimonialRoute, async (c) => {
 
     if (files.length > 0) {
       const uploaded = await Promise.all(files.map((file) => uploadFileToMinio(file)));
-      const uploadedUrls = uploaded 
+      const uploadedUrls = uploaded
         .map((item) => item?.secure_url)
         .filter((url): url is string => Boolean(url));
       imageUrls = [...remainingImages, ...uploadedUrls];
     }
 
-    if (imageUrls.length > MAX_IMAGE_COUNT) { 
+    if (imageUrls.length > MAX_IMAGE_COUNT) {
       return c.json({
         success: false,
         message: `Maksimal total foto adalah ${MAX_IMAGE_COUNT}. Saat ini Anda mencoba menyimpan ${imageUrls.length} foto.`,
@@ -235,20 +217,24 @@ testimonialProtectedRouter.openapi(upsertMyTestimonialRoute, async (c) => {
       }, 400);
     }
 
+    const connectionData = groupConnection
+      ? { groupId: groupConnection.groupId, otaId: null }
+      : { otaId: individualConnection!.otaId, groupId: null };
+
     const result = await prisma.testimonial.upsert({
       where: {
         mahasiswaId: user.id,
       },
       create: {
         mahasiswaId: user.id,
-        otaId: activeConnection.otaId,
+        ...connectionData,
         content: sanitizedContent,
         imageUrls,
         status: "not_shown",
         isActive: false,
       },
       update: {
-        otaId: activeConnection.otaId,
+        ...connectionData,
         content: sanitizedContent,
         imageUrls,
         status: "not_shown",
@@ -257,6 +243,7 @@ testimonialProtectedRouter.openapi(upsertMyTestimonialRoute, async (c) => {
       select: {
         id: true,
         otaId: true,
+        groupId: true,
         status: true,
       },
     });
@@ -321,13 +308,13 @@ testimonialProtectedRouter.openapi(listModerationTestimonialsRoute, async (c) =>
         include: {
           MahasiswaProfile: true,
           OtaProfile: true,
-          // Approver: {
-          //   include: {
-          //     AdminProfile: true,
-          //     OtaProfile: true,
-          //     MahasiswaProfile: true,
-          //   },
-          // },
+          OtaGroup: {
+            include: {
+              Members: {
+                include: { Ota: true },
+              },
+            },
+          },
         },
         orderBy: { updatedAt: "desc" },
         take: LIST_PAGE_SIZE,
@@ -346,7 +333,16 @@ testimonialProtectedRouter.openapi(listModerationTestimonialsRoute, async (c) =>
             id: item.id,
             mahasiswaId: item.mahasiswaId,
             otaId: item.otaId,
-            otaName: item.OtaProfile.name,
+            groupId: item.groupId,
+            otaName: item.OtaGroup
+              ? item.OtaGroup.name
+              : (item.OtaProfile?.name ?? "-"),
+            otaMembers: item.OtaGroup
+              ? item.OtaGroup.Members.map((m) => ({
+                  otaId: m.otaId,
+                  name: m.Ota.name,
+                }))
+              : null,
             name: item.MahasiswaProfile.name ?? "-",
             nim: item.MahasiswaProfile.nim,
             major: item.MahasiswaProfile.major,
