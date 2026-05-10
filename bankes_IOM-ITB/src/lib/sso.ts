@@ -101,9 +101,9 @@ export function localRoleToKeycloak(localRole: string): string {
     Mahasiswa: "mahasiswa",
     Pewawancara: "volunteer-pewawancara",
     OrangTuaAsuh: "orang-tua-asuh",
-    Pengurus_IOM: "pengurus-bidang-1", // default ke bidang-1
-    Guest: "user", // role default jika tidak ada mapping
-    Bankes: "bankes",
+    Pengurus_IOM: "pengurus-bidang-1",
+    Guest: "mahasiswa", // fallback ke mahasiswa karena SSO tidak punya role guest
+    Bankes: "bendahara",
   };
 
   return mapping[localRole] || "user";

@@ -155,7 +155,8 @@ export async function POST(req: Request) {
       return NextResponse.json(errors, { status: 400 });
     }
 
-    // Register ke Keycloak dengan role "user" (Guest) menggunakan password asli
+    // Register ke Keycloak dengan role "mahasiswa" sebagai default saat register
+    // Admin akan update role setelah approve
     const nameParts = name.trim().split(" ");
     const firstName = nameParts[0] ?? "";
     const lastName = nameParts.slice(1).join(" ") || undefined;
@@ -165,7 +166,7 @@ export async function POST(req: Request) {
       const ssoResult = await createSsoAccount({
         email: normalizedEmail,
         password, // password asli, bukan hash
-        role: "user", // role default Guest di Keycloak
+        role: "mahasiswa", // default role di Keycloak, admin akan update saat approve
         firstName,
         lastName,
       });
