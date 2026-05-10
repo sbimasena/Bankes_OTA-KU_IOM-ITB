@@ -422,6 +422,15 @@ authRouter.openapi(oauthRoute, async (c) => {
       }
     }
 
+    // Pengurus IOM registers via Bankes without a phone number, so they cannot
+    // receive OTP via WhatsApp. Auto-verify them upon SSO login.
+    if (localRole === "Pengurus_IOM" && accountData.verificationStatus !== "verified") {
+      accountData = await prisma.user.update({
+        where: { id: accountData.id },
+        data: { verificationStatus: "verified" },
+      });
+    }
+
     const localToken = await sign(
       {
         id: accountData.id,
