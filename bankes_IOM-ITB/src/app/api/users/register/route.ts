@@ -165,8 +165,7 @@ export async function POST(req: Request) {
     try {
       const ssoResult = await createSsoAccount({
         email: normalizedEmail,
-        password, // password asli, bukan hash
-        role: "mahasiswa", // default role di Keycloak, admin akan update saat approve
+        password,
         firstName,
         lastName,
       });

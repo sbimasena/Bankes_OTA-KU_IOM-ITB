@@ -23,7 +23,7 @@ export async function createSsoAccount({
 }: {
   email: string;
   password: string;
-  role: string;
+  role?: string;
   firstName?: string;
   lastName?: string;
 }): Promise<{ userId: string; email: string; role: string }> {
@@ -36,19 +36,18 @@ export async function createSsoAccount({
     );
   }
 
+  const body: Record<string, string> = { email, password };
+  if (role) body.role = role;
+  if (firstName) body.firstName = firstName;
+  if (lastName) body.lastName = lastName;
+
   const res = await fetch(`${ssoApiUrl}/auth/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Api-Key": registerApiKey,
     },
-    body: JSON.stringify({
-      email,
-      password,
-      role,
-      firstName,
-      lastName,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
