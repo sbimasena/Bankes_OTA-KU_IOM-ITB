@@ -166,6 +166,7 @@ export async function POST(req: Request) {
       const ssoResult = await createSsoAccount({
         email: normalizedEmail,
         password,
+        role: "mahasiswa", // default role untuk register, admin akan update saat approve
         firstName,
         lastName,
       });

@@ -23,7 +23,7 @@ export async function createSsoAccount({
 }: {
   email: string;
   password: string;
-  role?: string;
+  role: string;
   firstName?: string;
   lastName?: string;
 }): Promise<{ userId: string; email: string; role: string }> {
@@ -36,8 +36,7 @@ export async function createSsoAccount({
     );
   }
 
-  const body: Record<string, string> = { email, password };
-  if (role) body.role = role;
+  const body: Record<string, string> = { email, password, role };
   if (firstName) body.firstName = firstName;
   if (lastName) body.lastName = lastName;
 
