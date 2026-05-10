@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { updateSsoRole } from "@/lib/sso";
+import { createSsoAccount } from "@/lib/sso";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 
@@ -55,49 +55,57 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!user.oid) {
+    // Check user is still Guest and doesn't have Keycloak account
+    if (user.role !== "Guest") {
       return NextResponse.json(
-        { error: "User does not have a Keycloak account yet" },
+        { error: "User is not a Guest - already assigned a role" },
         { status: 400 }
       );
     }
 
-    if (user.verificationStatus === "verified") {
+    if (user.oid) {
       return NextResponse.json(
-        { error: "User already approved" },
+        { error: "User already has Keycloak account - already approved" },
         { status: 400 }
       );
     }
 
-    console.log(`[Admin Approve] Updating Keycloak role for ${user.email}`);
+    console.log(`[Admin Approve] Creating Keycloak account for ${user.email} with role ${role}`);
 
-    await updateSsoRole({
-      keycloakUserId: user.oid,
+    // Create Keycloak account with the assigned role
+    const ssoUser = await createSsoAccount({
+      email: user.email,
+      password: user.password || Math.random().toString(36).slice(-12),
       role: roleToKeycloak(role),
+      firstName: user.name?.split(" ")[0] || user.name,
+      lastName: user.name?.split(" ").slice(1).join(" ") || ""
     });
 
-    console.log(`[Admin Approve] Keycloak role updated`);
+    console.log(`[Admin Approve] Keycloak account created with oid: ${ssoUser.userId}`);
 
-    // Update local user
+    // Update local user with Keycloak info and new role
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
+        oid: ssoUser.userId,
+        provider: "keycloak" as any,
         role: role as any,
         verificationStatus: "verified" as any
       }
     });
 
-    console.log(`[Admin Approve] Local user updated`);
+    console.log(`[Admin Approve] Local user updated with role ${role}`);
 
     return NextResponse.json({
       success: true,
-      message: `User ${user.email} approved sebagai ${role} dan Keycloak account berhasil dibuat`,
+      message: `User ${user.email} berhasil disetujui sebagai ${role} dan Keycloak account telah dibuat. User sekarang bisa login via SSO.`,
       user: {
         id: updatedUser.id,
         email: updatedUser.email,
         name: updatedUser.name,
         role: updatedUser.role,
-        oid: updatedUser.oid
+        oid: updatedUser.oid,
+        provider: updatedUser.provider
       }
     }, { status: 200 });
 
@@ -107,6 +115,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
+        success: false,
         error: "Failed to approve user",
         details: errorMessage
       },

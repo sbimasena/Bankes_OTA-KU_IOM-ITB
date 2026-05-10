@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/authOptions';
 import { prisma } from '@/lib/prisma';
-import { updateSsoRole, localRoleToKeycloak } from '@/lib/sso';
 
 /**
  * @swagger
@@ -175,7 +174,7 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 
   const body = await req.json();
   const { role } = body;
-  if (!role || !["Pengurus_IOM", "Pewawancara"].includes(role)) {
+  if (!role || !["Mahasiswa", "Pengurus_IOM", "Pewawancara"].includes(role)) {
     return NextResponse.json({ success: false, error: "Invalid role" }, { status: 400 });
   }
 
@@ -185,34 +184,35 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
     }
 
-    // Update role di Keycloak jika user sudah punya oid
-    if (user.oid) {
-      try {
-        console.log(`[PATCH users/${userId}] Updating SSO role: oid=${user.oid}, role=${localRoleToKeycloak(role)}`);
-        await updateSsoRole({
-          keycloakUserId: user.oid,
-          role: localRoleToKeycloak(role),
-        });
-      } catch (ssoError) {
-        console.error("Failed to update Keycloak role:", ssoError);
-        return NextResponse.json(
-          { success: false, error: `Gagal update role SSO: ${(ssoError as Error).message}` },
-          { status: 500 }
-        );
-      }
+    // For Guest users (not approved yet), use /api/admin/users/approve endpoint instead
+    if (user.role === "Guest" && !user.oid) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Guest users must be approved via /api/admin/users/approve endpoint first" 
+      }, { status: 400 });
     }
 
-    // Update role di DB lokal
-    await prisma.user.update({
+    // Update role di DB lokal only
+    // Note: Keycloak role is set during initial approval via /api/admin/users/approve
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: { role: role as any },
     });
 
-    return NextResponse.json({ message: "User role updated successfully" });
+    return NextResponse.json({ 
+      success: true,
+      message: "User role updated successfully (local database only). To change Keycloak role, use admin approval flow.",
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        provider: updatedUser.provider
+      }
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { message: "Error updating user role" },
+      { success: false, message: "Error updating user role" },
       { status: 500 }
     );
   }
