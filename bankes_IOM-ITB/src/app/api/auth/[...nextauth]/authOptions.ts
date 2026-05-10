@@ -121,6 +121,7 @@ export const authOptions: NextAuthOptions = {
       // `account` dan `profile` hanya ada pada first sign-in
       if (account && profile) {
         const ssoId = account.providerAccountId; // Keycloak `sub` UUID
+        token.idToken = account.id_token;
 
         // Ekstrak roles dari Keycloak access token
         // Access token berisi realm_access.roles

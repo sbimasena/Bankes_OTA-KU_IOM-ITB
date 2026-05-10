@@ -471,10 +471,15 @@ authProtectedRouter.openapi(verifRoute, async (c) => {
 
 authProtectedRouter.openapi(logoutRoute, async (c) => {
   deleteCookie(c, "ota-ku.access-cookie");
+
+  const postLogoutUri = encodeURIComponent(env.VITE_PUBLIC_URL);
+  const logoutUrl = `${env.KEYCLOAK_ISSUER_URL}/protocol/openid-connect/logout?client_id=${env.KEYCLOAK_CLIENT_ID}&post_logout_redirect_uri=${postLogoutUri}`;
+
   return c.json(
     {
       success: true,
       message: "Logout successful",
+      body: { logoutUrl },
     },
     200,
   );

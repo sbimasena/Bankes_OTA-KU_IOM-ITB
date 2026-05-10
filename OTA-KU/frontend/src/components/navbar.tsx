@@ -311,16 +311,12 @@ export default function NavBar() {
                     <MenubarItem
                       className="text-destructive hover:cursor-pointer"
                       onClick={async () => {
-                        await api.auth.logout();
+                        const { body } = await api.auth.logout();
                         localStorage.removeItem("state");
                         localStorage.removeItem("pendaftaran-ota");
                         localStorage.removeItem("pendaftaran-mahasiswa");
                         queryClient.invalidateQueries({ queryKey: ["verify"] });
-                        navigate({
-                          to: "/",
-                          replace: true,
-                          reloadDocument: true,
-                        });
+                        window.location.href = body.logoutUrl;
                       }}
                     >
                       Keluar

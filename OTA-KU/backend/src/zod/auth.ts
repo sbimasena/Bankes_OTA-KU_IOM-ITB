@@ -156,6 +156,9 @@ export const UserNotAuthenticatedResponse = z.object({
 export const LogoutSuccessfulResponse = z.object({
   success: z.boolean().openapi({ example: true }),
   message: z.string().openapi({ example: "Logout successful" }),
+  body: z.object({
+    logoutUrl: z.string().openapi({ example: "https://sso.example.com/realms/iom/protocol/openid-connect/logout?..." }),
+  }),
 });
 
 // JWT
