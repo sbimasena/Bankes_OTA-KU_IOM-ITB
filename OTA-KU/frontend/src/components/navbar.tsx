@@ -12,7 +12,7 @@ import { SessionContext } from "@/context/session";
 import { useSidebar } from "@/context/sidebar-context";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Bell, BellOff } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -23,8 +23,6 @@ import { Button } from "./ui/button";
 export default function NavBar() {
   const session = useContext(SessionContext);
   const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
-  const navigate = useNavigate();
-
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const isLoggedIn = !!session;
@@ -310,17 +308,13 @@ export default function NavBar() {
                       )}
                     <MenubarItem
                       className="text-destructive hover:cursor-pointer"
-                      onClick={() => {
-                        api.auth.logout();
+                      onClick={async () => {
+                        const { body } = await api.auth.logout();
                         localStorage.removeItem("state");
                         localStorage.removeItem("pendaftaran-ota");
                         localStorage.removeItem("pendaftaran-mahasiswa");
                         queryClient.invalidateQueries({ queryKey: ["verify"] });
-                        navigate({
-                          to: "/",
-                          replace: true,
-                          reloadDocument: true,
-                        });
+                        window.location.href = body.logoutUrl;
                       }}
                     >
                       Keluar

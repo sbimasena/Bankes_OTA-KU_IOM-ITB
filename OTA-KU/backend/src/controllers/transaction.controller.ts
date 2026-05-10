@@ -53,65 +53,84 @@ transactionProtectedRouter.openapi(listTransactionOTARoute, async (c) => {
   }
 
   try {
-    // Build filtered where clause
-    const where: any = { otaId: user.id };
+    const dueDateFilter = month
+      ? { gte: new Date(year ?? 2000, month - 1, 1), lt: new Date(year ?? 2000, month, 1) }
+      : year
+        ? { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) }
+        : undefined;
 
-    if (year && !month) {
-      where.dueDate = {
-        gte: new Date(year, 0, 1),
-        lt: new Date(year + 1, 0, 1),
-      };
-    }
-
-    if (month) {
-      where.dueDate = {
-        gte: new Date(year ?? 2000, month - 1, 1),
-        lt: new Date(year ?? 2000, month, 1),
-      };
-    }
-
-    // Fetch all transactions for this OTA (no date filter) to extract distinct years
-    const [transactions, allTransactions] = await Promise.all([
+    const [transactions, allTransactions, groupMemberTxs, allGroupMemberTxs] = await Promise.all([
       prisma.transaction.findMany({
-        where,
+        where: { otaId: user.id, ...(dueDateFilter ? { dueDate: dueDateFilter } : {}) },
         include: { MahasiswaProfile: true },
       }),
       prisma.transaction.findMany({
         where: { otaId: user.id },
         select: { dueDate: true },
       }),
+      prisma.groupMemberTransaction.findMany({
+        where: {
+          otaId: user.id,
+          ...(dueDateFilter ? { GroupTransaction: { dueDate: dueDateFilter } } : {}),
+        },
+        include: {
+          GroupTransaction: {
+            include: { Mahasiswa: true },
+          },
+        },
+      }),
+      prisma.groupMemberTransaction.findMany({
+        where: { otaId: user.id },
+        include: { GroupTransaction: { select: { dueDate: true } } },
+      }),
     ]);
 
-    // Extract distinct years from all transactions
-    const years = [
-      ...new Set(allTransactions.map((t) => t.dueDate.getFullYear())),
-    ].sort((a, b) => b - a);
+    const allYears = [
+      ...allTransactions.map((t) => t.dueDate.getFullYear()),
+      ...allGroupMemberTxs.map((t) => t.GroupTransaction.dueDate.getFullYear()),
+    ];
+    const years = [...new Set(allYears)].sort((a, b) => b - a);
 
-    const totalBill = transactions.reduce((sum, t) => sum + t.bill, 0);
+    const data = [
+      ...transactions.map((t) => ({
+        id: t.id,
+        mahasiswa_id: t.mahasiswaId,
+        name: t.MahasiswaProfile?.name ?? "",
+        nim: t.MahasiswaProfile?.nim ?? "",
+        bill: t.bill,
+        amount_paid: t.amountPaid,
+        paid_at: t.paidAt?.toISOString() ?? "",
+        created_at: t.createdAt.toISOString(),
+        due_date: t.dueDate.toISOString(),
+        status: t.transactionStatus as "unpaid" | "pending" | "paid",
+        receipt: t.transactionReceipt ?? "",
+        rejection_note: t.rejectionNote ?? "",
+        paid_for: t.paidFor ?? 0,
+      })),
+      ...groupMemberTxs.map((t) => ({
+        id: t.id,
+        mahasiswa_id: t.GroupTransaction.mahasiswaId,
+        name: t.GroupTransaction.Mahasiswa.name ?? "",
+        nim: t.GroupTransaction.Mahasiswa.nim,
+        bill: t.expectedAmount,
+        amount_paid: t.amountPaid,
+        paid_at: t.paidAt?.toISOString() ?? "",
+        created_at: t.createdAt.toISOString(),
+        due_date: t.GroupTransaction.dueDate.toISOString(),
+        status: t.paymentStatus as "unpaid" | "pending" | "paid",
+        receipt: t.transactionReceipt ?? "",
+        rejection_note: t.rejectionNote ?? "",
+        paid_for: 0,
+      })),
+    ];
+
+    const totalBill = data.reduce((sum, t) => sum + t.bill, 0);
 
     return c.json(
       {
         success: true,
         message: "Daftar transaction untuk OTA berhasil diambil",
-        body: {
-          data: transactions.map((transaction) => ({
-            id: transaction.mahasiswaId,
-            mahasiswa_id: transaction.mahasiswaId,
-            name: transaction.MahasiswaProfile?.name ?? "",
-            nim: transaction.MahasiswaProfile?.nim,
-            bill: transaction.bill,
-            amount_paid: transaction.amountPaid,
-            paid_at: transaction.paidAt ?? "",
-            created_at: transaction.createdAt,
-            due_date: transaction.dueDate,
-            status: transaction.transactionStatus,
-            receipt: transaction.transactionReceipt ?? "",
-            rejection_note: transaction.rejectionNote ?? "",
-            paid_for: transaction.paidFor ?? 0,
-          })),
-          years,
-          totalBill,
-        },
+        body: { data, years, totalBill },
       },
       200,
     );

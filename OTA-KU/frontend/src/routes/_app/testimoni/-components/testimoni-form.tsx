@@ -8,6 +8,12 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,6 +29,7 @@ type TestimonialFormValues = z.infer<typeof TestimonialFormSchema>;
 
 function TestimoniForm() {
   const [removedExistingImages, setRemovedExistingImages] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["myTestimonial"],
@@ -183,11 +190,18 @@ function TestimoniForm() {
             <div className="mt-3 grid grid-cols-2 gap-2">
               {uploadedImagePreviews.map((src, idx) => (
                 <div key={`${src}-${idx}`} className="space-y-2">
-                  <img
-                    src={src}
-                    alt={`foto-testimoni-${idx + 1}`}
-                    className="h-24 w-full rounded-md object-cover"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImage(src)}
+                    className="focus-visible:ring-primary w-full overflow-hidden rounded-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                    aria-label={`Buka foto testimoni ${idx + 1}`}
+                  >
+                    <img
+                      src={src}
+                      alt={`foto-testimoni-${idx + 1}`}
+                      className="h-24 w-full object-cover transition-transform hover:scale-105"
+                    />
+                  </button>
                   <Button
                     type="button"
                     variant="outline"
@@ -206,6 +220,29 @@ function TestimoniForm() {
         </div>
 
       </div>
+
+      <Dialog
+        open={Boolean(selectedImage)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedImage(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-auto p-3 sm:p-4">
+          <DialogTitle className="sr-only">Foto Testimoni</DialogTitle>
+          <DialogDescription className="sr-only">
+            Pratinjau foto testimoni dalam ukuran lebih besar.
+          </DialogDescription>
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              alt="foto-testimoni-preview"
+              className="max-h-[80vh] w-full rounded-md object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

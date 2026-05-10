@@ -126,7 +126,12 @@ function SidebarAdmin({ activeTab }: SidebarAdminProps) {
       <div className="border-t p-4">
         <div className="relative group">
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={async () => {
+              const res = await fetch("/api/auth/federated-logout");
+              const { logoutUrl } = await res.json();
+              await signOut({ redirect: false });
+              window.location.href = logoutUrl;
+            }}
             className="w-full flex items-center px-4 py-3 text-left transition-colors hover:bg-gray-50 text-gray-700"
           >
             <LogOut className="h-5 w-5 flex-shrink-0 text-gray-500" />

@@ -131,7 +131,6 @@ services:
     restart: unless-stopped
 
   # ── OTA-KU Backend ──────────────────────────────────────────────────────────
-  # Migrasi ke Prisma + MinIO selesai.
   ota-backend:
     build:
       context: ./OTA-KU/backend
@@ -142,28 +141,16 @@ services:
     volumes:
       - ./OTA-KU/backend:/app:delegated
       - ota-backend-node-modules:/app/node_modules
+    env_file:
+      - ./OTA-KU/backend/.env
     environment:
+      # Docker-specific overrides — these differ from local .env values
       NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/iom_ota_db
-      JWT_SECRET: random-dev-secret
       MINIO_ENDPOINT: minio
       MINIO_PORT: "9000"
-      MINIO_USE_SSL: "false"
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
       MINIO_PUBLIC_HOST: localhost
-      MINIO_PUBLIC_PORT: "9000"
-      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-placeholder}
-      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-placeholder}
-      VITE_PUBLIC_URL: ${VITE_PUBLIC_URL:-http://localhost:5173}
       ALLOWED_ORIGINS: '["http://localhost:5173"]'
-      EMAIL: ${EMAIL:-noreply@example.com}
-      EMAIL_FROM: ${EMAIL_FROM:-OTA-KU <noreply@example.com>}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-placeholder}
-      VAPID_MAILTO: ${VAPID_MAILTO:-admin@example.com}
-      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-placeholder}
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-placeholder}
-      TEST_EMAIL: ${TEST_EMAIL:-test@example.com}
       BACKEND_PORT: "3000"
     command: sh -c "npm install --quiet && npx prisma generate && npm run dev"
     depends_on:
@@ -179,6 +166,12 @@ services:
     build:
       context: ./OTA-KU/frontend
       dockerfile: Dockerfile
+      args:
+        VITE_APP_URL: ${VITE_APP_URL:-http://localhost:5173}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-ota-ku-app}
+        VITE_KEYCLOAK_REDIRECT_URI: ${VITE_KEYCLOAK_REDIRECT_URI:-http://localhost:5173/integrations/keycloak/callback}
+        VITE_VAPID_PUBLIC_KEY: ${VITE_VAPID_PUBLIC_KEY:-}
     container_name: iom-ota-frontend
     ports:
       - "5173:3000"

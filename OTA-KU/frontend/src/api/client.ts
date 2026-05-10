@@ -2,8 +2,13 @@ import { QueryClient } from "@tanstack/react-query";
 
 import { ApiClient, ApiError } from "./generated";
 
+const normalizedApiBase = (import.meta.env.VITE_API_URL ?? "").replace(
+  /\/api\/?$/,
+  "",
+);
+
 export const api = new ApiClient({
-  BASE: import.meta.env.VITE_API_URL,
+  BASE: normalizedApiBase,
   WITH_CREDENTIALS: true,
   CREDENTIALS: "include",
 });

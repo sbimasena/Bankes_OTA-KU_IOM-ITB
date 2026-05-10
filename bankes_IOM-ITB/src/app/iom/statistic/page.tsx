@@ -83,81 +83,56 @@ export default function Upload() {
       }
     }
 
-    async function fetchTotalStudentsAllPeriod() {
+    async function fetchAllPeriodStats() {
       try {
-        const res = await fetch("/api/statistic/total-students-all-period");
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          setTotalStudentsAllPeriod(json.data);
-        } else {
-          setTotalStudentsAllPeriod([]);
-        }
-      } catch (error) {
-        console.error("Error fetching student data:", error);
-        setTotalStudentsAllPeriod([]);
-      }
-    }
+        const [totalRes, passRes] = await Promise.all([
+          fetch("/api/statistic/total-students-all-period"),
+          fetch("/api/statistic/pass-students-all-period"),
+        ]);
 
-    async function fetchPassStudentsAllPeriod() {
-      try {
-        const res = await fetch("/api/statistic/pass-students-all-period");
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          setPassStudentsAllPeriod(json.data);
-        } else {
-          setPassStudentsAllPeriod([]);
-        }
+        const totalJson = await totalRes.json();
+        setTotalStudentsAllPeriod(
+          totalJson.success && Array.isArray(totalJson.data) ? totalJson.data : []
+        );
+
+        const passJson = await passRes.json();
+        setPassStudentsAllPeriod(
+          passJson.success && Array.isArray(passJson.data) ? passJson.data : []
+        );
       } catch (error) {
-        console.error("Error fetching student data:", error);
+        console.error("Error fetching all-period stats:", error);
+        setTotalStudentsAllPeriod([]);
         setPassStudentsAllPeriod([]);
       }
     }
 
     fetchPeriodsAndStudentFiles();
-    fetchTotalStudentsAllPeriod();
-    fetchPassStudentsAllPeriod();
+    fetchAllPeriodStats();
   }, []);
 
   useEffect(() => {
-    async function fetchTotalStudentsPerPeriod(periodId: number) {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/statistic/total-students-per-period?selectedPeriod=${periodId}`);
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          settotalStudentsPerPeriod(json.data);
-        } else {
-          settotalStudentsPerPeriod([]);
-        }
-      } catch (error) {
-        console.error("Error fetching student data:", error);
-        settotalStudentsPerPeriod([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-        async function fetchPassStudentsPerPeriod(periodId: number) {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/statistic/pass-students-per-period?selectedPeriod=${periodId}`);
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data)) {
-          setPassStudentsPerPeriod(json.data);
-        } else {
-          setPassStudentsPerPeriod([]);
-        }
-      } catch (error) {
-        console.error("Error fetching student data:", error);
-        setPassStudentsPerPeriod([]);
-      } finally {
-        setLoading(false);
-      }
-    }
 
     if (selectedPeriod?.period_id) {
-      fetchTotalStudentsPerPeriod(selectedPeriod.period_id);
-      fetchPassStudentsPerPeriod(selectedPeriod.period_id);
+      const periodId = selectedPeriod.period_id;
+      setLoading(true);
+      Promise.all([
+        fetch(`/api/statistic/total-students-per-period?selectedPeriod=${periodId}`).then(r => r.json()),
+        fetch(`/api/statistic/pass-students-per-period?selectedPeriod=${periodId}`).then(r => r.json()),
+      ])
+        .then(([totalJson, passJson]) => {
+          settotalStudentsPerPeriod(
+            totalJson.success && Array.isArray(totalJson.data) ? totalJson.data : []
+          );
+          setPassStudentsPerPeriod(
+            passJson.success && Array.isArray(passJson.data) ? passJson.data : []
+          );
+        })
+        .catch((error) => {
+          console.error("Error fetching per-period stats:", error);
+          settotalStudentsPerPeriod([]);
+          setPassStudentsPerPeriod([]);
+        })
+        .finally(() => setLoading(false));
     } else {
       settotalStudentsPerPeriod([]);
       setPassStudentsPerPeriod([]);

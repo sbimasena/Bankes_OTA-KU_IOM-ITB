@@ -5,7 +5,6 @@ import { formatFunding } from "@/lib/formatter";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { useState } from "react";
 import TransactionForm from "./transaction-form";
 
 interface TransactionCardProps {
@@ -15,7 +14,6 @@ interface TransactionCardProps {
 }
 
 function TransactionCard({ data, year, month }: TransactionCardProps) {
-  const [paidFor, setPaidFor] = useState<number>(data[0].paid_for || 1);
   const unpaidData = data.filter((item) => item.status === "unpaid");
   const totalBillUnpaid = unpaidData.reduce((acc, item) => acc + item.bill, 0);
   const status = unpaidData.some((item) => item.status === "unpaid")
@@ -31,7 +29,7 @@ function TransactionCard({ data, year, month }: TransactionCardProps) {
       case "pending":
         return (
           <Badge className="bg-yellow-100 text-yellow-800">
-            Menunggu Verifikasi
+            Menunggu Pembayaran
           </Badge>
         );
       case "unpaid":
@@ -74,10 +72,10 @@ function TransactionCard({ data, year, month }: TransactionCardProps) {
             <p className="text-dark text-sm font-medium">Bantuan Terkirim</p>
             <div className="rounded-md p-3">
               <p className="text-dark text-lg font-semibold">
-                {formatFunding(totalBillUnpaid * paidFor)}
+                {formatFunding(totalBillUnpaid)}
               </p>
               <p className="text-sm text-gray-600">
-                {unpaidData.length} mahasiswa × {paidFor} bulan
+                Total tagihan belum dibayar: {unpaidData.length} mahasiswa
               </p>
             </div>
           </div>
@@ -108,12 +106,7 @@ function TransactionCard({ data, year, month }: TransactionCardProps) {
           </div>
         </div>
         
-        <TransactionForm
-          data={data}
-          setPaidFor={setPaidFor}
-          year={year}
-          month={month}
-        />
+        <TransactionForm data={data} year={year} month={month} />
       </CardContent>
     </Card>
   );

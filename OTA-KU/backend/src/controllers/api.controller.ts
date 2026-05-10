@@ -2,10 +2,13 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 
 import { authProtectedRouter, authRouter } from "./auth.controller.js";
 import { connectProtectedRouter, connectRouter } from "./connect.controller.js";
+import { dashboardRouter } from "./dashboard.controller.js";
 import { detailProtectedRouter, detailRouter } from "./detail.controller.js";
+import { groupProtectedRouter } from "./group.controller.js";
 import { listProtectedRouter, listRouter } from "./list.controller.js";
 import { otpProtectedRouter, otpRouter } from "./otp.controller.js";
 import { passwordProtectedRouter } from "./password.controller.js";
+import { paymentProtectedRouter, paymentRouter } from "./payment.controller.js";
 import { profileProtectedRouter, profileRouter } from "./profile.controller.js";
 import { pushProtectedRouter } from "./push.controller.js";
 import { statusProtectedRouter, statusRouter } from "./status.controller.js";
@@ -24,7 +27,9 @@ unprotectedApiRouter.route("/connect", connectRouter);
 unprotectedApiRouter.route("/status", statusRouter);
 unprotectedApiRouter.route("/detail", detailRouter);
 unprotectedApiRouter.route("/otp", otpRouter);
+unprotectedApiRouter.route("/payment", paymentRouter);
 unprotectedApiRouter.route("/testimonial", testimonialRouter);
+unprotectedApiRouter.route("/dashboard", dashboardRouter);
 
 const protectedApiRouter = new OpenAPIHono();
 protectedApiRouter.route("/auth", authProtectedRouter);
@@ -38,6 +43,8 @@ protectedApiRouter.route("/terminate", terminateProtectedRouter);
 protectedApiRouter.route("/password", passwordProtectedRouter);
 protectedApiRouter.route("/transaction", transactionProtectedRouter);
 protectedApiRouter.route("/push", pushProtectedRouter);
+protectedApiRouter.route("/group", groupProtectedRouter);
+protectedApiRouter.route("/payment", paymentProtectedRouter);
 protectedApiRouter.route("/transaction", transactionProtectedRouter);
 protectedApiRouter.route("/testimonial", testimonialProtectedRouter);
 

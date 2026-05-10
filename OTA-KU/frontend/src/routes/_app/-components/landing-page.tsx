@@ -1,6 +1,12 @@
 import { api } from "@/api/client";
 import { UserSchema } from "@/api/generated";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -9,6 +15,7 @@ import { useState } from "react";
 function LandingPage({ session }: { session: UserSchema | null | undefined }) {
   const isLoggedIn = !!session;
   const [activeIndex, setActiveIndex] = useState(0);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const { data } = useQuery({
     queryKey: ["publicTestimonialsHome"],
@@ -98,17 +105,47 @@ function LandingPage({ session }: { session: UserSchema | null | undefined }) {
 
             <div className="grid grid-cols-2 gap-2">
               {(current.images.length ? current.images : ["/icon/logo-basic.png"]).slice(0, 3).map((img, idx) => (
-                <img
+                <button
                   key={`${img}-${idx}`}
-                  src={img}
-                  alt={`testimoni-image-${idx + 1}`}
-                  className="h-32 w-full rounded-lg object-cover"
-                />
+                  type="button"
+                  onClick={() => setSelectedImage(img)}
+                  className="focus-visible:ring-primary overflow-hidden rounded-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                  aria-label={`Buka foto testimoni ${idx + 1}`}
+                >
+                  <img
+                    src={img}
+                    alt={`testimoni-image-${idx + 1}`}
+                    className="h-32 w-full object-cover transition-transform hover:scale-105"
+                  />
+                </button>
               ))}
             </div>
           </div>
         )}
       </section>
+
+      <Dialog
+        open={Boolean(selectedImage)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedImage(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-auto p-3 sm:p-4">
+          <DialogTitle className="sr-only">Foto Testimoni Mahasiswa</DialogTitle>
+          <DialogDescription className="sr-only">
+            Pratinjau foto testimoni dalam ukuran lebih besar.
+          </DialogDescription>
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              alt="foto-testimoni-preview"
+              className="max-h-[80vh] w-full rounded-md object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

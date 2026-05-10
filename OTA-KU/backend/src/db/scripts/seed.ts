@@ -42,6 +42,7 @@ export async function seed() {
     const mahasiswa16Id = uuidv4();
     const mahasiswa17Id = uuidv4();
     const mahasiswa18Id = uuidv4();
+    const mahasiswa19Id = uuidv4();
     const ota1Id = uuidv4();
     const ota2Id = uuidv4();
     const ota3Id = uuidv4();
@@ -276,6 +277,15 @@ export async function seed() {
             id: mahasiswa18Id,
             email: "13599118@mahasiswa.itb.ac.id",
             phoneNumber: "628100000018",
+            password: hashedPassword,
+            type: "mahasiswa",
+            status: "verified",
+            applicationStatus: "accepted",
+          },
+          {
+            id: mahasiswa19Id,
+            email: "13599119@mahasiswa.itb.ac.id",
+            phoneNumber: "628100000019",
             password: hashedPassword,
             type: "mahasiswa",
             status: "verified",
@@ -910,6 +920,35 @@ export async function seed() {
             nim: "13599118",
             description: "Mahasiswa Eighteen is an active student.",
             file: "https://example.com/mahasiswa18.pdf",
+            mahasiswaStatus: "inactive",
+            major: "Teknik Informatika",
+            faculty: "STEI-K",
+            cityOfOrigin: "Semarang",
+            highschoolAlumni: "SMA Negeri 18 Semarang",
+            kk: "https://example.com/kk18.pdf",
+            ktm: "https://example.com/ktm18.pdf",
+            waliRecommendationLetter: "https://example.com/wali18.pdf",
+            transcript: "https://example.com/transcript18.pdf",
+            salaryReport: "https://example.com/salary18.pdf",
+            pbb: "https://example.com/pbb18.pdf",
+            electricityBill: "https://example.com/electricity18.pdf",
+            ditmawaRecommendationLetter: "https://example.com/ditmawa18.pdf",
+            notes: "Built app to help visually impaired users.",
+            adminOnlyNotes: "Candidate for tech scholarship.",
+            createdAt: currentDateTime,
+            updatedAt: currentDateTime,
+            dueNextUpdateAt: dueDateTime,
+            gender: "M",
+            religion: "Islam",
+            gpa: "3.95",
+            bill: 500000,
+          },
+          {
+            accountId: mahasiswa19Id,
+            name: "Mahasiswa Nineteen",
+            nim: "13599119",
+            description: "Mahasiswa Nineteen is an active student.",
+            file: "https://example.com/mahasiswa19.pdf",
             mahasiswaStatus: "inactive",
             major: "Teknik Informatika",
             faculty: "STEI-K",

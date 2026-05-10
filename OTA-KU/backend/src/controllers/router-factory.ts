@@ -7,6 +7,11 @@ import { JWTPayloadSchema } from "../zod/auth.js";
 
 const defaultHook: Hook<any, any, any, any> = (result, c) => {
   if (!result.success) {
+    console.error("Validation error", {
+      method: c.req.method,
+      path: c.req.path,
+      errors: result.error.flatten(),
+    });
     return c.json({ errors: result.error.flatten() }, 400);
   }
 };

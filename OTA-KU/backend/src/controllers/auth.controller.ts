@@ -2,10 +2,10 @@ import { compare, hash } from "bcrypt";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { decode, sign } from "hono/jwt";
 import nodemailer from "nodemailer";
+import { sendWhatsApp } from "../lib/whatsapp.js";
 
 import { env } from "../config/env.config.js";
 import { prisma } from "../db/prisma.js";
-import { kodeOTPEmail } from "../lib/email/kode-otp.js";
 import { forgotPasswordEmail } from "../lib/email/lupa-password.js";
 import {
   getNimFakultasCodeMap,
@@ -31,6 +31,7 @@ import {
   UserRegisRequestSchema,
 } from "../zod/auth.js";
 import { createAuthRouter, createRouter } from "./router-factory.js";
+import { registerInSSO, keycloakRoleToType, keycloakRoleToLocalRole, validateKeycloakToken } from "../lib/sso.js";
 
 export const authRouter = createRouter();
 export const authProtectedRouter = createAuthRouter();
@@ -171,7 +172,7 @@ authRouter.openapi(loginRoute, async (c) => {
 
     setCookie(c, "ota-ku.access-cookie", accessToken, {
       httpOnly: true,
-      secure: env.NODE_ENV === "production",
+      secure: env.COOKIE_SECURE,
       sameSite: "strict",
       maxAge: 60 * 60 * 24,
       path: "/",
@@ -207,91 +208,95 @@ authRouter.openapi(regisRoute, async (c) => {
   const zodParseResult = UserRegisRequestSchema.parse(data);
   const { email, phoneNumber, password, type } = zodParseResult;
 
+  // Check for existing account
   const existingAccount = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { email },
-        { phoneNumber },
-      ],
-    },
+    where: { OR: [{ email }, { phoneNumber }] },
   });
 
   if (existingAccount) {
-    console.error("Invalid email");
     return c.json(
-      {
-        success: false,
-        message: "Invalid credentials",
-        error: "Invalid email or phone number",
-      },
-      401,
+      { success: false, message: "Email or phone number already registered" },
+      409,
     );
   }
 
-  const hashedPassword = await hash(password, 10);
+  // Determine Keycloak role from type
+  const keycloakRole = type === "mahasiswa" ? "mahasiswa" : "orang-tua-asuh";
+
+  // 1. Create user in Keycloak SSO (password goes here — never stored locally)
+  let ssoUserId: string;
+  try {
+    const ssoResult = await registerInSSO({ email, password, role: keycloakRole });
+    ssoUserId = ssoResult.userId;
+  } catch (err: any) {
+    if (err.status === 409) {
+      return c.json(
+        { success: false, message: "Email already registered in SSO" },
+        409,
+      );
+    }
+    console.error("[SSO] Registration failed:", err);
+    return c.json(
+      { success: false, message: "Failed to create SSO account. Try again later." },
+      500,
+    );
+  }
 
   try {
     const [newUser, code] = await prisma.$transaction(async (tx) => {
+      // 2. Create local user — no password stored, ssoId links to Keycloak
       const newUser = await tx.user.create({
         data: {
           email,
           phoneNumber,
-          password: hashedPassword,
-          role: (type === "mahasiswa" ? "Mahasiswa" : "OrangTuaAsuh") as "Mahasiswa" | "OrangTuaAsuh",
+          password: null,                // no local password
+          oid: ssoUserId,                // Keycloak sub
+          provider: "keycloak" as any,
+          role: (type === "mahasiswa" ? "Mahasiswa" : "OrangTuaAsuh") as any,
+          verificationStatus: "unverified",
         },
       });
 
+      // 3. Generate OTP
       const code = generateOTP();
-
       await tx.oTP.create({
         data: {
           userId: newUser.id,
           code,
-          expiredAt: new Date(Date.now() + 1000 * 60 * 15), // 15 minutes
+          expiredAt: new Date(Date.now() + 1000 * 60 * 15),
         },
       });
 
       return [newUser, code];
     });
 
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      secure: true,
-      port: 465,
-      auth: {
-        user: env.EMAIL,
-        pass: env.EMAIL_PASSWORD,
-      },
-    });
+    // 4. Send OTP via WhatsApp
+    const message =
+      `Berikut adalah kode OTP Anda\n${code}\n` +
+      `Gunakan kode ini untuk verifikasi akun Anda. Berlaku 15 menit.\n\n` +
+      `Jika Anda tidak melakukan registrasi, abaikan pesan ini.`;
 
-    transporter.verify((error, success) => {
-      if (error) {
-        console.error("SMTP Server verification failed:", error);
-      } else {
-        console.log("SMTP Server is ready:", success);
-      }
-    });
-
-    await transporter
-      .sendMail({
-        from: env.EMAIL_FROM,
-        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : newUser.email,
-        subject: "Token OTP Bantuan Orang Tua Asuh",
-        html: kodeOTPEmail(newUser.email, code),
-      })
-      .catch((error) => {
-        console.error("Error sending email:", error);
+    try {
+      await sendWhatsApp({
+        to: phoneNumber,
+        message,
+        clientReference: `otp-register-${newUser.id}`,
+        idempotencyKey: `otp-register-${newUser.id}-${code}`,
       });
+    } catch (err) {
+      console.error(`[whatsapp] Failed to send OTP to ${phoneNumber}:`, err);
+    }
 
+    // 5. Issue unverified JWT
     const accessToken = await sign(
       {
         id: newUser.id,
         name: null,
         email: newUser.email,
         phoneNumber: newUser.phoneNumber,
-        type: roleToJwtType(newUser.role),
-        provider: newUser.provider,
-        oid: newUser.oid,
+        type: type === "mahasiswa" ? "mahasiswa" : "ota",
+        provider: "keycloak",
+        oid: ssoUserId,
         createdAt: newUser.createdAt,
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
@@ -301,7 +306,7 @@ authRouter.openapi(regisRoute, async (c) => {
 
     setCookie(c, "ota-ku.access-cookie", accessToken, {
       httpOnly: true,
-      secure: env.NODE_ENV === "production",
+      secure: env.COOKIE_SECURE,
       sameSite: "strict",
       maxAge: 60 * 60 * 24,
       path: "/",
@@ -310,23 +315,15 @@ authRouter.openapi(regisRoute, async (c) => {
     return c.json(
       {
         success: true,
-        message: "User registered successfully",
-        body: {
-          token: accessToken,
-          id: newUser.id,
-          email: newUser.email,
-        },
+        message: "User registered. Please verify your OTP.",
+        body: { token: accessToken, id: newUser.id, email: newUser.email },
       },
       200,
     );
   } catch (error) {
     console.error(error);
     return c.json(
-      {
-        success: false,
-        message: "Internal server error",
-        error: error,
-      },
+      { success: false, message: "Internal server error", error },
       500,
     );
   }
@@ -339,168 +336,123 @@ authRouter.openapi(oauthRoute, async (c) => {
   const zodParseResult = UserOAuthLoginRequestSchema.parse(data);
   const { code } = zodParseResult;
 
-  const res = await fetch(
-    "https://login.microsoftonline.com/db6e1183-4c65-405c-82ce-7cd53fa6e9dc/oauth2/v2.0/token",
+  // Exchange authorization code for tokens with Keycloak
+  const tokenRes = await fetch(
+    `${env.KEYCLOAK_ISSUER_URL}/protocol/openid-connect/token`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        scope: "https://vault.azure.net/.default openid offline_access",
-        client_id: env.AZURE_CLIENT_ID,
-        client_secret: env.AZURE_CLIENT_SECRET,
-        redirect_uri: `${env.VITE_PUBLIC_URL}/integrations/azure-key-vault/oauth2/callback`,
+        client_id: env.KEYCLOAK_CLIENT_ID,
+        client_secret: env.KEYCLOAK_CLIENT_SECRET,
+        redirect_uri: env.KEYCLOAK_REDIRECT_URI,
       }),
-    },
+    }
   );
-  if (!res.ok) {
-    return c.json(
-      {
-        success: false,
-        message: "Internal server error",
-        error: {},
-      },
-      500,
-    );
+
+  if (!tokenRes.ok) {
+    const err = await tokenRes.text();
+    console.error("[Keycloak OAuth] Token exchange failed:", err);
+    return c.json({ success: false, message: "OAuth token exchange failed" }, 500);
   }
-  const resData = await res.json();
-  const azureToken = resData.access_token as string;
-  const { payload } = decode(azureToken);
-  const email = payload.upn as string;
-  const name = payload.name as string;
-  const oid = payload.oid as string;
-  const nim = email.split("@")[0];
+
+  const tokens = await tokenRes.json();
+  const accessToken = tokens.access_token as string;
+
+  // Decode and validate the Keycloak token
+  let payload: any;
+  try {
+    payload = await validateKeycloakToken(accessToken);
+  } catch (err) {
+    return c.json({ success: false, message: "Invalid Keycloak token" }, 401);
+  }
+
+  const sub   = payload.sub as string;            // Keycloak user UUID
+  const email = payload.email as string;
+  const name  = payload.name as string | undefined;
+  const roles: string[] = payload.realm_access?.roles ?? [];
+
+  const localRole = keycloakRoleToLocalRole(roles);
+  const jwtType   = keycloakRoleToType(roles);
 
   try {
-    await prisma.$transaction(async (tx) => {
-      let accountData;
+    let accountData = await prisma.user.findFirst({ where: { oid: sub } });
 
-      const existingAccount = await tx.user.findFirst({
-        where: { email },
-      });
+    if (!accountData) {
+      // Fallback: try to find by email (existing user, first SSO login)
+      accountData = await prisma.user.findFirst({ where: { email } });
 
-      const randomPassword = crypto
-        .getRandomValues(new Uint16Array(16))
-        .join("");
-
-      if (existingAccount) {
-        // Account exists, update only if provider is azure
-        if (existingAccount.provider === "azure") {
-          accountData = await tx.user.update({
-            where: { id: existingAccount.id },
-            data: { updatedAt: new Date(Date.now()) },
-          });
-        } else {
-          // Provider is not azure, don't update password
-          accountData = existingAccount;
-        }
+      if (accountData) {
+        // Migrate existing account to SSO
+        accountData = await prisma.user.update({
+          where: { id: accountData.id },
+          data: { oid: sub, provider: "keycloak" as any, role: localRole as any },
+        });
       } else {
-        const existingOid = await tx.user.findFirst({
-          where: { oid },
+        // First-ever login — create local record
+        accountData = await prisma.user.create({
+          data: {
+            email,
+            oid: sub,
+            provider: "keycloak" as any,
+            role: localRole as any,
+            password: null,
+            verificationStatus: "verified",
+          },
         });
 
-        if (existingOid) {
-          // Update the existing account with the new email, nim must be nim jurusan
-          accountData = await tx.user.update({
-            where: { id: existingOid!.id },
+        // If mahasiswa, create MahasiswaProfile from email NIM
+        if (localRole === "Mahasiswa") {
+          const nim = email.split("@")[0];
+          await prisma.mahasiswaProfile.create({
             data: {
-              email,
-              updatedAt: new Date(Date.now()),
-            },
-          });
-
-          // Update the mahasiswa details for the existing account
-          await tx.mahasiswaProfile.update({
-            where: { userId: accountData.id },
-            data: {
-              name,
+              userId: accountData.id,
+              name: name ?? null,
               nim,
-              major: getNimJurusanCodeMap()[nim.slice(0, 3)],
+              major: getNimJurusanCodeMap()[nim.slice(0, 3)] ?? "TPB",
               faculty:
                 getNimFakultasCodeMap()[
                   getNimFakultasFromNimJurusanMap()[nim.slice(0, 3)]
-                ],
+                ] ?? null,
             },
           });
-          return;
         }
-
-        // Account doesn't exist, create new one
-        accountData = await tx.user.create({
-          data: {
-            email,
-            password: await hash(randomPassword, 10),
-            role: "Mahasiswa",
-            phoneNumber: null,
-            provider: "azure",
-            verificationStatus: "verified",
-            oid,
-          },
-        });
-
-        // Insert the mahasiswa details for new account
-        await tx.mahasiswaProfile.create({
-          data: {
-            userId: accountData.id,
-            name,
-            nim,
-            major: getNimJurusanCodeMap()[nim.slice(0, 3)] || "TPB",
-            faculty:
-              getNimFakultasCodeMap()[
-                getNimFakultasFromNimJurusanMap()[nim.slice(0, 3)]
-              ] || getNimFakultasCodeMap()[nim.slice(0, 3)],
-          },
-        });
       }
+    }
 
-      const accessToken = await sign(
-        {
-          id: accountData.id,
-          name,
-          email: accountData.email,
-          phoneNumber: accountData.phoneNumber || null,
-          type: roleToJwtType(accountData.role),
-          provider: accountData.provider,
-          oid: accountData.oid,
-          createdAt: accountData.createdAt,
-          iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
-        },
-        env.JWT_SECRET,
-      );
+    const localToken = await sign(
+      {
+        id: accountData.id,
+        name: name ?? null,
+        email: accountData.email,
+        phoneNumber: accountData.phoneNumber ?? null,
+        type: jwtType,
+        provider: "keycloak",
+        oid: sub,
+        createdAt: accountData.createdAt,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+      },
+      env.JWT_SECRET,
+    );
 
-      setCookie(c, "ota-ku.access-cookie", accessToken, {
-        httpOnly: true,
-        secure: env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 60 * 60 * 24,
-        path: "/",
-      });
+setCookie(c, "ota-ku.access-cookie", localToken, {
+      httpOnly: true,
+      secure: env.COOKIE_SECURE,
+      sameSite: "strict",
+      maxAge: 60 * 60 * 24,
+      path: "/",
     });
 
     return c.json(
-      {
-        success: true,
-        message: "Login successful",
-        body: {
-          token: azureToken,
-        },
-      },
+      { success: true, message: "Login successful", body: { token: localToken } },
       200,
     );
   } catch (error) {
     console.error(error);
-    return c.json(
-      {
-        success: false,
-        message: "Internal server error",
-        error: error,
-      },
-      500,
-    );
+    return c.json({ success: false, message: "Internal server error", error }, 500);
   }
 });
 
@@ -519,10 +471,14 @@ authProtectedRouter.openapi(verifRoute, async (c) => {
 
 authProtectedRouter.openapi(logoutRoute, async (c) => {
   deleteCookie(c, "ota-ku.access-cookie");
+
+  const logoutUrl = `${env.KEYCLOAK_ISSUER_URL}/protocol/openid-connect/logout?client_id=${env.KEYCLOAK_CLIENT_ID}`;
+
   return c.json(
     {
       success: true,
       message: "Logout successful",
+      body: { logoutUrl },
     },
     200,
   );
@@ -622,7 +578,7 @@ authProtectedRouter.openapi(otpRoute, async (c) => {
 
     setCookie(c, "ota-ku.access-cookie", accessToken, {
       httpOnly: true,
-      secure: env.NODE_ENV === "production",
+      secure: env.COOKIE_SECURE,
       sameSite: "strict",
       maxAge: 60 * 60 * 24,
       path: "/",

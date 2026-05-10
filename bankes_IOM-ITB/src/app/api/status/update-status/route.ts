@@ -1,9 +1,8 @@
-import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { sendPushNotification } from "@/services/sendNotification";
 import { StudentFileType } from "@prisma/client";
 
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 interface StudentUpdate {
   userId: string;

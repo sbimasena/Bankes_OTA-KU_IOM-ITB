@@ -169,6 +169,7 @@ export class AuthService {
   public logout(): CancelablePromise<{
     success: boolean;
     message: string;
+    body: { logoutUrl: string };
   }> {
     return this.httpRequest.request({
       method: 'POST',

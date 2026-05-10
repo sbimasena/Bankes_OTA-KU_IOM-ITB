@@ -44,6 +44,7 @@ enum ApplicationStatus {
 enum Provider {
   credentials
   azure
+  keycloak
 }
 
 enum Jurusan {
@@ -166,6 +167,26 @@ enum TransferStatus {
   unpaid
 }
 
+enum OtaGroupStatus {
+  forming
+  active
+}
+
+enum GroupInvitationStatus {
+  pending
+  accepted
+  rejected
+  cancelled
+}
+
+enum ProposalStatus {
+  open
+  failed
+  passed
+  approved
+  rejected
+}
+
 enum TestimonialStatus {
   shown
   not_shown
@@ -207,6 +228,8 @@ model User {
   OTPs               OTP[]
   TemporaryPasswords TemporaryPassword[]
 
+  CreatedGroups OtaGroup[]
+
   @@map("users")
 }
 
@@ -245,6 +268,10 @@ model MahasiswaProfile {
   Connections  Connection[]  @relation("MahasiswaConnections")
   Transactions Transaction[] @relation("MahasiswaTransactions")
   Testimonials Testimonial[]
+
+  GroupConnections  GroupConnection[]
+  GroupTransactions GroupTransaction[]
+  GroupProposals    GroupStudentProposal[]
 
   @@map("mahasiswa_profile")
 }
@@ -303,6 +330,14 @@ model OtaProfile {
   Connections  Connection[]  @relation("OtaConnections")
   Transactions Transaction[] @relation("OtaTransactions")
   Testimonials Testimonial[]
+
+  GroupMemberships         OtaGroupMember[]
+  SentInvitations          GroupInvitation[]          @relation("SentInvitations")
+  ReceivedInvitations      GroupInvitation[]          @relation("ReceivedInvitations")
+  ProposalVotes            GroupStudentProposalVote[]
+  ProposedStudents         GroupStudentProposal[]     @relation("ProposedByOta")
+  GroupMemberContributions GroupMemberContribution[]
+  GroupMemberTransactions  GroupMemberTransaction[]
 
   @@map("ota_profile")
 }

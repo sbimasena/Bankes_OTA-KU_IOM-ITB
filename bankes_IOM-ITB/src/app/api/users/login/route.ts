@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 // import { validateEmail, validatePassword } from "@/utils/_validation";
 
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 
 type Errors = {

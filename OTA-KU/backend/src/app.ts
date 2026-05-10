@@ -36,9 +36,9 @@ app.onError((err, c) => {
     {
       success: false,
       error: {
-        name: err.name,
-        message: err.message,
-        stack: err.stack,
+        name: env.NODE_ENV === "production" ? "InternalServerError" : err.name,
+        message:
+          env.NODE_ENV === "production" ? "Internal server error" : err.message,
       },
     },
     500
@@ -55,9 +55,18 @@ app.use(
 
 app.use(
   "/api/*",
-  csrf({
-    origin: env.ALLOWED_ORIGINS,
-  }),
+  async (c, next) => {
+    if (c.req.path === "/api/payment/webhook/midtrans") {
+      await next();
+      return;
+    }
+
+    const csrfMiddleware = csrf({
+      origin: env.ALLOWED_ORIGINS,
+    });
+
+    await csrfMiddleware(c, next);
+  },
 );
 
 // Base routes
