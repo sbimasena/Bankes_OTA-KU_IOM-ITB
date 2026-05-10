@@ -1,4 +1,5 @@
 import { api } from "@/api/client";
+import { groupService } from "@/api/groupService";
 import Metadata from "@/components/metadata";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
@@ -50,12 +51,18 @@ export const Route = createFileRoute("/_app/testimoni/")({
 
 function RouteComponent() {
   const { user } = Route.useRouteContext();
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending: isOtaPending } = useQuery({
     queryKey: ["getMyOtaDetail", user.id],
     queryFn: () => api.detail.getMyOtaDetail(),
   });
 
-  const hasOta = !isError && Boolean(data?.body?.id);
+  const { data: grupData, isPending: isGrupPending } = useQuery({
+    queryKey: ["getMaOtaGroups"],
+    queryFn: () => groupService.getMaOtaGroups(),
+  });
+
+  const isPending = isOtaPending || isGrupPending;
+  const hasOta = Boolean(data?.body?.id) || (grupData?.length ?? 0) > 0;
 
   return (
     <main className="flex min-h-[calc(100vh-70px)] flex-col gap-4 p-2 px-6 py-16 md:px-12 lg:min-h-[calc(100vh-96px)]">
