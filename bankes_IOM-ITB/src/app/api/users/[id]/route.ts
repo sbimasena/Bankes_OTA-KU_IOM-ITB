@@ -174,20 +174,45 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
 
   const body = await req.json();
   const { role } = body;
-  if (!role || !["Pengurus_IOM", "Pewawancara"].includes(role)) {
+  if (!role || !["Mahasiswa", "Pengurus_IOM", "Pewawancara"].includes(role)) {
     return NextResponse.json({ success: false, error: "Invalid role" }, { status: 400 });
   }
 
   try {
-    await prisma.user.update({
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
+    }
+
+    // For Guest users (not approved yet), use /api/admin/users/approve endpoint instead
+    if (user.role === "Guest" && !user.oid) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Guest users must be approved via /api/admin/users/approve endpoint first" 
+      }, { status: 400 });
+    }
+
+    // Update role di DB lokal only
+    // Note: Keycloak role is set during initial approval via /api/admin/users/approve
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { role: role },
+      data: { role: role as any },
     });
-    return NextResponse.json({ message: "User role updated successfully" });
+
+    return NextResponse.json({ 
+      success: true,
+      message: "User role updated successfully (local database only). To change Keycloak role, use admin approval flow.",
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        provider: updatedUser.provider
+      }
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { message: "Error updating user role" },
+      { success: false, message: "Error updating user role" },
       { status: 500 }
     );
   }
