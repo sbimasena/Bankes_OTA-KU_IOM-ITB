@@ -23,7 +23,6 @@ npx prisma generate
 
 echo "🔑 Ensuring admin user..."
 node scripts/create-admin.js
-rm -f scripts/create-admin.js
 
 echo "🎉 Starting app…"
 
