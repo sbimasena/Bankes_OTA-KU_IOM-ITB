@@ -136,6 +136,12 @@ services:
     networks:
       - iom-ota-network
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bankes.rule=Host(`bankes.iom-itb.id`)"
+      - "traefik.http.routers.bankes.entrypoints=websecure"
+      - "traefik.http.routers.bankes.tls.certresolver=letsencrypt"
+      - "traefik.http.services.bankes.loadbalancer.server.port=3031"
 
   # ── OTA-KU Backend ───────────────────────────────────────────────────────────
   ota-backend:
@@ -194,6 +200,14 @@ services:
     networks:
       - iom-ota-network
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ota-backend.rule=Host(`bankes.iom-itb.id`) && PathPrefix(`/ota-api`)"
+      - "traefik.http.routers.ota-backend.entrypoints=websecure"
+      - "traefik.http.routers.ota-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.ota-backend.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.ota-api-strip.stripprefix.prefixes=/ota-api"
+      - "traefik.http.routers.ota-backend.middlewares=ota-api-strip"
 
   # ── OTA-KU Frontend ──────────────────────────────────────────────────────────
   ota-frontend:
@@ -215,40 +229,14 @@ services:
     networks:
       - iom-ota-network
     restart: unless-stopped
-
-  # ── Nginx Reverse Proxy ──────────────────────────────────────────────────────
-  # Routes bankes.iom-itb.id → bankes:3031
-  #         bankes.iom-itb.id/ota/ → ota-frontend:3000
-  #         bankes.iom-itb.id/ota-api/ → ota-backend:3000
-  nginx:
-    image: nginx:alpine
-    container_name: iom-nginx-prod
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/certbot/conf:/etc/letsencrypt:ro
-      - ./nginx/certbot/www:/var/www/certbot:ro
-    depends_on:
-      - bankes
-      - ota-frontend
-      - ota-backend
-    networks:
-      - iom-ota-network
-    restart: unless-stopped
-    # Reload nginx every 6h so renewed certs are picked up automatically
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
-
-  # ── Certbot (auto-renews SSL cert every 12h) ──────────────────────────────────
-  certbot:
-    image: certbot/certbot
-    container_name: iom-certbot-prod
-    volumes:
-      - ./nginx/certbot/conf:/etc/letsencrypt
-      - ./nginx/certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ota-frontend.rule=Host(`bankes.iom-itb.id`) && PathPrefix(`/ota`)"
+      - "traefik.http.routers.ota-frontend.entrypoints=websecure"
+      - "traefik.http.routers.ota-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.ota-frontend.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.ota-strip.stripprefix.prefixes=/ota"
+      - "traefik.http.routers.ota-frontend.middlewares=ota-strip"
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:
