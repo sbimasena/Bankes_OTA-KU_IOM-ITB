@@ -557,7 +557,14 @@ groupProtectedRouter.openapi(getGroupDetailRoute, async (c) => {
       where: { id: groupId },
       include: {
         Members: {
-          include: { Ota: { select: { name: true } } },
+          include: { 
+            Ota: { 
+              select: { 
+                name: true,
+                User: { select: { phoneNumber: true } }
+              } 
+            } 
+          },
           orderBy: { joinedAt: "asc" },
         },
         Invitations: {
@@ -622,6 +629,7 @@ groupProtectedRouter.openapi(getGroupDetailRoute, async (c) => {
           members: group.Members.map((m) => ({
             otaId: m.otaId,
             name: m.Ota.name ?? "",
+            phoneNumber: m.Ota.User.phoneNumber ?? null,
             pledgeAmount: m.pledgeAmount,
             joinedAt: m.joinedAt.toISOString(),
           })),

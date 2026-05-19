@@ -55,6 +55,7 @@ export interface CreateGroupPayload {
 export interface GroupMember {
   otaId: string;
   name: string;
+  phoneNumber: string;
   pledgeAmount: number;
   joinedAt: string;
 }
