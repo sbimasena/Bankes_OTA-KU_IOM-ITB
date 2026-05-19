@@ -136,12 +136,6 @@ services:
     networks:
       - iom-ota-network
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.bankes.rule=Host(`bankes.iom-itb.id`)"
-      - "traefik.http.routers.bankes.entrypoints=websecure"
-      - "traefik.http.routers.bankes.tls.certresolver=letsencrypt"
-      - "traefik.http.services.bankes.loadbalancer.server.port=3031"
 
   # ── OTA-KU Backend ───────────────────────────────────────────────────────────
   ota-backend:
@@ -200,14 +194,6 @@ services:
     networks:
       - iom-ota-network
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.ota-backend.rule=Host(`bankes.iom-itb.id`) && PathPrefix(`/ota-api`)"
-      - "traefik.http.routers.ota-backend.entrypoints=websecure"
-      - "traefik.http.routers.ota-backend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.ota-backend.loadbalancer.server.port=3000"
-      - "traefik.http.middlewares.ota-api-strip.stripprefix.prefixes=/ota-api"
-      - "traefik.http.routers.ota-backend.middlewares=ota-api-strip"
 
   # ── OTA-KU Frontend ──────────────────────────────────────────────────────────
   ota-frontend:
@@ -229,14 +215,6 @@ services:
     networks:
       - iom-ota-network
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.ota-frontend.rule=Host(`bankes.iom-itb.id`) && PathPrefix(`/ota`)"
-      - "traefik.http.routers.ota-frontend.entrypoints=websecure"
-      - "traefik.http.routers.ota-frontend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.ota-frontend.loadbalancer.server.port=3000"
-      - "traefik.http.middlewares.ota-strip.stripprefix.prefixes=/ota"
-      - "traefik.http.routers.ota-frontend.middlewares=ota-strip"
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:
