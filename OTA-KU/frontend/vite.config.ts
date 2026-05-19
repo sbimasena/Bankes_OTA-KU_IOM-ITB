@@ -7,6 +7,7 @@ import istanbul from "vite-plugin-istanbul";
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: "/ota",
   plugins: [
     TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
     react(),
