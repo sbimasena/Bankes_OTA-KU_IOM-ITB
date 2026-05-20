@@ -206,7 +206,7 @@ export default function PendaftaranMahasiswa({
     <main className="flex min-h-[calc(100vh-70px)] flex-col items-center justify-center gap-8 p-2 px-6 py-16 md:gap-12 md:px-12 lg:min-h-[calc(100vh-96px)] lg:gap-16">
       <Metadata title="Pendaftaran | BOTA" />
       <img
-        src="/icon/logo-basic.png"
+        src={`${import.meta.env.BASE_URL}icon/logo-basic.png`}
         alt="logo"
         className="mx-auto h-[81px] w-[123px]"
       />

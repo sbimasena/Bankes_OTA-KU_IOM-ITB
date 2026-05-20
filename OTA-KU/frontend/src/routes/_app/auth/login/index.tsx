@@ -90,7 +90,7 @@ function RouteComponent() {
       <Metadata title="Login | BOTA" />
       <div className="flex flex-col items-center gap-9">
         <img
-          src="/icon/logo-basic.png"
+          src={`${import.meta.env.BASE_URL}icon/logo-basic.png`}
           alt="logo"
           className="mx-auto h-[81px] w-[123px]"
         />

@@ -88,7 +88,7 @@ export default function RegisterForm({
   return (
     <section className="flex w-full flex-col items-center justify-center gap-9 py-8 md:px-12">
       <img
-        src="/icon/logo-basic.png"
+        src={`${import.meta.env.BASE_URL}icon/logo-basic.png`}
         alt="logo"
         className="mx-auto h-[81px] w-[123px]"
       />

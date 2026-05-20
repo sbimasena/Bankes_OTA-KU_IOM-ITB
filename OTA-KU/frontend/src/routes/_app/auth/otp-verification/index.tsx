@@ -143,7 +143,7 @@ function RouteComponent() {
       <div className="w-full md:w-3/5 lg:w-1/2">
         <div className="text-center">
           <div className="mb-4 flex justify-center">
-            <img src="/logo-iom-icon.svg" alt="IOM-ITB Logo" className="h-16" />
+            <img src={`${import.meta.env.BASE_URL}logo-iom-icon.svg`} alt="IOM-ITB Logo" className="h-16" />
           </div>
           <h1 className="text-3xl font-bold md:text-4xl xl:text-5xl">
             Verifikasi Kode OTP

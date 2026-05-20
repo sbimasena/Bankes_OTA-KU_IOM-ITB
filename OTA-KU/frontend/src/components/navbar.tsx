@@ -193,7 +193,7 @@ export default function NavBar() {
               aria-expanded={isSidebarOpen}
             >
               <img
-                src="/icon/Type=list-icon.svg"
+                src={`${import.meta.env.BASE_URL}icon/Type=list-icon.svg`}
                 alt="sidebar-button"
                 className="transform transition-transform duration-200 ease-in-out hover:scale-125"
               />
@@ -202,7 +202,7 @@ export default function NavBar() {
             <Link to="/" className="flex items-center space-x-2">
               <img
                 className="h-9 w-auto object-contain xl:h-10"
-                src="/logo-iom-icon.svg"
+                src={`${import.meta.env.BASE_URL}logo-iom-icon.svg`}
                 alt="Logo"
               />
               {/* Title visible from md (desktop) and up */}
@@ -259,7 +259,7 @@ export default function NavBar() {
                       {(session.type === "mahasiswa" || session.type === "ota") ? (
                         <>
                           <img
-                            src="/icon/Type=profile-icon.svg"
+                            src={`${import.meta.env.BASE_URL}icon/Type=profile-icon.svg`}
                             alt="Profile"
                             className="h-6 w-6 transform transition-transform duration-200 ease-in-out hover:scale-125"
                           />
@@ -270,7 +270,7 @@ export default function NavBar() {
                         </>
                       ) : (
                         <img
-                          src="/icon/Type=log-out.svg"
+                          src={`${import.meta.env.BASE_URL}icon/Type=log-out.svg`}
                           alt="Log out"
                           className="h-6 w-6 transform transition-transform duration-200 ease-in-out hover:scale-125"
                         />

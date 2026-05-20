@@ -42,7 +42,7 @@ function LandingPage({ session }: { session: UserSchema | null | undefined }) {
       <div className="flex flex-col items-center gap-6 lg:flex-row-reverse lg:gap-15 xl:gap-30">
         {/* Icon */}
         <img
-          src="/icon/logo-basic.png"
+          src={`${import.meta.env.BASE_URL}icon/logo-basic.png`}
           alt="landing page"
           className="w-[140px] lg:w-[330px]"
         />
@@ -104,7 +104,7 @@ function LandingPage({ session }: { session: UserSchema | null | undefined }) {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              {(current.images.length ? current.images : ["/icon/logo-basic.png"]).slice(0, 3).map((img, idx) => (
+              {(current.images.length ? current.images : [`${import.meta.env.BASE_URL}icon/logo-basic.png`]).slice(0, 3).map((img, idx) => (
                 <button
                   key={`${img}-${idx}`}
                   type="button"

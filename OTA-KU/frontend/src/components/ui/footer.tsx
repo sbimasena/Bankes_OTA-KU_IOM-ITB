@@ -4,7 +4,7 @@ export default function Footer() {
       <div className="items-center justify-center space-y-8 px-8 py-6 md:flex md:space-y-0">
         <div>
           <div className="mb-6 flex items-center">
-            <img src="/logo-iom.svg" alt="IOM-ITB Logo" className="w-full" />
+            <img src={`${import.meta.env.BASE_URL}logo-iom.svg`} alt="IOM-ITB Logo" className="w-full" />
           </div>
 
           <div className="flex flex-col">
@@ -34,14 +34,14 @@ export default function Footer() {
               target="_blank"
               className="text-primary"
             >
-              <img src="/ig.svg" alt="Instagram" className="w-8" />
+              <img src={`${import.meta.env.BASE_URL}ig.svg`} alt="Instagram" className="w-8" />
             </a>
             <a
               href="https://www.youtube.com/@iom-itb"
               target="_blank"
               className="text-primary"
             >
-              <img src="/yt.svg" alt="YouTube" className="w-8" />
+              <img src={`${import.meta.env.BASE_URL}yt.svg`} alt="YouTube" className="w-8" />
             </a>
           </div>
         </div>
