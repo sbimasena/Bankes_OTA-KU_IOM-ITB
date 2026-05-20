@@ -33,6 +33,7 @@ import {
   validateGroupTerminateRoute,
   verifyGroupConnectionAccRoute,
   verifyGroupConnectionRejectRoute,
+  deleteGroupConnectionRoute,
   verifyGroupMemberPaymentRoute,
   voteProposalRoute,
 } from "../routes/group.route.js";
@@ -1650,6 +1651,62 @@ groupProtectedRouter.openapi(verifyGroupConnectionRejectRoute, async (c) => {
     });
 
     return c.json({ success: true, message: "Group connection berhasil ditolak" }, 200);
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// DELETE /group/connect/:id
+groupProtectedRouter.openapi(deleteGroupConnectionRoute, async (c) => {
+  const user = c.var.user;
+
+  if (!isAdminRole(user.type)) {
+    return c.json(
+      { success: false, message: "Unauthorized", error: { code: "UNAUTHORIZED" } },
+      403,
+    );
+  }
+
+  const { id } = c.req.param();
+
+  try {
+    const groupConn = await prisma.groupConnection.findUnique({
+      where: { id },
+      include: {
+        Mahasiswa: { select: { name: true } },
+        Group: { select: { name: true } },
+      },
+    });
+
+    if (!groupConn) {
+      return c.json({ success: false, message: "Group connection tidak ditemukan", error: {} }, 404);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.groupConnection.delete({ where: { id } });
+
+      await tx.mahasiswaProfile.update({
+        where: { userId: groupConn.mahasiswaId },
+        data: { mahasiswaStatus: "inactive" },
+      });
+
+      await tx.groupMemberContribution.deleteMany({
+        where: { groupConnectionId: id },
+      });
+
+      await tx.groupTransaction.deleteMany({
+        where: { groupConnectionId: id },
+      });
+    });
+
+    return c.json(
+      {
+        success: true,
+        message: `Hubungan grup ${groupConn.Group.name} dengan mahasiswa ${groupConn.Mahasiswa.name} berhasil dihapus`,
+      },
+      200,
+    );
   } catch (error) {
     console.error(error);
     return c.json({ success: false, message: "Internal server error", error }, 500);
