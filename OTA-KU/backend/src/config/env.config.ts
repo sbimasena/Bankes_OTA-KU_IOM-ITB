@@ -27,6 +27,7 @@ const EnvSchema = z.object({
   MINIO_SECRET_KEY: z.string().default("minioadmin"),
   MINIO_PUBLIC_HOST: z.string().default("localhost"),
   MINIO_PUBLIC_PORT: z.coerce.number().default(9000),
+  MINIO_PUBLIC_URL: z.string().url().optional(),
   EMAIL: z.string().email(),
   EMAIL_FROM: z.string(),
   EMAIL_PASSWORD: z.string(),

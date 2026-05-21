@@ -39,7 +39,9 @@ export async function uploadFileToMinio(
     "Content-Type": file.type || "application/octet-stream",
   });
 
-  const fileUrl = `http://${env.MINIO_PUBLIC_HOST}:${env.MINIO_PUBLIC_PORT}/${BUCKET_NAME}/${fileName}`;
+  const fileUrl = env.MINIO_PUBLIC_URL
+    ? `${env.MINIO_PUBLIC_URL}/${BUCKET_NAME}/${fileName}`
+    : `http://${env.MINIO_PUBLIC_HOST}:${env.MINIO_PUBLIC_PORT}/${BUCKET_NAME}/${fileName}`;
   return { secure_url: fileUrl, fileName };
 }
 

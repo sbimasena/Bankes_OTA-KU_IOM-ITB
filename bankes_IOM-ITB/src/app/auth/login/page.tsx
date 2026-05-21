@@ -35,7 +35,8 @@ export default function LoginPage() {
 
     useEffect(() => {
         redirect();
-    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [session])
 
     const handleSSOLogin = async () => {
         try {
