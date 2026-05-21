@@ -143,12 +143,15 @@ export const authOptions: NextAuthOptions = {
           where: { OR: [{ oid: ssoId }, { email: profile.email }] },
         });
 
+        const keycloakName = (profile as Record<string, unknown>).name as string | undefined;
+
         if (!user) {
           // Genuinely new user
           user = await prisma.user.create({
             data: {
               oid: ssoId,
               email: profile.email ?? "",
+              name: keycloakName ?? null,
               role: localRole as any,
               provider: "keycloak" as any,
               verificationStatus: "verified" as any,
@@ -162,6 +165,8 @@ export const authOptions: NextAuthOptions = {
               oid: ssoId,
               provider: "keycloak" as any,
               role: localRole as any,
+              // Only set name from Keycloak if DB has none yet
+              ...(user.name ? {} : { name: keycloakName ?? null }),
             },
           });
         }
@@ -171,6 +176,8 @@ export const authOptions: NextAuthOptions = {
         token.role  = user.role;
         token.ssoId = ssoId;
         token.email = profile.email;
+        // DB name (updated via profile form) takes priority; fall back to Keycloak name
+        token.name  = user.name ?? keycloakName ?? null;
       }
 
       return token;
@@ -181,6 +188,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id    = token.id as string;
         session.user.role  = token.role as string;
         session.user.email = token.email as string;
+        session.user.name  = (token.name as string | null) ?? undefined;
       }
       return session;
     },
