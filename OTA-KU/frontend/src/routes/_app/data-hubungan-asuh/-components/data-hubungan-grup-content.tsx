@@ -67,7 +67,10 @@ function DataHubunganGrupContent() {
           <Skeleton className="h-80 w-full" />
         </div>
       ) : (
-        <DataTable columns={groupConnectionColumns} data={data?.data || []} />
+        <DataTable 
+          columns={groupConnectionColumns} 
+          data={data?.data.filter(conn => conn.connectionStatus !== "rejected") || []} 
+        />
       )}
 
       {/* Pagination */}
