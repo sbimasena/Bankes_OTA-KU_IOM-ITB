@@ -6,6 +6,7 @@ import {
   acceptGroupTransferStatusRoute,
   activateGroupRoute,
   autoPairGroupRoute,
+  deleteGroupRoute,
   setAutoMatchConsentRoute,
   connectGroupByAdminRoute,
   createGroupRoute,
@@ -2597,6 +2598,52 @@ groupProtectedRouter.openapi(autoPairGroupRoute, async (c) => {
       } as any,
       200,
     );
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// DELETE /group/:id
+groupProtectedRouter.openapi(deleteGroupRoute, async (c) => {
+  const user = c.var.user;
+
+  if (!isAdminRole(user.type)) {
+    return c.json(
+      {
+        success: false,
+        message: "Unauthorized",
+        error: { code: "UNAUTHORIZED", message: "Hanya admin yang dapat menghapus grup" },
+      },
+      403,
+    );
+  }
+
+  const groupId = c.req.param("id");
+
+  try {
+    const group = await prisma.otaGroup.findUnique({ where: { id: groupId } });
+    if (!group) {
+      return c.json({ success: false, message: "Grup tidak ditemukan", error: {} }, 404);
+    }
+
+    const activeConnection = await prisma.groupConnection.findFirst({
+      where: { groupId, connectionStatus: "accepted" },
+    });
+    if (activeConnection) {
+      return c.json(
+        {
+          success: false,
+          message: "Grup memiliki koneksi aktif dan tidak dapat dihapus",
+          error: { code: "HAS_ACTIVE_CONNECTION" },
+        },
+        400,
+      );
+    }
+
+    await prisma.otaGroup.delete({ where: { id: groupId } });
+
+    return c.json({ success: true, message: "Grup berhasil dihapus" }, 200);
   } catch (error) {
     console.error(error);
     return c.json({ success: false, message: "Internal server error", error }, 500);

@@ -961,6 +961,40 @@ export const acceptGroupTransferStatusRoute = createRoute({
   },
 });
 
+// ── Delete Group Route ────────────────────────────────────────────────────────
+
+export const deleteGroupRoute = createRoute({
+  operationId: "deleteGroup",
+  tags: ["Group"],
+  method: "delete",
+  path: "/:id",
+  description: "Hapus grup. Hanya admin. Grup dengan koneksi aktif (accepted) tidak dapat dihapus.",
+  request: { params: GroupIdParamSchema },
+  responses: {
+    200: {
+      description: "Grup berhasil dihapus",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    400: {
+      description: "Grup memiliki koneksi aktif",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden — hanya admin",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Grup tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
 // ── Auto-Match Consent Route ─────────────────────────────────────────────────
 
 export const setAutoMatchConsentRoute = createRoute({

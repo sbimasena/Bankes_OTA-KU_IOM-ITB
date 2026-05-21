@@ -5,7 +5,7 @@ import { authOptions } from "../../auth/[...nextauth]/authOptions";
 import { v4 as uuidv4 } from "uuid";
 import { buildObjectKey, BUCKET_NAME, getPublicFileUrl, minioClient } from "@/lib/storage";
 
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 /**
  * @swagger

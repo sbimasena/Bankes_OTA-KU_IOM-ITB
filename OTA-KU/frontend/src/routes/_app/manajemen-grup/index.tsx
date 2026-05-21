@@ -22,6 +22,7 @@ import {
   Loader2,
   ShieldAlert,
   Shuffle,
+  Trash2,
   Users,
   X,
   Zap,
@@ -254,6 +255,46 @@ function GroupStatsModal({ open, onClose, isLoading, detail }: GroupStatsModalPr
   );
 }
 
+// ── Delete Group Confirmation Modal ──────────────────────────────────────────
+
+interface DeleteGroupModalProps {
+  groupName: string | null;
+  onClose: () => void;
+  onConfirm: () => void;
+  isPending: boolean;
+}
+
+function DeleteGroupModal({ groupName, onClose, onConfirm, isPending }: DeleteGroupModalProps) {
+  return (
+    <Dialog open={!!groupName} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-lg text-destructive">
+            <Trash2 className="h-5 w-5" />
+            Hapus Grup
+          </DialogTitle>
+          <DialogDescription>
+            Tindakan ini tidak dapat dibatalkan. Semua data grup termasuk anggota, undangan, dan
+            proposal akan ikut terhapus.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="rounded-lg bg-muted/50 px-4 py-3">
+          <p className="text-sm font-medium">{groupName}</p>
+        </div>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={onClose} disabled={isPending}>
+            Batal
+          </Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
+            {isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />}
+            Hapus Grup
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 function AdminGroupManagement() {
@@ -263,6 +304,7 @@ function AdminGroupManagement() {
   const [autoPairSuggestion, setAutoPairSuggestion] = useState<AutoPairSuggestion | null>(null);
   const [loadingAutoPairGroupId, setLoadingAutoPairGroupId] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   // ── Queries ──────────────────────────────────────────────────────────────
   const { data: groupsData, isLoading: isLoadingGroups } = useQuery({
@@ -327,6 +369,19 @@ function AdminGroupManagement() {
     },
   });
 
+  const deleteGroupMutation = useMutation({
+    mutationFn: (groupId: string) => groupService.deleteGroup(groupId),
+    onSuccess: () => {
+      toast.success("Grup berhasil dihapus");
+      setDeleteTarget(null);
+      queryClient.invalidateQueries({ queryKey: ["adminAllGroups"] });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message ?? "Gagal menghapus grup");
+      setDeleteTarget(null);
+    },
+  });
+
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleAutoPair = async (groupId: string) => {
     setLoadingAutoPairGroupId(groupId);
@@ -376,6 +431,13 @@ function AdminGroupManagement() {
         onClose={() => setAutoPairSuggestion(null)}
         onConfirm={handleConfirmAutoPair}
         isPending={confirmAutoPairMutation.isPending}
+      />
+
+      <DeleteGroupModal
+        groupName={deleteTarget?.name ?? null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && deleteGroupMutation.mutate(deleteTarget.id)}
+        isPending={deleteGroupMutation.isPending}
       />
 
       <GroupStatsModal
@@ -616,6 +678,18 @@ function AdminGroupManagement() {
                             </td>
                             <td className="p-4 text-right">
                               <div className="flex items-center justify-end gap-2">
+                                {/* Delete button — admin only */}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                  onClick={() => setDeleteTarget({ id: group.id, name: group.name })}
+                                  disabled={deleteGroupMutation.isPending || group.activeConnectionCount > 0}
+                                  title={group.activeConnectionCount > 0 ? "Grup memiliki mahasiswa aktif" : "Hapus grup"}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+
                                 {/* Activate button — forming groups ready for activation */}
                                 {group.status === "forming" && group.memberCount > 0 && (
                                   <Button

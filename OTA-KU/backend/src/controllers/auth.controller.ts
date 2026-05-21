@@ -2,10 +2,10 @@ import { compare, hash } from "bcrypt";
 import { deleteCookie, setCookie } from "hono/cookie";
 import { decode, sign } from "hono/jwt";
 import nodemailer from "nodemailer";
+import { sendWhatsApp } from "../lib/whatsapp.js";
 
 import { env } from "../config/env.config.js";
 import { prisma } from "../db/prisma.js";
-import { kodeOTPEmail } from "../lib/email/kode-otp.js";
 import { forgotPasswordEmail } from "../lib/email/lupa-password.js";
 import {
   getNimFakultasCodeMap,
@@ -254,34 +254,25 @@ authRouter.openapi(regisRoute, async (c) => {
       return [newUser, code];
     });
 
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      secure: true,
-      port: 465,
-      auth: {
-        user: env.EMAIL,
-        pass: env.EMAIL_PASSWORD,
-      },
-    });
+    const message =
+      `Berikut adalah kode OTP Anda\n` +
+      `${code}\n` +
+      `Gunakan kode OTP ini untuk melakukan registrasi akun Anda. ` +
+      `Kode OTP ini akan kadaluwarsa dalam 15 menit.\n\n` +
+      `Jika Anda merasa tidak melakukan permintaan registrasi akun, ` +
+      `silakan abaikan pesan ini atau hubungi administrator.\n\n` +
+      `Terima kasih.`;
 
-    transporter.verify((error, success) => {
-      if (error) {
-        console.error("SMTP Server verification failed:", error);
-      } else {
-        console.log("SMTP Server is ready:", success);
-      }
-    });
-
-    await transporter
-      .sendMail({
-        from: env.EMAIL_FROM,
-        to: env.NODE_ENV !== "production" ? env.TEST_EMAIL : newUser.email,
-        subject: "Token OTP Bantuan Orang Tua Asuh",
-        html: kodeOTPEmail(newUser.email, code),
-      })
-      .catch((error) => {
-        console.error("Error sending email:", error);
+    try {
+      await sendWhatsApp({
+        to: phoneNumber,
+        message,
+        clientReference: `otp-register-${newUser.id}`,
+        idempotencyKey: `otp-register-${newUser.id}-${code}`,
       });
+    } catch (err) {
+      console.error(`[whatsapp] Failed to send WA to ${phoneNumber}:`, err);
+    }
 
     const accessToken = await sign(
       {
