@@ -44,6 +44,7 @@ enum ApplicationStatus {
 enum Provider {
   credentials
   azure
+  keycloak
 }
 
 enum Jurusan {

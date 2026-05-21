@@ -56,6 +56,7 @@ enum ApplicationStatus {
 enum Provider {
   credentials
   azure
+  keycloak
 }
 
 // [OTA → SHARED] Exhaustive list of ITB majors (50 jurusan).
