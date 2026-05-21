@@ -310,7 +310,7 @@ transactionProtectedRouter.openapi(
       }
 
       // Fetch all transactions with OTA and mahasiswa details
-      const [allTransactions, allForYears] = await Promise.all([
+      const [allTransactions, allForYears, allGroupMemberTxs, allGroupTxYears] = await Promise.all([
         prisma.transaction.findMany({
           where,
           include: {
@@ -321,24 +321,62 @@ transactionProtectedRouter.openapi(
         prisma.transaction.findMany({
           select: { dueDate: true },
         }),
+        prisma.groupMemberTransaction.findMany({
+          where: year ? {
+            GroupTransaction: {
+              dueDate: {
+                gte: new Date(year, 0, 1),
+                lt: new Date(year + 1, 0, 1),
+              },
+            },
+          } : {},
+          include: {
+            GroupTransaction: {
+              include: {
+                Mahasiswa: true,
+              },
+            },
+            Ota: {
+              include: {
+                User: true,
+              },
+            },
+          },
+        }),
+        prisma.groupTransaction.findMany({
+          select: { dueDate: true },
+        }),
       ]);
 
       // Extract distinct years
       const years = [
-        ...new Set(allForYears.map((t) => t.dueDate.getFullYear())),
+        ...new Set([
+          ...allForYears.map((t) => t.dueDate.getFullYear()),
+          ...allGroupTxYears.map((t) => t.dueDate.getFullYear()),
+        ]),
       ].sort((a, b) => b - a);
 
-      // Filter by month (JS, mirrors EXTRACT(MONTH) = month logic)
+      // Filter by month 
       const monthFiltered = month
         ? allTransactions.filter((t) => t.dueDate.getMonth() + 1 === month)
         : allTransactions;
 
-      // Filter by OTA name (mirrors ILIKE %q%)
+      const monthFilteredGroupTxs = month
+        ? allGroupMemberTxs.filter((t) => t.GroupTransaction.dueDate.getMonth() + 1 === month)
+        : allGroupMemberTxs;
+
+      // Filter by OTA name
       const qFiltered = q
         ? monthFiltered.filter((t) =>
             t.OtaProfile?.name?.toLowerCase().includes(q.toLowerCase()),
           )
         : monthFiltered;
+
+      const qFilteredGroupTxs = q
+        ? monthFilteredGroupTxs.filter((t) =>
+            t.Ota?.name?.toLowerCase().includes(q.toLowerCase()),
+          )
+        : monthFilteredGroupTxs;
 
       // Group transactions by OTA
       const groupedByOta = qFiltered.reduce(
@@ -373,6 +411,35 @@ transactionProtectedRouter.openapi(
         },
         {} as { [key: string]: any },
       );
+
+      // Add group member transactions to the grouped data
+      qFilteredGroupTxs.forEach((groupMemberTx) => {
+        const otaId = groupMemberTx.otaId;
+
+        if (!groupedByOta[otaId]) {
+          groupedByOta[otaId] = {
+            ota_id: otaId,
+            name_ota: groupMemberTx.Ota?.name,
+            number_ota: groupMemberTx.Ota?.User?.phoneNumber ?? "",
+            totalBill: 0,
+            transactions: [],
+          };
+        }
+
+        groupedByOta[otaId].totalBill += groupMemberTx.expectedAmount;
+        groupedByOta[otaId].transactions.push({
+          id: groupMemberTx.id,
+          mahasiswa_id: groupMemberTx.GroupTransaction.mahasiswaId,
+          name_ma: groupMemberTx.GroupTransaction.Mahasiswa.name ?? "",
+          nim_ma: groupMemberTx.GroupTransaction.Mahasiswa.nim,
+          paidAt: groupMemberTx.paidAt?.toISOString() ?? "",
+          dueDate: groupMemberTx.GroupTransaction.dueDate.toISOString(),
+          bill: groupMemberTx.expectedAmount,
+          receipt: groupMemberTx.transactionReceipt ?? "",
+          rejectionNote: groupMemberTx.rejectionNote ?? "",
+          transactionStatus: groupMemberTx.paymentStatus,
+        });
+      });
 
       // Convert to array and apply pagination
       const otaGroups = Object.values(groupedByOta);
