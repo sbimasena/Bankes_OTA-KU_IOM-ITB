@@ -59,7 +59,10 @@ export default function NavBar() {
         return;
       }
 
-      const registration = await navigator.serviceWorker.register("/sw.js");
+      const registration = await navigator.serviceWorker.register(
+        `${import.meta.env.BASE_URL}sw.js`,
+        { scope: import.meta.env.BASE_URL },
+      );
 
       if (!registration.pushManager) {
         console.error("Push manager unavailable.");

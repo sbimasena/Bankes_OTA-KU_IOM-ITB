@@ -21,59 +21,61 @@ interface SidebarProps {
   onClose: () => void;
 }
 
+const iconBase = `${import.meta.env.BASE_URL}icon/`;
+
 const adminRoutes = [
   {
     id: "verification",
     label: "Verifikasi Akun",
-    icon: "/icon/Type=shield.svg",
+    icon: `${iconBase}Type=shield.svg`,
     path: "/verifikasi-akun",
   },
   {
     id: "persetujuan-asuh",
     label: "Persetujuan Asuh",
-    icon: "/icon/Type=user-round-check.svg",
+    icon: `${iconBase}Type=user-round-check.svg`,
     path: "/persetujuan-asuh",
   },
   {
     id: "pemasangan-bota",
     label: "Pemasangan BOTA",
-    icon: "/icon/Type=handshake.svg",
+    icon: `${iconBase}Type=handshake.svg`,
     path: "/pemasangan-bota",
   },
   {
     id: "connection",
     label: "Data Hubungan Asuh",
-    icon: "/icon/Type=connection.svg",
+    icon: `${iconBase}Type=connection.svg`,
     path: "/data-hubungan-asuh",
   },
   {
     id: "daftar-transfer-mahasiswa",
     label: "Daftar Transfer Mahasiswa",
-    icon: "/icon/Type=transaction.svg",
+    icon: `${iconBase}Type=transaction.svg`,
     path: "/daftar-transfer-mahasiswa",
   },
   {
     id: "transaction",
     label: "Daftar Tagihan OTA",
-    icon: "/icon/Type=receipt.svg",
+    icon: `${iconBase}Type=receipt.svg`,
     path: "/daftar-tagihan",
   },
   {
     id: "manajemen-grup",
     label: "Manajemen Grup",
-    icon: "/icon/Type=people.svg",
+    icon: `${iconBase}Type=people.svg`,
     path: "/manajemen-grup",
   },
   {
     id: "moderasi-testimoni",
     label: "Moderasi Testimoni",
-    icon: "/icon/Type=shield.svg",
+    icon: `${iconBase}Type=shield.svg`,
     path: "/moderasi-testimoni",
   },
   {
     id: "daftar-terminasi",
     label: "Daftar Terminasi",
-    icon: "/icon/Type=remove-destructive.svg",
+    icon: `${iconBase}Type=remove-destructive.svg`,
     path: "/daftar-terminasi",
     bgColorClass: " bg-destructive/10",
     textColorClass: "text-destructive",
@@ -169,7 +171,7 @@ const getMenuItems = (role: string, applicationStatus?: string): MenuItem[] => {
       {
         id: "pendaftaran",
         label: "Pendaftaran",
-        icon: "/icon/Type=form.svg",
+        icon: `${iconBase}Type=form.svg`,
         path: "/pendaftaran",
       },
     ];
@@ -181,13 +183,13 @@ const getMenuItems = (role: string, applicationStatus?: string): MenuItem[] => {
         {
           id: "ota-saya",
           label: "Orang Tua Asuh Saya",
-          icon: "/icon/Type=student-list.svg",
+          icon: `${iconBase}Type=student-list.svg`,
           path: "/orang-tua-asuh-saya",
         },
         {
           id: "testimoni",
           label: "Testimoni Saya",
-          icon: "/icon/Type=form.svg",
+          icon: `${iconBase}Type=form.svg`,
           path: "/testimoni",
         },
       ];
@@ -196,31 +198,31 @@ const getMenuItems = (role: string, applicationStatus?: string): MenuItem[] => {
         {
           id: "student-list",
           label: "Cari Mahasiswa",
-          icon: "/icon/Type=search.svg",
+          icon: `${iconBase}Type=search.svg`,
           path: "/cari-mahasiswa",
         },
         {
           id: "my-students",
           label: "Mahasiswa Asuh Saya",
-          icon: "/icon/Type=people.svg",
+          icon: `${iconBase}Type=people.svg`,
           path: "/mahasiswa-asuh-saya",
         },
         {
           id: "grup-asuh",
           label: "Grup Asuh",
-          icon: "/icon/Type=connection.svg", // Menggunakan icon connection atau icon lain
+          icon: `${iconBase}Type=connection.svg`,
           path: "/groups",
         },
         {
           id: "status-transaksi",
           label: "Status Transaksi",
-          icon: "/icon/Type=transaction-status.svg",
+          icon: `${iconBase}Type=transaction-status.svg`,
           path: "/status-transaksi",
         },
         {
           id: "terminasi-mahasiswa",
           label: "Berhenti Mengasuh",
-          icon: "/icon/Type=remove-destructive.svg",
+          icon: `${iconBase}Type=remove-destructive.svg`,
           path: "/daftar/terminasi-mahasiswa",
           bgColorClass: " bg-destructive/10",
           textColorClass: "text-destructive",
@@ -231,7 +233,7 @@ const getMenuItems = (role: string, applicationStatus?: string): MenuItem[] => {
         {
           id: "manejemen-akun",
           label: "Manajemen Akun",
-          icon: "/icon/Type=people.svg",
+          icon: `${iconBase}Type=people.svg`,
           path: "/manajemen-akun",
         },
         ...adminRoutes,

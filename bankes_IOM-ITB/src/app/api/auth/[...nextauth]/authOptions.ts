@@ -138,40 +138,34 @@ export const authOptions: NextAuthOptions = {
 
         const localRole = keycloakRoleToLocal(roles);
 
-        // Upsert local user — buat jika first login, update role jika berubah
-        // Coba cari berdasarkan ssoId terlebih dahulu
-        let user = await prisma.user.findFirst({ where: { oid: ssoId } });
+        // Upsert local user — single query: match by ssoId OR email
+        let user = await prisma.user.findFirst({
+          where: { OR: [{ oid: ssoId }, { email: profile.email }] },
+        });
 
         if (!user) {
-          // Fallback: cari berdasarkan email (untuk existing user yang migrasi)
-          user = await prisma.user.findFirst({ where: { email: profile.email } });
-
-          if (user) {
-            // User existing — attach ssoId
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: { 
-                oid: ssoId, 
-                provider: "keycloak" as any,
-                role: localRole as any,
-              },
-            });
-          } else {
-            // Genuinely new user
-            user = await prisma.user.create({
-              data: {
-                oid: ssoId,
-                email: profile.email ?? "",
-                role: localRole as any,
-                provider: "keycloak" as any,
-                verificationStatus: "verified" as any,
-              },
-            });
-          }
-        } else {
-          // User sudah ada dengan ssoId — pakai role dari DB sebagai source of truth
-          // Role dikelola oleh admin approval flow, bukan disync dari Keycloak
+          // Genuinely new user
+          user = await prisma.user.create({
+            data: {
+              oid: ssoId,
+              email: profile.email ?? "",
+              role: localRole as any,
+              provider: "keycloak" as any,
+              verificationStatus: "verified" as any,
+            },
+          });
+        } else if (!user.oid) {
+          // Existing user migrating from non-SSO — attach ssoId
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              oid: ssoId,
+              provider: "keycloak" as any,
+              role: localRole as any,
+            },
+          });
         }
+        // If user already has ssoId, use DB role as source of truth (managed by admin)
 
         token.id    = user.id;
         token.role  = user.role;
