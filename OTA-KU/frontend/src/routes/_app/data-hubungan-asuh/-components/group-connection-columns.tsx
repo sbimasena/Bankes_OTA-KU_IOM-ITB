@@ -76,6 +76,28 @@ export const groupConnectionColumns: ColumnDef<PendingConnection>[] = [
     },
   },
   {
+    accessorKey: "createdAt",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Tanggal Dibuat
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUpAZ className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowDownAZ className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      );
+    },
+    cell: ({ row }) => {
+      const connection = row.original;
+      return <p>{new Date(connection.createdAt).toLocaleDateString("id-ID")}</p>;
+    },
+  },
+  {
     accessorKey: "connectionStatus",
     header: ({ column }) => {
       return (
@@ -112,28 +134,6 @@ export const groupConnectionColumns: ColumnDef<PendingConnection>[] = [
           )}
         </div>
       );
-    },
-  },
-  {
-    accessorKey: "createdAt",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Tanggal Dibuat
-          {column.getIsSorted() === "asc" ? (
-            <ArrowUpAZ className="ml-2 h-4 w-4" />
-          ) : (
-            <ArrowDownAZ className="ml-2 h-4 w-4" />
-          )}
-        </Button>
-      );
-    },
-    cell: ({ row }) => {
-      const connection = row.original;
-      return <p>{new Date(connection.createdAt).toLocaleDateString("id-ID")}</p>;
     },
   },
   {
