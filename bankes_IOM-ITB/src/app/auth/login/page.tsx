@@ -13,30 +13,19 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const redirect = async () => {
-        if (session?.user?.id) {
-            const response = await fetch(`/api/users`);
-            if (response.ok) {
-                const user = await response.json();
-                const userrole : string = user.role;
-                const roleBasedCallbackUrls : { [key: string] : string }  = {
-                    Mahasiswa : "/student/profile",
-                    "Admin" : "/admin/account/",
-                    "Pengurus_IOM" : "/iom/document/",
-                    "Guest" : "/guest/",
-                    "Pewawancara": "/interviewer/interview/"
-                };
-                const callbackUrl : string = roleBasedCallbackUrls[userrole];
-
-                router.push(callbackUrl);
-            }
-        }
-    }
-
     useEffect(() => {
-        redirect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session])
+        if (!session?.user?.id || !session?.user?.role) return;
+        const roleBasedCallbackUrls: { [key: string]: string } = {
+            Mahasiswa: "/student/profile",
+            Admin: "/admin/account/",
+            Pengurus_IOM: "/iom/document/",
+            Guest: "/guest/",
+            Pewawancara: "/interviewer/interview/",
+            OrangTuaAsuh: "/guest/",
+        };
+        const callbackUrl = roleBasedCallbackUrls[session.user.role as string];
+        if (callbackUrl) router.push(callbackUrl);
+    }, [session, router])
 
     const handleSSOLogin = async () => {
         try {

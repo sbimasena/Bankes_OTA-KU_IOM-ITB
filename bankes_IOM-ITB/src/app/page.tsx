@@ -10,22 +10,24 @@ export default function Home() {
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
-    if (status === "loading") return; // Still loading
+    if (status === "loading") return;
 
     if (session?.user?.id) {
-      setIsRedirecting(true);
       const roleBasedUrls: { [key: string]: string } = {
         Mahasiswa: "/student/profile",
         Admin: "/admin/account",
         Pengurus_IOM: "/iom/document",
         Guest: "/guest",
-        Pewawancara: "/interviewer/interview"
+        Pewawancara: "/interviewer/interview",
+        OrangTuaAsuh: "/guest",
       };
 
       const redirectUrl = roleBasedUrls[session.user.role as string];
       if (redirectUrl) {
+        setIsRedirecting(true);
         router.push(redirectUrl);
       }
+      // If role not in map, don't set isRedirecting — show home content or nothing
     }
   }, [session, status, router]);
 
