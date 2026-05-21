@@ -1144,6 +1144,29 @@ groupProtectedRouter.openapi(proposeStudentRoute, async (c) => {
     const proposal = await prisma.$transaction(async (tx) => {
       const isAutoApprovedByAdmin = isAdminRole(user.type);
 
+      const existingRejectedConnection = await tx.groupConnection.findUnique({
+        where: {
+          mahasiswaId_groupId: {
+            mahasiswaId,
+            groupId,
+          },
+        },
+      });
+
+      if (existingRejectedConnection && existingRejectedConnection.connectionStatus === "rejected") {
+        // Delete the old proposal
+        if (existingRejectedConnection.proposalId) {
+          await tx.groupStudentProposal.delete({
+            where: { id: existingRejectedConnection.proposalId },
+          });
+        }
+        
+        // Delete connection
+        await tx.groupConnection.delete({
+          where: { id: existingRejectedConnection.id },
+        });
+      }
+
       const createdProposal = await tx.groupStudentProposal.create({
         data: {
           groupId,
