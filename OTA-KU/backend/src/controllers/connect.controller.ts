@@ -643,7 +643,7 @@ connectProtectedRouter.openapi(verifyConnectionRejectRoute, async (c) => {
 
   try {
     await prisma.$transaction(async (tx) => {
-      await tx.connection.deleteMany({
+      await tx.connection.updateMany({
         where: {
           mahasiswaId,
           otaId,
@@ -651,11 +651,7 @@ connectProtectedRouter.openapi(verifyConnectionRejectRoute, async (c) => {
           requestTerminateMahasiswa: false,
           requestTerminateOta: false,
         },
-      });
-
-      await tx.mahasiswaProfile.update({
-        where: { userId: mahasiswaId },
-        data: { mahasiswaStatus: "inactive" },
+        data:  { connectionStatus: "rejected" },
       });
     });
 
