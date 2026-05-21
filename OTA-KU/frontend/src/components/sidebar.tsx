@@ -21,62 +21,59 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-const withBaseUrl = (path: string) =>
-  `${import.meta.env.BASE_URL}${path.replace(/^\//, "")}`;
-
 const adminRoutes = [
   {
     id: "verification",
     label: "Verifikasi Akun",
-    icon: withBaseUrl("/icon/Type=shield.svg"),
+    icon: "/icon/Type=shield.svg",
     path: "/verifikasi-akun",
   },
   {
     id: "persetujuan-asuh",
     label: "Persetujuan Asuh",
-    icon: withBaseUrl("/icon/Type=user-round-check.svg"),
+    icon: "/icon/Type=user-round-check.svg",
     path: "/persetujuan-asuh",
   },
   {
     id: "pemasangan-bota",
     label: "Pemasangan BOTA",
-    icon: withBaseUrl("/icon/Type=handshake.svg"),
+    icon: "/icon/Type=handshake.svg",
     path: "/pemasangan-bota",
   },
   {
     id: "connection",
     label: "Data Hubungan Asuh",
-    icon: withBaseUrl("/icon/Type=connection.svg"),
+    icon: "/icon/Type=connection.svg",
     path: "/data-hubungan-asuh",
   },
   {
     id: "daftar-transfer-mahasiswa",
     label: "Daftar Transfer Mahasiswa",
-    icon: withBaseUrl("/icon/Type=transaction.svg"),
+    icon: "/icon/Type=transaction.svg",
     path: "/daftar-transfer-mahasiswa",
   },
   {
     id: "transaction",
     label: "Daftar Tagihan OTA",
-    icon: withBaseUrl("/icon/Type=receipt.svg"),
+    icon: "/icon/Type=receipt.svg",
     path: "/daftar-tagihan",
   },
   {
     id: "manajemen-grup",
     label: "Manajemen Grup",
-    icon: withBaseUrl("/icon/Type=people.svg"),
+    icon: "/icon/Type=people.svg",
     path: "/manajemen-grup",
   },
   {
     id: "moderasi-testimoni",
     label: "Moderasi Testimoni",
-    icon: withBaseUrl("/icon/Type=shield.svg"),
+    icon: "/icon/Type=shield.svg",
     path: "/moderasi-testimoni",
   },
   {
     id: "daftar-terminasi",
     label: "Daftar Terminasi",
-    icon: withBaseUrl("/icon/Type=remove-destructive.svg"),
+    icon: "/icon/Type=remove-destructive.svg",
     path: "/daftar-terminasi",
     bgColorClass: " bg-destructive/10",
     textColorClass: "text-destructive",
@@ -172,7 +169,7 @@ const getMenuItems = (role: string, applicationStatus?: string): MenuItem[] => {
       {
         id: "pendaftaran",
         label: "Pendaftaran",
-        icon: withBaseUrl("/icon/Type=form.svg"),
+        icon: "/icon/Type=form.svg",
         path: "/pendaftaran",
       },
     ];
@@ -184,13 +181,13 @@ const getMenuItems = (role: string, applicationStatus?: string): MenuItem[] => {
         {
           id: "ota-saya",
           label: "Orang Tua Asuh Saya",
-          icon: withBaseUrl("/icon/Type=student-list.svg"),
+          icon: "/icon/Type=student-list.svg",
           path: "/orang-tua-asuh-saya",
         },
         {
           id: "testimoni",
           label: "Testimoni Saya",
-          icon: withBaseUrl("/icon/Type=form.svg"),
+          icon: "/icon/Type=form.svg",
           path: "/testimoni",
         },
       ];
@@ -199,31 +196,31 @@ const getMenuItems = (role: string, applicationStatus?: string): MenuItem[] => {
         {
           id: "student-list",
           label: "Cari Mahasiswa",
-          icon: withBaseUrl("/icon/Type=search.svg"),
+          icon: "/icon/Type=search.svg",
           path: "/cari-mahasiswa",
         },
         {
           id: "my-students",
           label: "Mahasiswa Asuh Saya",
-          icon: withBaseUrl("/icon/Type=people.svg"),
+          icon: "/icon/Type=people.svg",
           path: "/mahasiswa-asuh-saya",
         },
         {
           id: "grup-asuh",
           label: "Grup Asuh",
-          icon: withBaseUrl("/icon/Type=connection.svg"),
+          icon: "/icon/Type=connection.svg", // Menggunakan icon connection atau icon lain
           path: "/groups",
         },
         {
           id: "status-transaksi",
           label: "Status Transaksi",
-          icon: withBaseUrl("/icon/Type=transaction-status.svg"),
+          icon: "/icon/Type=transaction-status.svg",
           path: "/status-transaksi",
         },
         {
           id: "terminasi-mahasiswa",
           label: "Berhenti Mengasuh",
-          icon: withBaseUrl("/icon/Type=remove-destructive.svg"),
+          icon: "/icon/Type=remove-destructive.svg",
           path: "/daftar/terminasi-mahasiswa",
           bgColorClass: " bg-destructive/10",
           textColorClass: "text-destructive",
@@ -234,7 +231,7 @@ const getMenuItems = (role: string, applicationStatus?: string): MenuItem[] => {
         {
           id: "manejemen-akun",
           label: "Manajemen Akun",
-          icon: withBaseUrl("/icon/Type=people.svg"),
+          icon: "/icon/Type=people.svg",
           path: "/manajemen-akun",
         },
         ...adminRoutes,
