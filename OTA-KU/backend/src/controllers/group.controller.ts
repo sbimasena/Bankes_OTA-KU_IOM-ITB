@@ -33,6 +33,7 @@ import {
   validateGroupTerminateRoute,
   verifyGroupConnectionAccRoute,
   verifyGroupConnectionRejectRoute,
+  deleteGroupConnectionRoute,
   verifyGroupMemberPaymentRoute,
   voteProposalRoute,
 } from "../routes/group.route.js";
@@ -557,7 +558,14 @@ groupProtectedRouter.openapi(getGroupDetailRoute, async (c) => {
       where: { id: groupId },
       include: {
         Members: {
-          include: { Ota: { select: { name: true } } },
+          include: { 
+            Ota: { 
+              select: { 
+                name: true,
+                User: { select: { phoneNumber: true } }
+              } 
+            } 
+          },
           orderBy: { joinedAt: "asc" },
         },
         Invitations: {
@@ -622,6 +630,7 @@ groupProtectedRouter.openapi(getGroupDetailRoute, async (c) => {
           members: group.Members.map((m) => ({
             otaId: m.otaId,
             name: m.Ota.name ?? "",
+            phoneNumber: m.Ota.User.phoneNumber ?? null,
             pledgeAmount: m.pledgeAmount,
             joinedAt: m.joinedAt.toISOString(),
           })),
@@ -1135,6 +1144,29 @@ groupProtectedRouter.openapi(proposeStudentRoute, async (c) => {
     const proposal = await prisma.$transaction(async (tx) => {
       const isAutoApprovedByAdmin = isAdminRole(user.type);
 
+      const existingRejectedConnection = await tx.groupConnection.findUnique({
+        where: {
+          mahasiswaId_groupId: {
+            mahasiswaId,
+            groupId,
+          },
+        },
+      });
+
+      if (existingRejectedConnection && existingRejectedConnection.connectionStatus === "rejected") {
+        // Delete the old proposal
+        if (existingRejectedConnection.proposalId) {
+          await tx.groupStudentProposal.delete({
+            where: { id: existingRejectedConnection.proposalId },
+          });
+        }
+        
+        // Delete connection
+        await tx.groupConnection.delete({
+          where: { id: existingRejectedConnection.id },
+        });
+      }
+
       const createdProposal = await tx.groupStudentProposal.create({
         data: {
           groupId,
@@ -1642,6 +1674,71 @@ groupProtectedRouter.openapi(verifyGroupConnectionRejectRoute, async (c) => {
     });
 
     return c.json({ success: true, message: "Group connection berhasil ditolak" }, 200);
+  } catch (error) {
+    console.error(error);
+    return c.json({ success: false, message: "Internal server error", error }, 500);
+  }
+});
+
+// DELETE /group/connect/:id
+groupProtectedRouter.openapi(deleteGroupConnectionRoute, async (c) => {
+  const user = c.var.user;
+
+  if (!isAdminRole(user.type)) {
+    return c.json(
+      { success: false, message: "Unauthorized", error: { code: "UNAUTHORIZED" } },
+      403,
+    );
+  }
+
+  const { id } = c.req.param();
+
+  try {
+    const groupConn = await prisma.groupConnection.findUnique({
+      where: { id },
+      include: {
+        Mahasiswa: { select: { name: true } },
+        Group: { select: { name: true } },
+      },
+    });
+
+    if (!groupConn) {
+      return c.json({ success: false, message: "Group connection tidak ditemukan", error: {} }, 404);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (groupConn.proposalId) {
+        await tx.groupStudentProposal.delete({
+          where: { id: groupConn.proposalId }
+        });
+      }
+
+      await tx.groupMemberContribution.deleteMany({
+        where: { groupConnectionId: id },
+      });
+
+      await tx.groupTransaction.deleteMany({
+        where: { 
+          groupConnectionId: id,
+          transactionStatus: "unpaid"
+        },
+      });
+
+      await tx.groupConnection.delete({ where: { id } });
+
+      await tx.mahasiswaProfile.update({
+        where: { userId: groupConn.mahasiswaId },
+        data: { mahasiswaStatus: "inactive" },
+      });
+    });
+
+    return c.json(
+      {
+        success: true,
+        message: `Hubungan grup ${groupConn.Group.name} dengan mahasiswa ${groupConn.Mahasiswa.name} berhasil dihapus`,
+      },
+      200,
+    );
   } catch (error) {
     console.error(error);
     return c.json({ success: false, message: "Internal server error", error }, 500);

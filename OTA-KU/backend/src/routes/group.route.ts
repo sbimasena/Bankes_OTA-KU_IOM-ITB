@@ -561,6 +561,41 @@ export const verifyGroupConnectionRejectRoute = createRoute({
   },
 });
 
+export const deleteGroupConnectionRoute = createRoute({
+  operationId: "deleteGroupConnection",
+  tags: ["Group"],
+  method: "delete",
+  path: "/connect/:id",
+  description: "Admin menghapus group connection (memutus hubungan grup dengan mahasiswa, tidak menghapus grup).",
+  request: {
+    params: z.object({
+      id: z.string().uuid().openapi({
+        description: "ID GroupConnection yang akan dihapus",
+        example: "123e4567-e89b-12d3-a456-426614174000",
+      }),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Group connection berhasil dihapus",
+      content: { "application/json": { schema: GroupSuccessResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Group connection tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
 export const connectGroupByAdminRoute = createRoute({
   operationId: "connectGroupByAdmin",
   tags: ["Group"],

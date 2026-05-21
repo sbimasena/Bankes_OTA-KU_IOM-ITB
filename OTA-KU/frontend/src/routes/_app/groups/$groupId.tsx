@@ -401,7 +401,8 @@ function GroupDetailPage() {
                 {group.members.map((member) => (
                   <li key={member.otaId} className="flex items-center justify-between border-b pb-2 last:border-0">
                     <div>
-                      <span className="font-medium text-sm">{member.name}</span>
+                      <p className="font-medium text-sm">{member.name}</p>
+                      <p className="text-xs text-muted-foreground">{member.phoneNumber}</p>
                       <p className="text-xs text-muted-foreground">
                         Bergabung: {new Date(member.joinedAt).toLocaleDateString("id-ID")}
                       </p>
