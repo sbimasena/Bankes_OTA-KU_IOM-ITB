@@ -1684,19 +1684,28 @@ groupProtectedRouter.openapi(deleteGroupConnectionRoute, async (c) => {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.groupConnection.delete({ where: { id } });
-
-      await tx.mahasiswaProfile.update({
-        where: { userId: groupConn.mahasiswaId },
-        data: { mahasiswaStatus: "inactive" },
-      });
+      if (groupConn.proposalId) {
+        await tx.groupStudentProposal.delete({
+          where: { id: groupConn.proposalId }
+        });
+      }
 
       await tx.groupMemberContribution.deleteMany({
         where: { groupConnectionId: id },
       });
 
       await tx.groupTransaction.deleteMany({
-        where: { groupConnectionId: id },
+        where: { 
+          groupConnectionId: id,
+          transactionStatus: "unpaid"
+        },
+      });
+
+      await tx.groupConnection.delete({ where: { id } });
+
+      await tx.mahasiswaProfile.update({
+        where: { userId: groupConn.mahasiswaId },
+        data: { mahasiswaStatus: "inactive" },
       });
     });
 
