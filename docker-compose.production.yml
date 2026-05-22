@@ -61,9 +61,10 @@ services:
       - "traefik.docker.network=coolify"
       - "traefik.http.routers.minio-static.rule=Host(`bankes.iom-itb.id`) && PathPrefix(`/minio-static`)"
       - "traefik.http.routers.minio-static.entrypoints=websecure"
-      - "traefik.http.routers.minio-static.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.minio-static.tls=true"
+      - "traefik.http.routers.minio-static.priority=100"
       - "traefik.http.middlewares.minio-stripprefix.stripprefix.prefixes=/minio-static"
-      - "traefik.http.routers.minio-static.middlewares=minio-stripprefix"
+      - "traefik.http.routers.minio-static.middlewares=minio-stripprefix@docker"
       - "traefik.http.services.minio-static.loadbalancer.server.port=9000"
 
   # ── MinIO bucket init ────────────────────────────────────────────────────────
