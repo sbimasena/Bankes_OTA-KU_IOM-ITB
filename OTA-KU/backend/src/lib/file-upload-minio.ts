@@ -13,7 +13,7 @@ export const minioClient = new Client({
   secretKey: env.MINIO_SECRET_KEY,
 });
 
-const BUCKET_NAME = "documents-bucket";
+const BUCKET_NAME = env.MINIO_BUCKET_NAME;
 
 /**
  * Uploads a File object to MinIO.

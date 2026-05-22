@@ -25,6 +25,7 @@ const EnvSchema = z.object({
     .transform((v) => v === "true"),
   MINIO_ACCESS_KEY: z.string().default("minioadmin"),
   MINIO_SECRET_KEY: z.string().default("minioadmin"),
+  MINIO_BUCKET_NAME: z.string().default("documents-bucket"),
   MINIO_PUBLIC_HOST: z.string().default("localhost"),
   MINIO_PUBLIC_PORT: z.coerce.number().default(9000),
   MINIO_PUBLIC_URL: z.string().url().optional(),
