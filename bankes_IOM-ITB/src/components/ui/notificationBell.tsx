@@ -11,7 +11,11 @@ interface IOM_Notification {
   created_at: Date;
 }
 
-export default function NotificationBell() {
+interface NotificationBellProps {
+  parentStateKey?: string;
+}
+
+export default function NotificationBell({ parentStateKey }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<IOM_Notification[]>([]);
   const [open, setOpen] = useState(false);
   const hasUnread = notifications.some((n) => !n.has_read);
@@ -29,6 +33,12 @@ export default function NotificationBell() {
     }
     fetchNotifications();
   }, []);
+
+  // Close dropdown when parent sidebar state changes (prevents leftover/stuck UI)
+  useEffect(() => {
+    if (!parentStateKey) return;
+    setOpen(false);
+  }, [parentStateKey]);
 
   return (
     <div className="relative">

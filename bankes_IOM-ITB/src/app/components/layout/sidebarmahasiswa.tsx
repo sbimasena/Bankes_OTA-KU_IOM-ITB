@@ -105,9 +105,9 @@ function SidebarMahasiswa({ activeTab }: SidebarMahasiswaProps) {
                   <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-gray-800 text-white px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                     IOM ITB
                   </div>
-                  <div className="absolute left-1/2 transform -translate-x-1/2 top-16 bg-white border rounded-full p-1 shadow-md z-10">
-                    <NotificationBell />
-                  </div>
+                        <div className="absolute left-1/2 transform -translate-x-1/2 top-16 bg-white border rounded-full p-1 shadow-md z-10">
+                          <NotificationBell parentStateKey={`${isCollapsed}-${isMobileOpen}`} />
+                        </div>
                 </>
               )}
             </div>
@@ -118,7 +118,7 @@ function SidebarMahasiswa({ activeTab }: SidebarMahasiswaProps) {
                   <p className="text-sm text-gray-600">Mahasiswa</p>
                 </div>
                 <div className="flex-shrink-0">
-                  <NotificationBell />
+                  <NotificationBell parentStateKey={`${isCollapsed}-${isMobileOpen}`} />
                 </div>
               </div>
             )}
