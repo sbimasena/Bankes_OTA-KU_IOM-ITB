@@ -120,11 +120,11 @@ export default function Upload() {
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Toaster position="bottom-right" richColors />
-      <div className="w-1/4 m-8 flex-shrink-0">
+      <div className="hidden md:block w-64 shrink-0">
         <SidebarMahasiswa activeTab="scholarship" />
       </div>
 
-      <div className="my-8 mr-8 w-full flex-grow">
+      <div className="flex-1 min-w-0 my-4 mx-4 pt-16 md:pt-0 md:my-8 md:mr-8">
         <h1 className="text-3xl font-bold text-slate-800 mb-8">Beasiswa</h1>
 
         <div className="w-full"> {/* Replaces the Card component */}

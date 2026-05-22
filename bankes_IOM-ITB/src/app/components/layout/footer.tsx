@@ -4,18 +4,18 @@ import Image from 'next/image';
 
 const Navbar: React.FC = () => {
 	return (
-		<div className="z-50 shadow-2xl flex justify-between bg-lightmain p-4 px-40">
+		<div className="z-50 shadow-2xl flex flex-col sm:flex-row sm:justify-between bg-lightmain p-6 sm:px-16 md:px-40 gap-6">
 			<div className='flex flex-col space-y-2'>
 				<div className="flex items-center space-x-4">
 						<div>
-							<Image src="/logoIOM.png" alt="IOM logo"  width={46} height={0}/>
+							<Image src="/logoIOM.png" alt="IOM logo" width={46} height={0}/>
 						</div>
 						<div>
-							<p className="text-[18px] font-bold text-main leading-5">Ikatan Orang Tua Mahasiswa</p>	
+							<p className="text-[18px] font-bold text-main leading-5">Ikatan Orang Tua Mahasiswa</p>
 							<p className='text-main'>Institut Teknologi Bandung</p>
 						</div>
 				</div>
-				<div className=' text-footertext text-sm'>
+				<div className='text-footertext text-sm'>
 				Kota Bandung, Coblong Sekretariat IOM-ITB <br/> Gedung Kampus Center Timur ITB Lantai 2 <br/> Jl. Ganesha No. 10 Kec. Coblong 40132.
 				</div>
 			</div>

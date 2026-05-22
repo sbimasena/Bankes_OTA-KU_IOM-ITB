@@ -352,12 +352,12 @@ export default function Scoring() {
         <Toaster position="bottom-right" richColors />
         
         {/* Sidebar */}
-        <div className="w-1/4 m-8">
+        <div className="hidden md:block w-64 shrink-0">
           <SidebarIOM activeTab="scoring" />
         </div>
-        
+
         {/* Main Content */}
-        <div className="my-8 mr-8 w-full">
+        <div className="flex-1 min-w-0 my-4 mx-4 pt-16 md:pt-0 md:my-8 md:mr-8">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-2">
