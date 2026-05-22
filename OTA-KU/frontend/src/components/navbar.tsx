@@ -184,7 +184,7 @@ export default function NavBar() {
         className="font-anderson sticky top-0 right-0 left-0 z-[60] flex w-full flex-col bg-white shadow-md"
         id="navbar"
       >
-        <div className="flex h-[70px] flex-row items-center justify-between px-7 lg:h-24 xl:px-14">
+        <div className="flex h-[70px] flex-row items-center justify-between px-4 sm:px-7 lg:h-24 xl:px-14">
           <div className="relative flex items-center gap-6">
             <button
               onClick={toggleSidebar}
@@ -220,17 +220,17 @@ export default function NavBar() {
             </Link>
           </div>
 
-          <div className="flex items-center space-x-8">
+          <div className="flex items-center gap-2 sm:gap-8">
             {!isLoggedIn && (
               <Link className="w-fit" to="/auth/login">
-                <Button size="lg" variant={"outline"} className="w-[90px]">
+                <Button size="sm" variant={"outline"} className="w-[70px] sm:w-[90px] sm:size-lg">
                   Masuk
                 </Button>
               </Link>
             )}
             {!isLoggedIn && (
               <Link className="w-fit" to="/auth/register">
-                <Button size="lg" className="w-[90px]">
+                <Button size="sm" className="w-[70px] sm:w-[90px] sm:size-lg">
                   Daftar
                 </Button>
               </Link>

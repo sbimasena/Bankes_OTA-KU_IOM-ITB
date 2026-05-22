@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import SidebarIOM from "@/app/components/layout/sidebariom";
@@ -103,7 +103,7 @@ export default function ReportPage() {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50">
-      <div className="hidden md:block w-64 shrink-0">
+      <div className="w-0 md:w-64 shrink-0">
         <SidebarIOM activeTab="report" />
       </div>
 

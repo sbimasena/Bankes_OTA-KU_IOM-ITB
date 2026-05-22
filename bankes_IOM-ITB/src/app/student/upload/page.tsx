@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import SidebarMahasiswa from "@/app/components/layout/sidebarmahasiswa";
 import { useState, useEffect } from "react";
@@ -143,7 +143,7 @@ export default function Upload() {
   return (
     <div className="flex min-h-screen bg-gray-100"> {/* Main page background */}
       <Toaster position="bottom-right" richColors />
-      <div className="hidden md:block w-64 shrink-0">
+      <div className="w-0 md:w-64 shrink-0">
         <SidebarMahasiswa activeTab="upload" />
       </div>
 

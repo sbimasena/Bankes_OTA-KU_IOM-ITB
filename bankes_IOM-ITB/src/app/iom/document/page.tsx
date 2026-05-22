@@ -242,7 +242,7 @@ export default function Upload() {
       <Toaster position="bottom-right" richColors />
 
       {/* Sidebar */}
-      <div className="hidden md:block w-80 p-6 shrink-0">
+      <div className="w-0 md:w-80 md:p-6 shrink-0">
         <SidebarIOM activeTab="document" />
       </div>
 

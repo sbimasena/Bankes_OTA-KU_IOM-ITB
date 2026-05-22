@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 // Removed: import { Card } from "@/components/ui/card";
 import SidebarMahasiswa from "@/app/components/layout/sidebarmahasiswa";
@@ -120,7 +120,7 @@ export default function Upload() {
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Toaster position="bottom-right" richColors />
-      <div className="hidden md:block w-64 shrink-0">
+      <div className="w-0 md:w-64 shrink-0">
         <SidebarMahasiswa activeTab="scholarship" />
       </div>
 

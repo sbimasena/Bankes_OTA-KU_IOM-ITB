@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
@@ -16,7 +16,7 @@ export default function InterviewPage() {
   return (
     <div className="flex min-h-screen bg-gray-100">
       <Toaster position="bottom-right" richColors />
-      <div className="hidden md:block w-64 shrink-0">
+      <div className="w-0 md:w-64 shrink-0">
         <SidebarIOM activeTab="interview" />
       </div>
 

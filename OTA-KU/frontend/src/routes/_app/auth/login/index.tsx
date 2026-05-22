@@ -86,21 +86,21 @@ function RouteComponent() {
   }
 
   return (
-    <main className="flex min-h-[calc(100vh-70px)] flex-col p-2 px-6 py-16 md:px-12 lg:min-h-[calc(100vh-96px)]">
+    <main className="flex min-h-[calc(100vh-70px)] flex-col px-4 py-10 sm:px-6 sm:py-16 md:px-12 lg:min-h-[calc(100vh-96px)]">
       <Metadata title="Login | BOTA" />
-      <div className="flex flex-col items-center gap-9">
+      <div className="flex flex-col items-center gap-6 sm:gap-9">
         <img
           src={`${import.meta.env.BASE_URL}icon/logo-basic.png`}
           alt="logo"
-          className="mx-auto h-[81px] w-[123px]"
+          className="mx-auto h-[65px] w-[100px] sm:h-[81px] sm:w-[123px]"
         />
-        <h1 className="text-primary text-center text-3xl font-bold md:text-[50px]">
+        <h1 className="text-primary text-center text-2xl font-bold sm:text-3xl md:text-[40px]">
           Selamat Datang Kembali!
         </h1>
-        <h2 className="text-primary text-center text-2xl md:text-[26px]">
+        <h2 className="text-primary text-center text-lg sm:text-2xl md:text-[26px]">
           Masuk ke akun Anda
         </h2>
-        <section className="md:w-[400px]">
+        <section className="w-full md:w-[400px]">
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}

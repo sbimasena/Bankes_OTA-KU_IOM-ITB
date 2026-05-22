@@ -43,7 +43,7 @@ export default function Home() {
   // Show home page content only for non-logged-in users
   if (!session) {
     return (
-      <div className="text-var bg-cover bg-center" style={{ backgroundImage: "url('/bg.png')" }}>
+      <div className="text-var bg-cover bg-center min-h-screen overflow-x-hidden" style={{ backgroundImage: "url('/bg.png')" }}>
         <div className="w-full sm:w-4/5 md:w-3/5 px-6 sm:px-10 md:pl-[10%] py-16 sm:py-[10%] min-h-screen">
           <h1 className="text-xl sm:text-2xl">Selamat Datang di Sistem Seleksi Bantuan Kesejahteraan Mahasiswa</h1>
           <h2 className="mb-8 mt-2 text-sm sm:text-base">Kami hadir untuk membantu mahasiswa ITB yang membutuhkan dukungan finansial dalam menjalani pendidikan. Daftarkan diri Anda, lengkapi persyaratan, dan ikuti proses seleksi. Semoga bantuan ini dapat mendukung perjalanan akademik Anda!</h2>

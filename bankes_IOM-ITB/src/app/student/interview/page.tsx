@@ -227,7 +227,7 @@ export default function StudentInterviewPage() {
               </div>
 
               {filteredSlots.length === 0 ? (
-                <Card className="p-8 w-full text-center">
+                <Card className="p-4 sm:p-6 md:p-8 w-full text-center">
                   <p className="text-gray-500">Tidak ada jadwal wawancara yang tersedia.</p>
                 </Card>
               ) : (
@@ -307,7 +307,7 @@ export default function StudentInterviewPage() {
             
             <TabsContent value="my-bookings">
               {myBookings.length === 0 ? (
-                <Card className="p-8 w-full text-center">
+                <Card className="p-4 sm:p-6 md:p-8 w-full text-center">
                   <p className="text-gray-500">Anda belum memiliki jadwal wawancara.</p>
                   <Button 
                     className="mt-4 bg-var hover:bg-var/90"
@@ -372,7 +372,7 @@ export default function StudentInterviewPage() {
   return (
     <div className="flex min-h-screen bg-gray-100">
       <Toaster position="bottom-right" richColors />
-      <div className="hidden md:block w-64 shrink-0">
+      <div className="w-0 md:w-64 shrink-0">
         <SidebarMahasiswa activeTab="interview" />
       </div>
 
@@ -404,7 +404,7 @@ export default function StudentInterviewPage() {
           }
         </div>
         {!canInterview &&
-          <Card className="p-8 w-full">
+          <Card className="p-4 sm:p-6 md:p-8 w-full">
             <p>{errorMessage}</p>
           </Card>
         }

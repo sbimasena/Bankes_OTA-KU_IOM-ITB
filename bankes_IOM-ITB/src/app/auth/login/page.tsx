@@ -41,9 +41,9 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-cover bg-center" style={{ backgroundImage: "url('/bg.png')" }}>
+        <div className="flex items-center justify-center min-h-screen bg-cover bg-center px-4" style={{ backgroundImage: "url('/bg.png')" }}>
             <Toaster />
-            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md my-[5%]">
+            <div className="bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-md my-[5%]">
                 <h1 className="text-2xl font-bold mb-2 text-center text-var">
                     Masuk ke Akun Anda
                 </h1>
