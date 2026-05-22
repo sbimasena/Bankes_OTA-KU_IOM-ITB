@@ -105,7 +105,7 @@ export default function Account() {
                   </div>
                   <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Program Studi</h3>
                 </div>
-                <p className="text-lg font-medium text-gray-800">{prodi}</p>
+                <p className="text-lg font-medium text-gray-800">{prodi && prodi.replace(/_/g, " ")}</p>
               </div>
 
               <div className="bg-gray-50 rounded-xl p-6 hover:bg-gray-100 transition-colors">
@@ -117,7 +117,7 @@ export default function Account() {
                   </div>
                   <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Fakultas</h3>
                 </div>
-                <p className="text-lg font-medium text-gray-800">{fakultas}</p>
+                <p className="text-lg font-medium text-gray-800">{fakultas && fakultas.replace(/_/g, " ")}</p>
               </div>
             </div>
           </div>
