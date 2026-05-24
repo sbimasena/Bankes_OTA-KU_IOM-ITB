@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { Calendar, ChartColumn, File, LogOut, BookText, Star, Newspaper, Menu, X } from "lucide-react"
+import { Calendar, ChartColumn, File, LogOut, BookText, Star, Newspaper, Menu, X, Home } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { signOut, useSession } from "next-auth/react";
@@ -30,6 +30,12 @@ function SidebarIOM({ activeTab }: SidebarIOMProps) {
 
 
   const navItems: NavItem[] = [
+    {
+      id: "home",
+      label: "Home",
+      link: "/iom/home",
+      icon: <Home className="h-5 w-5" />,
+    },
     {
       id: "document",
       label: "Berkas Mahasiswa",
