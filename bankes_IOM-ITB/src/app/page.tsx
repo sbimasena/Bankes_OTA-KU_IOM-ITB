@@ -13,19 +13,28 @@ export default function Home() {
     if (status === "loading") return;
 
     if (session?.user?.id) {
+      setIsRedirecting(true);
+      const userRole = session.user.role as string;
+      
       const roleBasedUrls: { [key: string]: string } = {
         Mahasiswa: "/student/profile",
-        Admin: "/admin/account",
-        Pengurus_IOM: "/iom/document",
+        Admin: "/admin/dashboard",
+        Pengurus_IOM: "/iom/home",
         Guest: "/guest",
         Pewawancara: "/interviewer/interview",
         OrangTuaAsuh: "/guest",
+        Bankes: "/admin/dashboard"
       };
 
-      const redirectUrl = roleBasedUrls[session.user.role as string];
+      const redirectUrl = roleBasedUrls[userRole];
+      console.log("Redirecting user with role:", userRole, "to:", redirectUrl);
+      
       if (redirectUrl) {
         setIsRedirecting(true);
         router.push(redirectUrl);
+      } else {
+        // Fallback if role not found
+        router.push("/guest");
       }
       // If role not in map, don't set isRedirecting — show home content or nothing
     }

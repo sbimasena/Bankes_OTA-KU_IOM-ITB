@@ -1,8 +1,8 @@
 import { NextAuthOptions, Account, Profile } from "next-auth";
 import KeycloakProvider from "next-auth/providers/keycloak";
 // import AzureADProvider from "next-auth/providers/azure-ad";
-// import CredentialsProvider from "next-auth/providers/credentials";
-// import bcrypt from "bcryptjs";
+import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 import { JWT } from "next-auth/jwt";
 import { Session } from "next-auth";
 import { prisma } from '@/lib/prisma';
