@@ -61,12 +61,12 @@ export default function LoginPage() {
                 const userrole : string = user.role;
                 const roleBasedCallbackUrls : { [key: string] : string }  = {
                     Mahasiswa : "/student/profile",
-                    "Admin" : "/admin/account",
+                    "Admin" : "/admin/dashboard",
                     "Pengurus_IOM" : "/iom/home",
                     "Guest" : "/guest",
                     "Pewawancara": "/interviewer/interview",
                     "OrangTuaAsuh": "/guest",
-                    "Bankes": "/admin/account"
+                    "Bankes": "/admin/dashboard"
                 };
                 const callbackUrl : string = roleBasedCallbackUrls[userrole];
 

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { User, Calendar, LogOut, UserRoundPen, Menu, X } from "lucide-react"
+import { User, Calendar, LogOut, UserRoundPen, Menu, X, BarChart3 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { signOut, useSession } from "next-auth/react";
@@ -29,6 +29,12 @@ function SidebarAdmin({ activeTab }: SidebarAdminProps) {
 
 
   const navItems: NavItem[] = [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      link: "/admin/dashboard",
+      icon: <BarChart3 className="h-5 w-5" />,
+    },
     {
       id: "account", 
       label: "Manajemen Akun",
