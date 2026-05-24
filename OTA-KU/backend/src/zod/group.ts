@@ -168,6 +168,7 @@ export const GroupDetailResponse = z.object({
       z.object({
         otaId: z.string().uuid(),
         name: z.string(),
+        phoneNumber: z.string(),
         pledgeAmount: z.number(),
         joinedAt: z.string().datetime(),
       }),
@@ -191,6 +192,7 @@ export const GroupDetailResponse = z.object({
     ),
     activeConnectionCount: z.number(),
     totalPledge: z.number(),
+    autoMatchConsent: z.boolean(),
   }),
 });
 

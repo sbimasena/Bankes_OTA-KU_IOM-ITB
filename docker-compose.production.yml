@@ -55,6 +55,17 @@ services:
     restart: unless-stopped
     networks:
       - iom-ota-network
+      - coolify
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.routers.minio-static.rule=Host(`bankes.iom-itb.id`) && PathPrefix(`/minio-static`)"
+      - "traefik.http.routers.minio-static.entrypoints=websecure"
+      - "traefik.http.routers.minio-static.tls=true"
+      - "traefik.http.routers.minio-static.priority=100"
+      - "traefik.http.middlewares.minio-stripprefix.stripprefix.prefixes=/minio-static"
+      - "traefik.http.routers.minio-static.middlewares=minio-stripprefix@docker"
+      - "traefik.http.services.minio-static.loadbalancer.server.port=9000"
 
   # ── MinIO bucket init ────────────────────────────────────────────────────────
   minio-init:
@@ -76,23 +87,12 @@ services:
 
   # ── Schema migration (runs once, no test seed) ───────────────────────────────
   migrate:
-    image: node:22-alpine
+    build:
+      context: ./prisma
+      dockerfile: Dockerfile.migrate
     container_name: iom-ota-migrate-prod
-    working_dir: /workspace
-    volumes:
-      - .:/workspace
-      - migrate-node-modules:/workspace/prisma/node_modules
     environment:
       DATABASE_URL: ${DATABASE_URL}
-    command: >
-      sh -c "
-        cd /workspace/prisma &&
-        npm install --quiet &&
-        npx prisma generate &&
-        npx prisma db execute --url $$DATABASE_URL --file ./scripts/prepush-testimonial-backfill.sql &&
-        npx prisma db push &&
-        echo 'Schema ready'
-      "
     depends_on:
       postgres:
         condition: service_healthy
@@ -126,6 +126,12 @@ services:
       AZURE_AD_CLIENT_ID: ${AZURE_AD_CLIENT_ID:-}
       AZURE_AD_CLIENT_SECRET: ${AZURE_AD_CLIENT_SECRET:-}
       AZURE_AD_TENANT_ID: ${AZURE_AD_TENANT_ID:-}
+      KEYCLOAK_CLIENT_ID: ${BANKES_KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${BANKES_KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER_URL}
+      REGISTER_API_KEY: ${REGISTER_API_KEY}
+      SSO_API_URL: ${SSO_API_URL}
+      NEXT_PUBLIC_API_URL: ${NEXTAUTH_URL}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       ADMIN_NAME: ${ADMIN_NAME:-Administrator}
@@ -167,8 +173,10 @@ services:
       MINIO_USE_SSL: "false"
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       MINIO_PUBLIC_HOST: ${SERVER_IP}
       MINIO_PUBLIC_PORT: ${MINIO_API_PORT:-19000}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-}
       EMAIL: ${EMAIL}
       EMAIL_FROM: ${EMAIL_FROM}
       EMAIL_PASSWORD: ${EMAIL_PASSWORD}
@@ -183,6 +191,14 @@ services:
       MIDTRANS_IS_PRODUCTION: ${MIDTRANS_IS_PRODUCTION:-false}
       WHATSAPP_API_URL: ${WHATSAPP_API_URL:-}
       WHATSAPP_API_KEY: ${WHATSAPP_API_KEY:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ISSUER_URL: ${KEYCLOAK_ISSUER_URL}
+      KEYCLOAK_JWKS_URI: ${KEYCLOAK_JWKS_URI}
+      KEYCLOAK_REDIRECT_URI: ${KEYCLOAK_REDIRECT_URI}
+      SSO_API_URL: ${SSO_API_URL}
+      REGISTER_API_KEY: ${REGISTER_API_KEY}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -202,6 +218,8 @@ services:
         VITE_AZURE_CLIENT_ID: ${AZURE_CLIENT_ID:-placeholder}
         VITE_APP_URL: ${OTA_FRONTEND_URL}
         VITE_VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+        VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID}
+        VITE_KEYCLOAK_REDIRECT_URI: ${VITE_KEYCLOAK_REDIRECT_URI}
     container_name: iom-ota-frontend-prod
     ports:
       - "${OTA_FRONTEND_PORT:-15173}:3000"
@@ -215,9 +233,10 @@ services:
 volumes:
   postgres-data:
   minio-data:
-  migrate-node-modules:
 
 # ── Networks ──────────────────────────────────────────────────────────────────
 networks:
   iom-ota-network:
     driver: bridge
+  coolify:
+    external: true

@@ -253,4 +253,24 @@ export const groupService = {
       url: `/api/group/${groupId}`,
     });
   },
+
+  getAllGroupConnections: async (params?: {
+    q?: string;
+    page?: number;
+  }): Promise<PaginatedResponse<PendingConnection>> => {
+    const response = await request.request<ApiResponse<PaginatedResponse<PendingConnection>>>({
+      method: "GET",
+      url: "/api/group/connect/list/all",
+      query: params,
+    });
+
+    return response.body ?? { data: [], totalData: 0 };
+  },
+
+  deleteGroupConnection: async (connectionId: string): Promise<ApiResponse<unknown>> => {
+    return request.request<ApiResponse<unknown>>({
+      method: "DELETE",
+      url: `/api/group/connect/${connectionId}`,
+    });
+  },
 };

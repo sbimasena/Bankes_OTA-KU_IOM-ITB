@@ -31,7 +31,7 @@ function RouteComponent() {
         )}
       >
         <img
-          src="/icon/logo-basic.png"
+          src={`${import.meta.env.BASE_URL}icon/logo-basic.png`}
           alt="logo"
           className="mx-auto h-[81px] w-[123px]"
         />
@@ -55,7 +55,7 @@ function RouteComponent() {
               }}
             >
               <img
-                src="/icon/icon-student.svg"
+                src={`${import.meta.env.BASE_URL}icon/icon-student.svg`}
                 alt="icon-mahasiswa"
                 className="h-[46px] w-[46px] md:h-16 md:w-16"
               />
@@ -72,7 +72,7 @@ function RouteComponent() {
               }}
             >
               <img
-                src="/icon/icon-parent.svg"
+                src={`${import.meta.env.BASE_URL}icon/icon-parent.svg`}
                 alt="icon-parent"
                 className="h-[46px] w-[46px] md:h-16 md:w-16"
               />

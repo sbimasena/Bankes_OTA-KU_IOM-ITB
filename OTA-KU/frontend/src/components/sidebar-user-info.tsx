@@ -8,7 +8,7 @@ const SidebarUserInfo = ({
   <div className="flex flex-col gap-2">
     <div className="flex items-center gap-5">
       <img
-        src="/icon/Type=profile-icon.svg"
+        src={`${import.meta.env.BASE_URL}icon/Type=profile-icon.svg`}
         alt="user avatar"
         className="h-8 w-8 rounded-full"
       />

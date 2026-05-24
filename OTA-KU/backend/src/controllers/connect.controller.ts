@@ -651,7 +651,7 @@ connectProtectedRouter.openapi(verifyConnectionRejectRoute, async (c) => {
           requestTerminateMahasiswa: false,
           requestTerminateOta: false,
         },
-        data: { connectionStatus: "rejected" },
+        data:  { connectionStatus: "rejected" },
       });
     });
 

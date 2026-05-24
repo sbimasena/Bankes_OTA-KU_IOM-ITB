@@ -1,4 +1,5 @@
 import { NextAuthOptions, Account, Profile } from "next-auth";
+import KeycloakProvider from "next-auth/providers/keycloak";
 // import AzureADProvider from "next-auth/providers/azure-ad";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
@@ -92,117 +93,102 @@ function getFakultasProdi(email: string) {
   return mapping || { fakultas: "Unknown Faculty", prodi: "Unknown Program" };
 }
 
+/**
+ * Memetakan role Keycloak ke role lokal Bankes
+ * Role di Keycloak: admin, mahasiswa, volunteer-pewawancara, orang-tua-asuh, pengurus-bidang-1, pengurus-bidang-2, sekretariat, bendahara
+ */
+function keycloakRoleToLocal(roles: string[]): string {
+  if (roles.includes("admin"))                  return "Admin";
+  if (roles.includes("mahasiswa"))              return "Mahasiswa";
+  if (roles.includes("volunteer-pewawancara"))  return "Pewawancara";
+  if (roles.includes("orang-tua-asuh"))         return "OrangTuaAsuh";
+  if (roles.includes("pengurus-bidang-1"))      return "Pengurus_IOM";
+  if (roles.includes("pengurus-bidang-2"))      return "Pengurus_IOM";
+  // "sekretariat" dan "bendahara" tidak ada mapping ke Bankes — treat as Guest
+  return "Guest";
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
-    // AzureADProvider({
-    //   clientId: process.env.AZURE_AD_CLIENT_ID!,
-    //   clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-    //   tenantId: process.env.AZURE_AD_TENANT_ID!,
-    //   authorization: {
-    //     params: {
-    //       scope: "openid profile email",
-    //     },
-    //   },
-    // }),
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "text", placeholder: "Enter your email" },
-        password: { label: "Password", type: "password", placeholder: "Enter your password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Invalid credentials");
-        }
-        // Find the user by email
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
-        if (!user) {
-          throw new Error("User not found");
-        }
-        if (!user.password) {
-          throw new Error("No password found");
-        }
-        // Verify the password
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
-        if (!isPasswordValid) {
-          throw new Error("Incorrect password");
-        }
-        // Return the user object (this will be stored in the session)
-        return {
-          id: user.id,
-          role: user.role,
-          email: user.email, // Include email for consistency
-        };
-      },
+    KeycloakProvider({
+      clientId: process.env.KEYCLOAK_CLIENT_ID!,
+      clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
+      issuer: process.env.KEYCLOAK_ISSUER!,
     }),
   ],
   callbacks: {
-    // async signIn({ account, profile }: { account: Account | null; profile?: Profile }) {
-    //   if (profile?.email?.endsWith("@mahasiswa.itb.ac.id")) {
-    //     const isUserExists = await prisma.user.findFirst({
-    //       where: {
-    //         email: profile.email,
-    //       },
-    //     });
-    //     if (!isUserExists && profile.name) {
-    //       const newUser = await prisma.user.create({
-    //         data: {
-    //           name: profile.name,
-    //           email: profile.email,
-    //           password: null,
-    //           role: "Mahasiswa",
-    //         },
-    //       });
-    //       const { fakultas, prodi } = getFakultasProdi(newUser.email);
-    //       await prisma.student.create({
-    //         data: {
-    //           nim: newUser.email.substring(0, 8),
-    //           faculty: fakultas,
-    //           major: prodi,
-    //           student_id: newUser.user_id, // Link the Student to the User
-    //         },
-    //       });
-    //     }
-    //     return true;
-    //   }
-    //   if (account?.provider === "credentials") {
-    //     return true;
-    //   }
-    //   return false;
-    // },
-    async jwt({ token, profile }: { token: JWT; profile?: Profile }) {
-      if (profile) {
-        const user = await prisma.user.findFirst({
-          where: { email: profile.email },
-          select: { id: true, role: true },
+    async jwt({ token, account, profile }) {
+      // `account` dan `profile` hanya ada pada first sign-in
+      if (account && profile) {
+        const ssoId = account.providerAccountId; // Keycloak `sub` UUID
+        token.idToken = account.id_token;
+
+        // Ekstrak roles dari Keycloak access token
+        // Access token berisi realm_access.roles
+        let roles: string[] = [];
+        if (account.access_token) {
+          try {
+            const [, payload] = account.access_token.split(".");
+            const decoded = JSON.parse(Buffer.from(payload, "base64url").toString());
+            roles = decoded?.realm_access?.roles ?? [];
+          } catch {
+            roles = [];
+          }
+        }
+
+        const localRole = keycloakRoleToLocal(roles);
+
+        // Upsert local user — single query: match by ssoId OR email
+        let user = await prisma.user.findFirst({
+          where: { OR: [{ oid: ssoId }, { email: profile.email }] },
         });
 
-        if (user && user.id != null) {
-          token.id = user.id;
-          token.role = user.role;
+        const keycloakName = (profile as Record<string, unknown>).name as string | undefined;
+
+        if (!user) {
+          // Genuinely new user
+          user = await prisma.user.create({
+            data: {
+              oid: ssoId,
+              email: profile.email ?? "",
+              name: keycloakName ?? null,
+              role: localRole as any,
+              provider: "keycloak" as any,
+              verificationStatus: "verified" as any,
+            },
+          });
+        } else if (!user.oid) {
+          // Existing user migrating from non-SSO — attach ssoId
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              oid: ssoId,
+              provider: "keycloak" as any,
+              role: localRole as any,
+              // Only set name from Keycloak if DB has none yet
+              ...(user.name ? {} : { name: keycloakName ?? null }),
+            },
+          });
         }
+        // If user already has ssoId, use DB role as source of truth (managed by admin)
+
+        token.id    = user.id;
+        token.role  = user.role;
+        token.ssoId = ssoId;
+        token.email = profile.email;
+        // DB name (updated via profile form) takes priority; fall back to Keycloak name
+        token.name  = user.name ?? keycloakName ?? null;
       }
 
-      if (!profile && token.email) {
-        const user = await prisma.user.findFirst({
-          where: { email: token.email },
-          select: { id: true, role: true },
-        });
-
-        if (user) {
-          token.id = user.id;
-          token.role = user.role;
-        }
-      }
-    
       return token;
     },
+
     async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        session.user.id    = token.id as string;
+        session.user.role  = token.role as string;
+        session.user.email = token.email as string;
+        session.user.name  = (token.name as string | null) ?? undefined;
       }
       return session;
     },

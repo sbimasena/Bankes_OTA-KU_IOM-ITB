@@ -14,7 +14,6 @@ import { UserRegisRequestSchema } from "@/lib/zod/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -27,13 +26,23 @@ interface RegisterFormProps {
   setIsClicked: (isClicked: boolean) => void;
 }
 
+function getKeycloakLoginUrl(): string {
+  const KEYCLOAK_AUTH_URL =
+    "https://iom-sso.kirisame.jp.net/realms/iom-itb-sso/protocol/openid-connect/auth";
+  const params = new URLSearchParams({
+    client_id: import.meta.env.VITE_KEYCLOAK_CLIENT_ID,
+    redirect_uri: import.meta.env.VITE_KEYCLOAK_REDIRECT_URI,
+    response_type: "code",
+    scope: "openid email profile",
+  });
+  return `${KEYCLOAK_AUTH_URL}?${params.toString()}`;
+}
+
 export default function RegisterForm({
   role,
   setRole,
   setIsClicked,
 }: RegisterFormProps) {
-  const [state, setState] = useState<string | null>(null);
-  const [clientId, setClientId] = useState<string | null>(null);
   const navigate = useNavigate();
   const registerCallbackMutation = useMutation({
     mutationFn: (data: UserRegisterFormValues) =>
@@ -76,21 +85,10 @@ export default function RegisterForm({
     registerCallbackMutation.mutate(values);
   }
 
-  useEffect(() => {
-    const state = crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
-    localStorage.setItem("state", state);
-    setState(state);
-  }, []);
-
-  const azureClientId = import.meta.env.VITE_AZURE_CLIENT_ID;
-  useEffect(() => {
-    setClientId(azureClientId);
-  }, [azureClientId]);
-
   return (
     <section className="flex w-full flex-col items-center justify-center gap-9 py-8 md:px-12">
       <img
-        src="/icon/logo-basic.png"
+        src={`${import.meta.env.BASE_URL}icon/logo-basic.png`}
         alt="logo"
         className="mx-auto h-[81px] w-[123px]"
       />
@@ -209,15 +207,8 @@ export default function RegisterForm({
                   asChild
                   variant={"outline"}
                 >
-                  <a
-                    href={`https://login.microsoftonline.com/db6e1183-4c65-405c-82ce-7cd53fa6e9dc/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}&prompt=select_account`}
-                  >
-                    <img
-                      src="/microsoft.svg"
-                      alt="Microsoft Logo"
-                      className="w-6"
-                    />
-                    Masuk dengan akun ITB
+                  <a href={getKeycloakLoginUrl()}>
+                    Login dengan SSO IOM-ITB
                   </a>
                 </Button>
               </>
@@ -228,3 +219,4 @@ export default function RegisterForm({
     </section>
   );
 }
+

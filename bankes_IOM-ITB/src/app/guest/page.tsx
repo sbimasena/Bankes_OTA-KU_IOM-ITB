@@ -2,11 +2,11 @@ import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="text-var">
-      <div className="w-3/5 ml-[10%] mt-[10%]">
-        <h1 className="text-2xl">Mohon tunggu akun anda untuk diperiksa</h1>
-        <h2 className="mb-8 mt-2">Anda akan mendapat akses ke halaman lainnya setelah akun anda disetujui</h2>
-        <Link href="/" className="py-2 px-5 rounded-full bg-var hover:bg-var/90 text-white">Home</Link>
+    <div className="text-var min-h-screen flex items-center justify-center px-4 py-12 bg-gray-50">
+      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-md md:p-8">
+        <h1 className="text-xl font-bold sm:text-2xl">Mohon tunggu akun anda untuk diperiksa</h1>
+        <h2 className="mb-8 mt-2 text-gray-600 text-sm sm:text-base">Anda akan mendapat akses ke halaman lainnya setelah akun anda disetujui</h2>
+        <Link href="/" className="inline-block py-2 px-5 rounded-full bg-var hover:bg-var/90 text-white text-sm sm:text-base">Home</Link>
       </div>
     </div>
   );

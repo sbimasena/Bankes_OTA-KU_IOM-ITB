@@ -49,14 +49,14 @@ export default function Account() {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <div className="w-1/4 m-8">
+      <div className="w-0 md:w-64 shrink-0">
         <SidebarMahasiswa activeTab="profile"/>
       </div>
 
-      <div className="my-8 mr-8 w-full">
+      <div className="flex-1 min-w-0 my-4 mx-4 pt-16 md:pt-0 md:my-8 md:mr-8">
         <h1 className="text-2xl font-bold mb-6">Profil</h1>
 
-        <Card className="p-8 w-full max-w-2xl">
+        <Card className="p-4 sm:p-6 md:p-8 w-full max-w-2xl">
           <div className="space-y-8">
             {/* Profile Header */}
             <div className="flex items-center space-x-6 pb-6 border-b border-gray-200">
@@ -105,7 +105,7 @@ export default function Account() {
                   </div>
                   <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Program Studi</h3>
                 </div>
-                <p className="text-lg font-medium text-gray-800">{prodi}</p>
+                <p className="text-lg font-medium text-gray-800">{prodi && prodi.replace(/_/g, " ")}</p>
               </div>
 
               <div className="bg-gray-50 rounded-xl p-6 hover:bg-gray-100 transition-colors">
@@ -117,7 +117,7 @@ export default function Account() {
                   </div>
                   <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Fakultas</h3>
                 </div>
-                <p className="text-lg font-medium text-gray-800">{fakultas}</p>
+                <p className="text-lg font-medium text-gray-800">{fakultas && fakultas.replace(/_/g, " ")}</p>
               </div>
             </div>
           </div>

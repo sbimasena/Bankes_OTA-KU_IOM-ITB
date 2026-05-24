@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import SidebarIOM from "@/app/components/layout/sidebariom";
@@ -103,11 +103,11 @@ export default function ReportPage() {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50">
-      <div className="w-1/4 m-8">
+      <div className="w-0 md:w-64 shrink-0">
         <SidebarIOM activeTab="report" />
       </div>
-      
-      <div className="my-8 mr-8 w-full space-y-6">
+
+      <div className="flex-1 min-w-0 my-4 mx-4 pt-16 md:pt-0 md:my-8 md:mr-8 space-y-6">
         {/* Header Section */}
         <div className="flex items-center justify-between">
           <div>

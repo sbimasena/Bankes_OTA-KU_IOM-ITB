@@ -6,7 +6,7 @@ import {
   
 } from "@/utils/_validation";
 
-
+import { createSsoAccount } from "@/lib/sso";
 import { prisma } from "@/lib/prisma";
 
 type Errors = {
@@ -142,11 +142,12 @@ export async function POST(req: Request) {
     const saltRounds = 10; 
     const hashedPassword = await bcrypt.hash(password, saltRounds); 
 
+    // Normalize email to lowercase for consistency
+    const normalizedEmail = email.toLowerCase();
+
     // check the email is already registered or not 
     const isUserExists = await prisma.user.findFirst({
-      where: {
-        email: email
-      }
+      where: { email: normalizedEmail }
     })
 
     if(isUserExists){
@@ -154,27 +155,59 @@ export async function POST(req: Request) {
       return NextResponse.json(errors, { status: 400 });
     }
 
+    // Register ke Keycloak dengan role "mahasiswa" sebagai default saat register
+    // Admin akan update role setelah approve
+    const nameParts = name.trim().split(" ");
+    const firstName = nameParts[0] ?? "";
+    const lastName = nameParts.slice(1).join(" ") || undefined;
+
+    let keycloakUserId: string;
+    try {
+      const ssoResult = await createSsoAccount({
+        email: normalizedEmail,
+        password,
+        role: "mahasiswa", // default role untuk register, admin akan update saat approve
+        firstName,
+        lastName,
+      });
+      keycloakUserId = ssoResult.userId;
+    } catch (ssoError) {
+      console.error("SSO registration failed:", ssoError);
+      return NextResponse.json(
+        { general: [`Gagal mendaftarkan akun SSO: ${(ssoError as Error).message}`] },
+        { status: 500 }
+      );
+    }
+
+    // Simpan user lokal dengan oid dari Keycloak
     const newUser = await prisma.user.create({
-      data:{
-        name: name, 
-        email: email, 
+      data: {
+        name,
+        email: normalizedEmail,
         password: hashedPassword,
-        role: "Guest"
+        role: "Guest",
+        provider: "keycloak",
+        oid: keycloakUserId,
       }
     });
-
-    /**
-     * this is the response that will be sent to the client 
-     * after the user is successfully created
-     */
 
     if (!newUser) {
       errors.general = ["Failed to create user"];
       return NextResponse.json(errors, { status: 400 });
     }
-    else{
-      return NextResponse.json({ success: true, message: "User created successfully" }, { status: 201 });
-    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Akun berhasil dibuat. Silahkan tunggu persetujuan admin sebelum dapat login.",
+      user: {
+        id: newUser.id,
+        email: normalizedEmail,
+        name,
+        role: "Guest",
+        status: "Menunggu persetujuan admin"
+      }
+    }, { status: 201 });
+
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Failed to create user." }, { status: 500 });

@@ -12,7 +12,7 @@ import { SessionContext } from "@/context/session";
 import { useSidebar } from "@/context/sidebar-context";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Bell, BellOff } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -23,8 +23,6 @@ import { Button } from "./ui/button";
 export default function NavBar() {
   const session = useContext(SessionContext);
   const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
-  const navigate = useNavigate();
-
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const isLoggedIn = !!session;
@@ -61,7 +59,10 @@ export default function NavBar() {
         return;
       }
 
-      const registration = await navigator.serviceWorker.register("/sw.js");
+      const registration = await navigator.serviceWorker.register(
+        `${import.meta.env.BASE_URL}sw.js`,
+        { scope: import.meta.env.BASE_URL },
+      );
 
       if (!registration.pushManager) {
         console.error("Push manager unavailable.");
@@ -183,7 +184,7 @@ export default function NavBar() {
         className="font-anderson sticky top-0 right-0 left-0 z-[60] flex w-full flex-col bg-white shadow-md"
         id="navbar"
       >
-        <div className="flex h-[70px] flex-row items-center justify-between px-7 lg:h-24 xl:px-14">
+        <div className="flex h-[70px] flex-row items-center justify-between px-4 sm:px-7 lg:h-24 xl:px-14">
           <div className="relative flex items-center gap-6">
             <button
               onClick={toggleSidebar}
@@ -195,7 +196,7 @@ export default function NavBar() {
               aria-expanded={isSidebarOpen}
             >
               <img
-                src="/icon/Type=list-icon.svg"
+                src={`${import.meta.env.BASE_URL}icon/Type=list-icon.svg`}
                 alt="sidebar-button"
                 className="transform transition-transform duration-200 ease-in-out hover:scale-125"
               />
@@ -204,7 +205,7 @@ export default function NavBar() {
             <Link to="/" className="flex items-center space-x-2">
               <img
                 className="h-9 w-auto object-contain xl:h-10"
-                src="/logo-iom-icon.svg"
+                src={`${import.meta.env.BASE_URL}logo-iom-icon.svg`}
                 alt="Logo"
               />
               {/* Title visible from md (desktop) and up */}
@@ -219,17 +220,17 @@ export default function NavBar() {
             </Link>
           </div>
 
-          <div className="flex items-center space-x-8">
+          <div className="flex items-center gap-2 sm:gap-8">
             {!isLoggedIn && (
               <Link className="w-fit" to="/auth/login">
-                <Button size="lg" variant={"outline"} className="w-[90px]">
+                <Button size="sm" variant={"outline"} className="w-[70px] sm:w-[90px] sm:size-lg">
                   Masuk
                 </Button>
               </Link>
             )}
             {!isLoggedIn && (
               <Link className="w-fit" to="/auth/register">
-                <Button size="lg" className="w-[90px]">
+                <Button size="sm" className="w-[70px] sm:w-[90px] sm:size-lg">
                   Daftar
                 </Button>
               </Link>
@@ -261,7 +262,7 @@ export default function NavBar() {
                       {(session.type === "mahasiswa" || session.type === "ota") ? (
                         <>
                           <img
-                            src="/icon/Type=profile-icon.svg"
+                            src={`${import.meta.env.BASE_URL}icon/Type=profile-icon.svg`}
                             alt="Profile"
                             className="h-6 w-6 transform transition-transform duration-200 ease-in-out hover:scale-125"
                           />
@@ -272,7 +273,7 @@ export default function NavBar() {
                         </>
                       ) : (
                         <img
-                          src="/icon/Type=log-out.svg"
+                          src={`${import.meta.env.BASE_URL}icon/Type=log-out.svg`}
                           alt="Log out"
                           className="h-6 w-6 transform transition-transform duration-200 ease-in-out hover:scale-125"
                         />
@@ -311,16 +312,12 @@ export default function NavBar() {
                     <MenubarItem
                       className="text-destructive hover:cursor-pointer"
                       onClick={async () => {
-                        await api.auth.logout();
+                        const { body } = await api.auth.logout();
                         localStorage.removeItem("state");
                         localStorage.removeItem("pendaftaran-ota");
                         localStorage.removeItem("pendaftaran-mahasiswa");
                         queryClient.invalidateQueries({ queryKey: ["verify"] });
-                        navigate({
-                          to: "/",
-                          replace: true,
-                          reloadDocument: true,
-                        });
+                        window.location.href = body.logoutUrl;
                       }}
                     >
                       Keluar

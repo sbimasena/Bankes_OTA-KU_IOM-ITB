@@ -11,6 +11,7 @@ import { routeTree } from "./routeTree.gen";
 // Create a new router instance
 export const router = createRouter({
   routeTree,
+  basepath: "/ota",
   context: { session: undefined!, setSession: () => {} },
 });
 

@@ -227,6 +227,7 @@ function Combobox({
                   <div className="flex flex-row space-x-2">
                     <Button
                       variant="outline"
+                      type="button"
                       onClick={() => {
                         setOpenAccept(false);
                         form.reset();

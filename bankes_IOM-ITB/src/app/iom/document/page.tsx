@@ -242,12 +242,12 @@ export default function Upload() {
       <Toaster position="bottom-right" richColors />
 
       {/* Sidebar */}
-      <div className="w-80 p-6">
+      <div className="w-0 md:w-80 md:p-6 shrink-0">
         <SidebarIOM activeTab="document" />
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 pt-20 md:p-6 min-w-0">
         <div className="max-w-7xl mx-auto space-y-6">
 
           {/* Header */}

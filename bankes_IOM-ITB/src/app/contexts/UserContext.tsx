@@ -12,31 +12,17 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [userName, setUserName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUserName = async () => {
-      if (session?.user?.id && !userName) {
-        try {
-          const response = await fetch(`/api/users`);
-          if (response.ok) {
-            const user = await response.json();
-            setUserName(user.name);
-          }
-        } catch (error) {
-          console.error('Error fetching user:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      } else if (!session?.user?.id) {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUserName();
-  }, [session, userName]);
+    if (status === 'loading') return;
+    if (session?.user?.name) {
+      setUserName(session.user.name);
+    }
+    setIsLoading(false);
+  }, [session, status]);
 
   return (
     <UserContext.Provider value={{ userName, setUserName, isLoading }}>

@@ -13,8 +13,6 @@ const EnvSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
-  AZURE_CLIENT_ID: z.string(),
-  AZURE_CLIENT_SECRET: z.string(),
   VITE_PUBLIC_URL: z.string().url(),
   CLOUDINARY_CLOUD_NAME: z.string(),
   CLOUDINARY_API_KEY: z.string(),
@@ -27,8 +25,10 @@ const EnvSchema = z.object({
     .transform((v) => v === "true"),
   MINIO_ACCESS_KEY: z.string().default("minioadmin"),
   MINIO_SECRET_KEY: z.string().default("minioadmin"),
+  MINIO_BUCKET_NAME: z.string().default("documents-bucket"),
   MINIO_PUBLIC_HOST: z.string().default("localhost"),
   MINIO_PUBLIC_PORT: z.coerce.number().default(9000),
+  MINIO_PUBLIC_URL: z.string().url().optional(),
   EMAIL: z.string().email(),
   EMAIL_FROM: z.string(),
   EMAIL_PASSWORD: z.string(),
@@ -46,6 +46,18 @@ const EnvSchema = z.object({
     .transform((v) => v === "true"),
   WHATSAPP_API_URL: z.string().url().optional(),
   WHATSAPP_API_KEY: z.string().optional(),
+  // SSO — Keycloak
+  KEYCLOAK_CLIENT_ID: z.string(),
+  KEYCLOAK_CLIENT_SECRET: z.string(),
+  KEYCLOAK_ISSUER_URL: z.string().url(),
+  KEYCLOAK_JWKS_URI: z.string().url(),
+  KEYCLOAK_REDIRECT_URI: z.string().url(),
+  SSO_API_URL: z.string().url(),
+  REGISTER_API_KEY: z.string(),
+  COOKIE_SECURE: z
+    .string()
+    .default("true")
+    .transform((v) => v === "true"),
 });
 
 const result = EnvSchema.safeParse(process.env);

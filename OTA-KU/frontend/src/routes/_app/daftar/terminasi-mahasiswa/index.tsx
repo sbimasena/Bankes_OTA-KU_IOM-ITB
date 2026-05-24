@@ -163,7 +163,7 @@ function StudentCard({ student, onTerminateSuccess }: StudentCardProps) {
             onClick={() => setIsModalOpen(true)}
           >
             <img
-              src="/icon/Type=remove.svg"
+              src={`${import.meta.env.BASE_URL}icon/Type=remove.svg`}
               alt="Terminate"
               className="h-5 w-5"
             />

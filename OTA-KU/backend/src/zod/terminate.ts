@@ -3,8 +3,7 @@ import { z } from "@hono/zod-openapi";
 export const TerminateRequestSchema = z.object({
   otaId: z
     .string({
-      required_error: "ID orang tua asuh harus diisi",
-      invalid_type_error: "ID orang tua asuh harus berupa string",
+      error: "ID orang tua asuh harus berupa string",
     })
     .uuid({
       message: "ID orang tua asuh tidak valid",
@@ -15,8 +14,7 @@ export const TerminateRequestSchema = z.object({
     }),
   mahasiswaId: z
     .string({
-      required_error: "ID mahasiswa asuh harus diisi",
-      invalid_type_error: "ID mahasiswa asuh harus berupa string",
+      error: "ID mahasiswa asuh harus berupa string",
     })
     .uuid({
       message: "ID mahasiswa asuh tidak valid",
@@ -27,8 +25,7 @@ export const TerminateRequestSchema = z.object({
     }),
   requestTerminationNote: z
     .string({
-      required_error: "Catatan request terminasi harus diisi",
-      invalid_type_error: "Catatan request terminasi harus berupa string",
+      error: "Catatan request terminasi harus berupa string",
     })
     .min(1, {
       message: "Catatan request terminasi tidak boleh kosong",
@@ -42,8 +39,7 @@ export const TerminateRequestSchema = z.object({
 export const verifTerminateRequestSchema = z.object({
   otaId: z
     .string({
-      required_error: "ID orang tua asuh harus diisi",
-      invalid_type_error: "ID orang tua asuh harus berupa string",
+      error: "ID orang tua asuh harus berupa string",
     })
     .uuid({
       message: "ID orang tua asuh tidak valid",
@@ -54,8 +50,7 @@ export const verifTerminateRequestSchema = z.object({
     }),
   mahasiswaId: z
     .string({
-      required_error: "ID mahasiswa asuh harus diisi",
-      invalid_type_error: "ID mahasiswa asuh harus berupa string",
+      error: "ID mahasiswa asuh harus berupa string",
     })
     .uuid({
       message: "ID mahasiswa asuh tidak valid",
@@ -87,8 +82,7 @@ export const listTerminateForAdminResponse = z.object({
       z.object({
         otaId: z
           .string({
-            required_error: "ID orang tua asuh harus diisi",
-            invalid_type_error: "ID orang tua asuh harus berupa string",
+            error: "ID orang tua asuh harus berupa string",
           })
           .uuid({
             message: "ID orang tua asuh tidak valid",
@@ -101,8 +95,7 @@ export const listTerminateForAdminResponse = z.object({
         otaNumber: z.string().openapi({ example: "6281234567890" }),
         mahasiswaId: z
           .string({
-            required_error: "ID mahasiswa asuh harus diisi",
-            invalid_type_error: "ID mahasiswa asuh harus berupa string",
+            error: "ID mahasiswa asuh harus berupa string",
           })
           .uuid({
             message: "ID mahasiswa asuh tidak valid",
@@ -140,8 +133,7 @@ export const listTerminateForOTAResponse = z.object({
       z.object({
         mahasiswaId: z
           .string({
-            required_error: "ID mahasiswa asuh harus diisi",
-            invalid_type_error: "ID mahasiswa asuh harus berupa string",
+            error: "ID mahasiswa asuh harus berupa string",
           })
           .uuid({
             message: "ID mahasiswa asuh tidak valid",
@@ -177,8 +169,7 @@ export const terminationStatusMA = z.object({
   body: z.object({
     otaId: z
       .string({
-        required_error: "ID orang tua asuh harus diisi",
-        invalid_type_error: "ID orang tua asuh harus berupa string",
+        error: "ID orang tua asuh harus berupa string",
       })
       .uuid({
         message: "ID orang tua asuh tidak valid",

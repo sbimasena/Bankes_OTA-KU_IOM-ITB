@@ -364,7 +364,7 @@ export default function SlotListView() {
       </div>
   
       {filteredSlots.length === 0 ? (
-        <Card className="p-8 w-full text-center">
+        <Card className="p-4 sm:p-6 md:p-8 w-full text-center">
           <p className="text-gray-500">Tidak ada slot wawancara yang ditemukan.</p>
         </Card>
       ) : (

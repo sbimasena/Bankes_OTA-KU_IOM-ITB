@@ -18,6 +18,20 @@ export async function sendPushNotification(
     throw new Error("Missing required fields");
   }
 
+  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? process.env.VAPID_PUBLIC_KEY;
+  const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+
+  if (!vapidPublicKey || !vapidPrivateKey) {
+    console.warn("VAPID keys not configured, skipping push notification");
+    return;
+  }
+
+  webPush.setVapidDetails(
+    "mailto:your-email@example.com",
+    vapidPublicKey,
+    vapidPrivateKey
+  );
+
   // Store in DB first
   const createdNotification = await prisma.notification.create({
     data: {

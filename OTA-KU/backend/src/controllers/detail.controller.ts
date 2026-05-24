@@ -218,22 +218,33 @@ detailProtectedRouter.openapi(getMahasiswaDetailForOTARoute, async (c) => {
   }
 
   try {
-    const connection = await prisma.connection.findFirst({
-      where: {
-        mahasiswaId: id,
-        otaId: user.id,
-        connectionStatus: "accepted",
-      },
-      include: {
-        MahasiswaProfile: {
-          include: {
-            User: true,
-          },
+    const [connection, groupConnection] = await Promise.all([
+      prisma.connection.findFirst({
+        where: {
+          mahasiswaId: id,
+          otaId: user.id,
+          connectionStatus: "accepted",
         },
-      },
-    });
+        include: {
+          MahasiswaProfile: { include: { User: true } },
+        },
+      }),
+      prisma.groupConnection.findFirst({
+        where: {
+          mahasiswaId: id,
+          connectionStatus: "accepted",
+          Group: { Members: { some: { otaId: user.id } } },
+        },
+        include: {
+          Mahasiswa: { include: { User: true } },
+        },
+      }),
+    ]);
 
-    if (!connection || !connection.MahasiswaProfile) {
+    const profile = connection?.MahasiswaProfile ?? groupConnection?.Mahasiswa;
+    const mahasiswaUser = profile?.User;
+
+    if (!profile || !mahasiswaUser) {
       return c.json(
         {
           success: false,
@@ -247,12 +258,10 @@ detailProtectedRouter.openapi(getMahasiswaDetailForOTARoute, async (c) => {
       );
     }
 
-    const profile = connection.MahasiswaProfile;
-    const mahasiswaUser = profile.User;
     const testimonial = await prisma.testimonial.findFirst({
       where: {
         mahasiswaId: id,
-        otaId: user.id,
+        ...(connection ? { otaId: user.id } : { groupId: groupConnection!.groupId }),
       },
       select: {
         content: true,

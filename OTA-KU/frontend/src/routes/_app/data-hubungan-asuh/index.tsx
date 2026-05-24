@@ -1,7 +1,9 @@
 import Metadata from "@/components/metadata";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import DataHubunganAsuhContent from "./-components/data-hubungan-asuh-content";
+import DataHubunganGrupContent from "./-components/data-hubungan-grup-content";
 
 export const Route = createFileRoute("/_app/data-hubungan-asuh/")({
   component: RouteComponent,
@@ -27,7 +29,21 @@ function RouteComponent() {
       <h1 className="text-dark text-3xl font-bold md:text-[50px]">
         Data Hubungan Asuh
       </h1>
-      <DataHubunganAsuhContent />
+      
+      <Tabs defaultValue="individual" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="individual">Hubungan Individual</TabsTrigger>
+          <TabsTrigger value="group">Hubungan Grup</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="individual" className="mt-6">
+          <DataHubunganAsuhContent />
+        </TabsContent>
+        
+        <TabsContent value="group" className="mt-6">
+          <DataHubunganGrupContent />
+        </TabsContent>
+      </Tabs>
     </main>
   );
 }
