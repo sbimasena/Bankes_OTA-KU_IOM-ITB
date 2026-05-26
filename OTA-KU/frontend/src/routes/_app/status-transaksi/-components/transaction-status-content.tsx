@@ -41,11 +41,14 @@ function TransactionStatusContent() {
             receipt: "",
             rejection_note: "",
             paid_for: 0,
+            period_status: "active" as const,
           },
         ]
       : [];
 
   const notPaidData = tableData.filter((item) => item.status !== "paid");
+  const activeNotPaidData = notPaidData.filter((item) => item.period_status !== "ended");
+  const endedData = tableData.filter((item) => item.period_status === "ended");
 
   return (
     <section className="flex flex-col gap-4">
@@ -61,6 +64,19 @@ function TransactionStatusContent() {
         </div>
       </div>
 
+      {/* Periode berakhir notice */}
+      {!isLoading && endedData.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+          <p className="text-sm font-medium text-gray-700">
+            Periode hubungan asuh telah berakhir untuk:{" "}
+            <span className="font-semibold">
+              {endedData.map((item) => item.name).join(", ")}
+            </span>
+            . Tagihan tidak ditampilkan.
+          </p>
+        </div>
+      )}
+
       {/* Table */}
       {isLoading ? (
         <div className="rounded-md bg-white">
@@ -70,15 +86,15 @@ function TransactionStatusContent() {
         <DataTable columns={transactionColumns} data={dataWithTotal} />
       )}
 
-      {/* Transaction Form */}
+      {/* Transaction Form — hanya untuk koneksi dengan periode aktif */}
       {isLoading ? (
         <div className="rounded-md bg-white">
           <Skeleton className="h-20 w-full" />
         </div>
       ) : (
-        notPaidData.length > 0 && (
+        activeNotPaidData.length > 0 && (
           <TransactionCard
-            data={notPaidData}
+            data={activeNotPaidData}
             year={year ?? 0}
             month={month ?? 0}
           />

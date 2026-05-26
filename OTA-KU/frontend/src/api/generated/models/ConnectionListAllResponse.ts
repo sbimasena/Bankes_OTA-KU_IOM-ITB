@@ -22,5 +22,8 @@ export type ConnectionListAllResponse = {
   request_term_ota: boolean;
   request_term_ma: boolean;
   paidFor: number;
+  start_date: string | null;
+  end_date: string | null;
+  period_status: 'active' | 'ended';
 };
 

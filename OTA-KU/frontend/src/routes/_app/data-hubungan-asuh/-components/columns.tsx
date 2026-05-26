@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowDownAZ, ArrowUpAZ } from "lucide-react";
 import DeleteConnectionDialog from "./delete-connection-dialog";
+import SetPeriodDialog from "./set-period-dialog";
 
 export const connectionColumns: ColumnDef<ConnectionListAllResponse>[] = [
   {
@@ -136,13 +137,60 @@ export const connectionColumns: ColumnDef<ConnectionListAllResponse>[] = [
       );
     },
   },
-    {
-      id: "action",
-      header: "Aksi",
-      cell: ({ row }) => {
-        const connection = row.original;
-
-        return <DeleteConnectionDialog connection={connection} />;
-      },
+  {
+    accessorKey: "start_date",
+    header: "Mulai Periode",
+    cell: ({ row }) => {
+      const d = row.original.start_date;
+      return (
+        <p className="text-sm">
+          {d ? new Date(d).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+        </p>
+      );
     },
+  },
+  {
+    accessorKey: "end_date",
+    header: "Akhir Periode",
+    cell: ({ row }) => {
+      const d = row.original.end_date;
+      return (
+        <p className="text-sm">
+          {d ? new Date(d).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+        </p>
+      );
+    },
+  },
+  {
+    accessorKey: "period_status",
+    header: "Status Periode",
+    cell: ({ row }) => {
+      const status = row.original.period_status;
+      if (!row.original.start_date) {
+        return <span className="text-muted-foreground text-xs">Belum diatur</span>;
+      }
+      return status === "active" ? (
+        <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
+          Aktif
+        </span>
+      ) : (
+        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
+          Berakhir
+        </span>
+      );
+    },
+  },
+  {
+    id: "action",
+    header: "Aksi",
+    cell: ({ row }) => {
+      const connection = row.original;
+      return (
+        <div className="flex items-center gap-2">
+          <SetPeriodDialog connection={connection} />
+          <DeleteConnectionDialog connection={connection} />
+        </div>
+      );
+    },
+  },
 ];

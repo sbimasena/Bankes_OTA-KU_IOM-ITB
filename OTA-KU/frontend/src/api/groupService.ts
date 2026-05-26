@@ -273,4 +273,17 @@ export const groupService = {
       url: `/api/group/connect/${connectionId}`,
     });
   },
+
+  setGroupConnectionPeriod: async (data: {
+    groupConnectionId: string;
+    startDate: string;
+    endDate: string;
+  }): Promise<ApiResponse<{ startDate: string; endDate: string; periodStatus: string }>> => {
+    return request.request({
+      method: "PATCH",
+      url: "/api/connect/group-period",
+      formData: data,
+      mediaType: "multipart/form-data",
+    });
+  },
 };

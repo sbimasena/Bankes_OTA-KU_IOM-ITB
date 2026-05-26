@@ -30,5 +30,9 @@ export type TransactionOTA = {
    * Jumlah bulan yang dibayarkan
    */
   paid_for: number;
+  /**
+   * Status periode hubungan asuh
+   */
+  period_status: 'active' | 'ended';
 };
 
