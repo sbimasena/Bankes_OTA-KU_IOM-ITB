@@ -139,7 +139,19 @@ export const groupConnectionColumns: ColumnDef<PendingConnection>[] = [
   },
   {
     accessorKey: "startDate",
-    header: "Mulai Periode",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Mulai Periode
+        {column.getIsSorted() === "asc" ? (
+          <ArrowUpAZ className="ml-2 h-4 w-4" />
+        ) : (
+          <ArrowDownAZ className="ml-2 h-4 w-4" />
+        )}
+      </Button>
+    ),
     cell: ({ row }) => {
       const d = row.original.startDate;
       return (
@@ -151,7 +163,19 @@ export const groupConnectionColumns: ColumnDef<PendingConnection>[] = [
   },
   {
     accessorKey: "endDate",
-    header: "Akhir Periode",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Akhir Periode
+        {column.getIsSorted() === "asc" ? (
+          <ArrowUpAZ className="ml-2 h-4 w-4" />
+        ) : (
+          <ArrowDownAZ className="ml-2 h-4 w-4" />
+        )}
+      </Button>
+    ),
     cell: ({ row }) => {
       const d = row.original.endDate;
       return (
@@ -163,14 +187,26 @@ export const groupConnectionColumns: ColumnDef<PendingConnection>[] = [
   },
   {
     accessorKey: "periodStatus",
-    header: "Status Periode",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Status Periode
+        {column.getIsSorted() === "asc" ? (
+          <ArrowUpAZ className="ml-2 h-4 w-4" />
+        ) : (
+          <ArrowDownAZ className="ml-2 h-4 w-4" />
+        )}
+      </Button>
+    ),
     cell: ({ row }) => {
       const status = row.original.periodStatus;
       if (!row.original.startDate) {
         return <span className="text-muted-foreground text-xs">Belum diatur</span>;
       }
       return status === "active" ? (
-        <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
+        <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
           Aktif
         </span>
       ) : (
@@ -182,7 +218,7 @@ export const groupConnectionColumns: ColumnDef<PendingConnection>[] = [
   },
   {
     id: "action",
-    header: "Aksi",
+    header: () => <span className="text-blue-600 font-semibold">Aksi</span>,
     cell: ({ row }) => {
       const connection = row.original;
       return (
