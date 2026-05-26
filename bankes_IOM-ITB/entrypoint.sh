@@ -26,9 +26,9 @@ node scripts/create-admin.js
 
 echo "🎉 Starting app…"
 
-# If no arguments passed, default to npm start
+# If no arguments passed, use standalone server (required when output: standalone in next.config.ts)
 if [ $# -eq 0 ]; then
-    exec npm start
+    exec node .next/standalone/server.js
 else
     exec "$@"
 fi
