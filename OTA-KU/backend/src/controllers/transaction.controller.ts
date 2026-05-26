@@ -62,7 +62,7 @@ transactionProtectedRouter.openapi(listTransactionOTARoute, async (c) => {
     const [transactions, allTransactions, groupMemberTxs, allGroupMemberTxs] = await Promise.all([
       prisma.transaction.findMany({
         where: { otaId: user.id, ...(dueDateFilter ? { dueDate: dueDateFilter } : {}) },
-        include: { MahasiswaProfile: true },
+        include: { MahasiswaProfile: true, Connection: { select: { periodStatus: true } } },
       }),
       prisma.transaction.findMany({
         where: { otaId: user.id },
@@ -75,7 +75,7 @@ transactionProtectedRouter.openapi(listTransactionOTARoute, async (c) => {
         },
         include: {
           GroupTransaction: {
-            include: { Mahasiswa: true },
+            include: { Mahasiswa: true, GroupConnection: { select: { periodStatus: true } } },
           },
         },
       }),
@@ -106,6 +106,7 @@ transactionProtectedRouter.openapi(listTransactionOTARoute, async (c) => {
         receipt: t.transactionReceipt ?? "",
         rejection_note: t.rejectionNote ?? "",
         paid_for: t.paidFor ?? 0,
+        period_status: t.Connection.periodStatus as "active" | "ended",
       })),
       ...groupMemberTxs.map((t) => ({
         id: t.id,
@@ -121,6 +122,7 @@ transactionProtectedRouter.openapi(listTransactionOTARoute, async (c) => {
         receipt: t.transactionReceipt ?? "",
         rejection_note: t.rejectionNote ?? "",
         paid_for: 0,
+        period_status: t.GroupTransaction.GroupConnection.periodStatus as "active" | "ended",
       })),
     ];
 
@@ -589,6 +591,30 @@ transactionProtectedRouter.openapi(uploadReceiptRoute, async (c) => {
   }
 
   try {
+    // Validasi periode aktif untuk setiap koneksi yang terlibat
+    const endedConnections = await prisma.connection.findMany({
+      where: {
+        mahasiswaId: { in: ids },
+        otaId: user.id,
+        periodStatus: "ended",
+      },
+      include: { MahasiswaProfile: true },
+    });
+
+    if (endedConnections.length > 0) {
+      const names = endedConnections
+        .map((c) => c.MahasiswaProfile.name ?? c.mahasiswaId)
+        .join(", ");
+      return c.json(
+        {
+          success: false,
+          message: `Pembayaran tidak dapat dilakukan karena periode hubungan asuh telah berakhir untuk: ${names}`,
+          error: { code: "PERIOD_ENDED" },
+        },
+        400,
+      );
+    }
+
     const receiptResult = await uploadFileToMinio(receipt);
     const receiptUrl = receiptResult?.secure_url ?? "";
 

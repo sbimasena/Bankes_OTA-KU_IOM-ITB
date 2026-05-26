@@ -60,6 +60,10 @@ export const TransactionListOTAQueryResponse = z.object({
             description: "Jumlah bulan yang dibayarkan",
             example: 3,
           }),
+          period_status: z.enum(["active", "ended"]).openapi({
+            description: "Status periode hubungan asuh",
+            example: "active",
+          }),
         })
         .openapi("TransactionOTA"),
     ),

@@ -701,3 +701,36 @@ export const dailyReminder3DaysWhatsAppCron = new CronJob(
   true,
   "Asia/Jakarta",
 );
+
+// Runs daily at 01:00 Jakarta time — auto-end connections whose endDate has passed
+export const periodEndCron = new CronJob(
+  "0 1 * * *",
+  async () => {
+    const now = new TZDate(new Date(), "Asia/Jakarta");
+    console.log("[period-end-cron] Running at", now.toISOString());
+
+    const [{ count: individualCount }, { count: groupCount }] = await Promise.all([
+      prisma.connection.updateMany({
+        where: {
+          periodStatus: "active",
+          endDate: { lt: now },
+        },
+        data: { periodStatus: "ended" },
+      }),
+      prisma.groupConnection.updateMany({
+        where: {
+          periodStatus: "active",
+          endDate: { lt: now },
+        },
+        data: { periodStatus: "ended" },
+      }),
+    ]);
+
+    console.log(
+      `[period-end-cron] Ended ${individualCount} individual connection(s) and ${groupCount} group connection(s).`,
+    );
+  },
+  null,
+  true,
+  "Asia/Jakarta",
+);
