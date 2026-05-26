@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { FileDown } from "lucide-react";
-import * as XLSX from "xlsx";
 
 interface ExportData {
   summary: {
@@ -47,6 +46,7 @@ interface ExportButtonProps {
 export default function ExportButton({ data }: ExportButtonProps) {
   const handleExport = async () => {
     try {
+      const XLSX = await import("xlsx");
       // Create a new workbook
       const wb = XLSX.utils.book_new();
 
