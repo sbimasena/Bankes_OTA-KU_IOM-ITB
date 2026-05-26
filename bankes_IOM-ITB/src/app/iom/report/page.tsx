@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import SidebarIOM from "@/app/components/layout/sidebariom";
-import * as XLSX from "xlsx";
 import { FileDown, Calendar, Users, TrendingUp, Download } from "lucide-react";
 
 interface Period {
@@ -80,8 +79,9 @@ export default function ReportPage() {
     setSelectedPeriod(period);
   };
 
-  const handleExportXLSX = () => {
+  const handleExportXLSX = async () => {
     if (!students.length) return;
+    const XLSX = await import("xlsx");
     const data = students.map((item) => ({
       NIM: item.Student.nim,
       Nama: item.Student.User?.name || "-",
