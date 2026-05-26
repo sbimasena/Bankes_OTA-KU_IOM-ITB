@@ -106,6 +106,9 @@ export interface PendingConnection {
   connectionStatus: string;
   paidFor: number;
   createdAt: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  periodStatus?: 'active' | 'ended';
 }
 
 export interface PaginatedResponse<T> {

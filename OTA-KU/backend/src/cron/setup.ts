@@ -5,13 +5,14 @@ import {
   dailyReminder30DaysCron,
   dailyReminderCron,
   dailyReminder3DaysWhatsAppCron,
+  periodEndCron,
 } from "./daily-cron.js";
 import { monthlyCron } from "./monthly-cron.js";
 import { everyThreeDaysCron } from "./three-day-cron.js";
 
 export function setupCronJobs() {
   // if (env.NODE_ENV === "production") {
-    
+
   // }
   dailyReminderCron.start();
   dailyReminder7DaysCron.start();
@@ -20,4 +21,5 @@ export function setupCronJobs() {
   dailyReminder3DaysWhatsAppCron.start();
   everyThreeDaysCron.start();
   monthlyCron.start();
+  periodEndCron.start();
 }

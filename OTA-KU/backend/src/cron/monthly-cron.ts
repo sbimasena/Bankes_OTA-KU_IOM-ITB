@@ -20,12 +20,12 @@ export const monthlyCron = new CronJob(
     // ── Individual connections ───────────────────────────────────────────────
 
     await prisma.connection.updateMany({
-      where: { paidFor: { gt: 0 } },
+      where: { paidFor: { gt: 0 }, periodStatus: "active" },
       data: { paidFor: { decrement: 1 } },
     });
 
     const unpaidConnections = await prisma.connection.findMany({
-      where: { paidFor: 0 },
+      where: { paidFor: 0, connectionStatus: "accepted", periodStatus: "active" },
       include: {
         MahasiswaProfile: true,
         OtaProfile: true,
@@ -54,7 +54,7 @@ export const monthlyCron = new CronJob(
     // ── Group connections ────────────────────────────────────────────────────
 
     const activeGroupConnections = await prisma.groupConnection.findMany({
-      where: { connectionStatus: "accepted" },
+      where: { connectionStatus: "accepted", periodStatus: "active" },
       include: {
         Group: { select: { transferDate: true } },
         MemberContributions: { select: { otaId: true, amount: true } },

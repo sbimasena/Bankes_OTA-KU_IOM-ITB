@@ -7,6 +7,9 @@ import {
   OrangTuaFailedResponse,
   OrangTuaSuccessResponse,
   OrangTuaUnverifiedResponse,
+  SetConnectionPeriodSchema,
+  SetGroupConnectionPeriodSchema,
+  SetPeriodSuccessResponse,
   checkConnectParamsSchema,
   connectionListAllQueryResponse,
   connectionListAllQuerySchema,
@@ -17,8 +20,10 @@ import {
   verifyConnectionResponse,
 } from "../zod/connect.js";
 import {
+  BadRequestResponse,
   ForbiddenResponse,
   InternalServerErrorResponse,
+  NotFoundResponse,
 } from "../zod/response.js";
 
 export const connectOtaMahasiswaRoute = createRoute({
@@ -362,6 +367,88 @@ export const isConnectedRoute = createRoute({
       content: {
         "application/json": { schema: InternalServerErrorResponse },
       },
+    },
+  },
+});
+
+export const setConnectionPeriodRoute = createRoute({
+  operationId: "setConnectionPeriod",
+  tags: ["Connect"],
+  method: "patch",
+  path: "/period",
+  description:
+    "Set atau update periode hubungan asuh (startDate & endDate) untuk koneksi individual OTA–mahasiswa. Hanya admin, bankes, atau pengurus.",
+  request: {
+    body: {
+      content: {
+        "multipart/form-data": {
+          schema: SetConnectionPeriodSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Periode hubungan asuh berhasil diperbarui",
+      content: { "application/json": { schema: SetPeriodSuccessResponse } },
+    },
+    400: {
+      description: "endDate harus setelah startDate",
+      content: { "application/json": { schema: BadRequestResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Koneksi tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
+    },
+  },
+});
+
+export const setGroupConnectionPeriodRoute = createRoute({
+  operationId: "setGroupConnectionPeriod",
+  tags: ["Connect"],
+  method: "patch",
+  path: "/group-period",
+  description:
+    "Set atau update periode hubungan asuh (startDate & endDate) untuk koneksi grup OTA–mahasiswa. Hanya admin, bankes, atau pengurus.",
+  request: {
+    body: {
+      content: {
+        "multipart/form-data": {
+          schema: SetGroupConnectionPeriodSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Periode hubungan asuh grup berhasil diperbarui",
+      content: { "application/json": { schema: SetPeriodSuccessResponse } },
+    },
+    400: {
+      description: "endDate harus setelah startDate",
+      content: { "application/json": { schema: BadRequestResponse } },
+    },
+    401: AuthorizationErrorResponse,
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ForbiddenResponse } },
+    },
+    404: {
+      description: "Koneksi grup tidak ditemukan",
+      content: { "application/json": { schema: NotFoundResponse } },
+    },
+    500: {
+      description: "Internal server error",
+      content: { "application/json": { schema: InternalServerErrorResponse } },
     },
   },
 });

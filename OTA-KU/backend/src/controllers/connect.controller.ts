@@ -14,11 +14,15 @@ import {
   listAllConnectionRoute,
   listPendingConnectionRoute,
   listPendingTerminationConnectionRoute,
+  setConnectionPeriodRoute,
+  setGroupConnectionPeriodRoute,
   verifyConnectionAccRoute,
   verifyConnectionRejectRoute,
 } from "../routes/connect.route.js";
 import {
   MahasiwaConnectSchema,
+  SetConnectionPeriodSchema,
+  SetGroupConnectionPeriodSchema,
   connectionListAllQuerySchema,
   connectionListQuerySchema,
 } from "../zod/connect.js";
@@ -964,6 +968,9 @@ connectProtectedRouter.openapi(listAllConnectionRoute, async (c) => {
             request_term_ota: connection.requestTerminateOta,
             request_term_ma: connection.requestTerminateMahasiswa,
             paidFor: connection.paidFor,
+            start_date: connection.startDate?.toISOString() ?? null,
+            end_date: connection.endDate?.toISOString() ?? null,
+            period_status: connection.periodStatus,
           })),
           totalPagination: totalCount,
         },
@@ -977,6 +984,182 @@ connectProtectedRouter.openapi(listAllConnectionRoute, async (c) => {
         success: false,
         message: "Internal server error",
         error: error,
+      },
+      500,
+    );
+  }
+});
+
+connectProtectedRouter.openapi(setConnectionPeriodRoute, async (c) => {
+  const user = c.var.user;
+  const body = await c.req.formData();
+  const data = Object.fromEntries(body.entries());
+  const { mahasiswaId, otaId, startDate, endDate } =
+    SetConnectionPeriodSchema.parse(data);
+
+  if (
+    user.type !== "admin" &&
+    user.type !== "bankes" &&
+    user.type !== "pengurus"
+  ) {
+    return c.json(
+      {
+        success: false,
+        message: "Forbidden",
+        error: {
+          code: "FORBIDDEN",
+          message: "Hanya admin, bankes, atau pengurus yang dapat mengatur periode",
+        },
+      },
+      403,
+    );
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (end <= start) {
+    return c.json(
+      {
+        success: false,
+        message: "Tanggal akhir periode harus setelah tanggal mulai",
+        error: { code: "INVALID_DATE_RANGE" },
+      },
+      400,
+    );
+  }
+
+  try {
+    const connection = await prisma.connection.findUnique({
+      where: { mahasiswaId_otaId: { mahasiswaId, otaId } },
+    });
+
+    if (!connection) {
+      return c.json(
+        {
+          success: false,
+          message: "Koneksi tidak ditemukan",
+          error: { code: "NOT_FOUND" },
+        },
+        404,
+      );
+    }
+
+    const now = new Date();
+    const periodStatus = end > now ? "active" : "ended";
+
+    const updated = await prisma.connection.update({
+      where: { mahasiswaId_otaId: { mahasiswaId, otaId } },
+      data: { startDate: start, endDate: end, periodStatus },
+    });
+
+    return c.json(
+      {
+        success: true,
+        message: "Periode hubungan asuh berhasil diperbarui",
+        body: {
+          startDate: updated.startDate!.toISOString(),
+          endDate: updated.endDate!.toISOString(),
+          periodStatus: updated.periodStatus,
+        },
+      },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json(
+      {
+        success: false,
+        message: "Internal server error",
+        error,
+      },
+      500,
+    );
+  }
+});
+
+connectProtectedRouter.openapi(setGroupConnectionPeriodRoute, async (c) => {
+  const user = c.var.user;
+  const body = await c.req.formData();
+  const data = Object.fromEntries(body.entries());
+  const { groupConnectionId, startDate, endDate } =
+    SetGroupConnectionPeriodSchema.parse(data);
+
+  if (
+    user.type !== "admin" &&
+    user.type !== "bankes" &&
+    user.type !== "pengurus"
+  ) {
+    return c.json(
+      {
+        success: false,
+        message: "Forbidden",
+        error: {
+          code: "FORBIDDEN",
+          message: "Hanya admin, bankes, atau pengurus yang dapat mengatur periode",
+        },
+      },
+      403,
+    );
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (end <= start) {
+    return c.json(
+      {
+        success: false,
+        message: "Tanggal akhir periode harus setelah tanggal mulai",
+        error: { code: "INVALID_DATE_RANGE" },
+      },
+      400,
+    );
+  }
+
+  try {
+    const groupConnection = await prisma.groupConnection.findUnique({
+      where: { id: groupConnectionId },
+    });
+
+    if (!groupConnection) {
+      return c.json(
+        {
+          success: false,
+          message: "Koneksi grup tidak ditemukan",
+          error: { code: "NOT_FOUND" },
+        },
+        404,
+      );
+    }
+
+    const now = new Date();
+    const periodStatus = end > now ? "active" : "ended";
+
+    const updated = await prisma.groupConnection.update({
+      where: { id: groupConnectionId },
+      data: { startDate: start, endDate: end, periodStatus },
+    });
+
+    return c.json(
+      {
+        success: true,
+        message: "Periode hubungan asuh grup berhasil diperbarui",
+        body: {
+          startDate: updated.startDate!.toISOString(),
+          endDate: updated.endDate!.toISOString(),
+          periodStatus: updated.periodStatus,
+        },
+      },
+      200,
+    );
+  } catch (error) {
+    console.error(error);
+    return c.json(
+      {
+        success: false,
+        message: "Internal server error",
+        error,
       },
       500,
     );

@@ -2,6 +2,7 @@ import { createRoute } from "@hono/zod-openapi";
 
 import { AuthorizationErrorResponse } from "../types/response.js";
 import {
+  BadRequestResponse,
   ForbiddenResponse,
   InternalServerErrorResponse,
   NotFoundResponse,
@@ -199,6 +200,12 @@ export const uploadReceiptRoute = createRoute({
         "application/json": {
           schema: UploadReceiptResponse,
         },
+      },
+    },
+    400: {
+      description: "Periode hubungan asuh telah berakhir",
+      content: {
+        "application/json": { schema: BadRequestResponse },
       },
     },
     401: AuthorizationErrorResponse,

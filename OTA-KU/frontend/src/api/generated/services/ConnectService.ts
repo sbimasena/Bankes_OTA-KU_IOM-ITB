@@ -321,6 +321,83 @@ export class ConnectService {
     });
   }
   /**
+   * Set atau update periode hubungan asuh untuk koneksi individual OTA–mahasiswa
+   * @returns any Periode hubungan asuh berhasil diperbarui
+   * @throws ApiError
+   */
+  public setConnectionPeriod({
+    formData,
+  }: {
+    formData: {
+      mahasiswaId: string;
+      otaId: string;
+      /** ISO 8601 datetime string */
+      startDate: string;
+      /** ISO 8601 datetime string */
+      endDate: string;
+    };
+  }): CancelablePromise<{
+    success: boolean;
+    message: string;
+    body: {
+      startDate: string;
+      endDate: string;
+      periodStatus: string;
+    };
+  }> {
+    return this.httpRequest.request({
+      method: 'PATCH',
+      url: '/api/connect/period',
+      formData: formData,
+      mediaType: 'multipart/form-data',
+      errors: {
+        400: `endDate harus setelah startDate`,
+        401: `Bad request: authorization (not logged in) error`,
+        403: `Forbidden`,
+        404: `Koneksi tidak ditemukan`,
+        500: `Internal server error`,
+      },
+    });
+  }
+  /**
+   * Set atau update periode hubungan asuh untuk koneksi grup OTA–mahasiswa
+   * @returns any Periode hubungan asuh grup berhasil diperbarui
+   * @throws ApiError
+   */
+  public setGroupConnectionPeriod({
+    formData,
+  }: {
+    formData: {
+      groupConnectionId: string;
+      /** ISO 8601 datetime string */
+      startDate: string;
+      /** ISO 8601 datetime string */
+      endDate: string;
+    };
+  }): CancelablePromise<{
+    success: boolean;
+    message: string;
+    body: {
+      startDate: string;
+      endDate: string;
+      periodStatus: string;
+    };
+  }> {
+    return this.httpRequest.request({
+      method: 'PATCH',
+      url: '/api/connect/group-period',
+      formData: formData,
+      mediaType: 'multipart/form-data',
+      errors: {
+        400: `endDate harus setelah startDate`,
+        401: `Bad request: authorization (not logged in) error`,
+        403: `Forbidden`,
+        404: `Koneksi grup tidak ditemukan`,
+        500: `Internal server error`,
+      },
+    });
+  }
+  /**
    * Delete an account
    * @returns any Successfully deleted a connection
    * @throws ApiError

@@ -156,6 +156,11 @@ enum ConnectionStatus {
   pending
 }
 
+enum PeriodStatus {
+  active
+  ended
+}
+
 enum TransactionStatus {
   pending
   paid
@@ -360,6 +365,9 @@ model Connection {
   requestTerminationNoteOta String?
   requestTerminationNoteMa  String?
   paidFor                   Int
+  startDate                 DateTime?
+  endDate                   DateTime?
+  periodStatus              PeriodStatus     @default(active)
   createdAt                 DateTime         @default(now())
   updatedAt                 DateTime         @updatedAt
 
@@ -537,6 +545,9 @@ model GroupConnection {
   requestTerminationNoteGroup String?
   requestTerminationNoteMa    String?
   paidFor                     Int              @default(0)
+  startDate                   DateTime?
+  endDate                     DateTime?
+  periodStatus                PeriodStatus     @default(active)
   createdAt                   DateTime         @default(now())
   updatedAt                   DateTime         @updatedAt
 
