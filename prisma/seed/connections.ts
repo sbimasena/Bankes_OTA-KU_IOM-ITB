@@ -36,6 +36,10 @@ export async function seedConnections(prisma: PrismaClient) {
     const connectionStatus = pair.status ?? "accepted";
     const paidFor = connectionStatus === "accepted" ? 3 : 0;
 
+    // Periode: mulai 6 bulan lalu, berakhir saat ini + 6 bulan (aktif)
+    const startDate = addMonths(now, -6);
+    const endDate = addMonths(now, 6);
+
     // Upsert connection
     const existing = await prisma.connection.findUnique({
       where: {
@@ -53,6 +57,9 @@ export async function seedConnections(prisma: PrismaClient) {
         otaId: otaUser.id,
         connectionStatus,
         paidFor,
+        startDate,
+        endDate,
+        periodStatus: "active",
       },
     });
 

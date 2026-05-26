@@ -217,6 +217,12 @@ enum ProposalStatus {
   rejected
 }
 
+// [OTA] Status periode hubungan asuh OTA dengan mahasiswa.
+enum PeriodStatus {
+  active
+  ended
+}
+
 // [OTA] Status moderasi testimoni mahasiswa.
 enum TestimonialStatus {
   shown
@@ -419,6 +425,9 @@ model Connection {
   requestTerminationNoteOta String?
   requestTerminationNoteMa  String?
   paidFor                   Int              // jumlah bulan yang sudah dibayarkan
+  startDate                 DateTime?        // tanggal mulai periode hubungan asuh
+  endDate                   DateTime?        // tanggal akhir periode hubungan asuh (biasanya 6 bulan)
+  periodStatus              PeriodStatus     @default(active) // status periode: active atau ended
   createdAt                 DateTime         @default(now())
   updatedAt                 DateTime         @updatedAt
 
@@ -607,6 +616,9 @@ model GroupConnection {
   requestTerminationNoteGroup String?
   requestTerminationNoteMa    String?
   paidFor                     Int              @default(0)
+  startDate                   DateTime?        // tanggal mulai periode hubungan asuh grup
+  endDate                     DateTime?        // tanggal akhir periode hubungan asuh grup (biasanya 6 bulan)
+  periodStatus                PeriodStatus     @default(active) // status periode: active atau ended
   createdAt                   DateTime         @default(now())
   updatedAt                   DateTime         @updatedAt
 
