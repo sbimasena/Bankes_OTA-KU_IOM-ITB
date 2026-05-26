@@ -2,12 +2,6 @@ import webPush from "web-push";
 
 import { prisma } from "@/lib/prisma";
 
-webPush.setVapidDetails(
-  "mailto:your-email@example.com",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
-
 export async function sendPushNotification(
   userId: string,
   title: string,
