@@ -202,7 +202,7 @@ export default function Scoring() {
     const term = searchTerm.toLowerCase();
     const filtered = students.filter(
       (student) =>
-        student.MahasiswaProfile.User.name.toLowerCase().includes(term) ||
+        (student.MahasiswaProfile.User.name?.toLowerCase().includes(term) ?? false) ||
         student.MahasiswaProfile.nim.toLowerCase().includes(term)
     );
     setFilteredStudents(filtered);
@@ -474,7 +474,7 @@ export default function Scoring() {
                                       </td>
                                       <td className="px-4 py-4 text-sm">
                                         <div className="truncate">
-                                          {student.MahasiswaProfile.User.name}
+                                          {student.MahasiswaProfile.User.name ?? "-"}
                                         </div>
                                       </td>
                                     </tr>
