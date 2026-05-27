@@ -15,7 +15,7 @@ export interface InterviewSlot {
   createdById: string;
   studentId: string | null;
   bookedAt?: string | null;
-  User: {
+  CreatedBy: {
     name: string;
   };
   Participants: InterviewParticipant[];

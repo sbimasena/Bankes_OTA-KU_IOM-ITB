@@ -266,7 +266,7 @@ export default function StudentInterviewPage() {
                         </p>
                         <p className="text-sm flex items-center mb-3">
                           <User className="h-4 w-4 mr-2 text-gray-500" />
-                          {slot.User.name}
+                          {slot.CreatedBy?.name}
                           {slot.Participants.length > 0 && (
                             <span className="ml-1 text-xs text-gray-600">
                               (+{slot.Participants.length} pengurus)
@@ -337,7 +337,7 @@ export default function StudentInterviewPage() {
                             </p>
                             <p className="text-sm flex items-center">
                               <User className="h-4 w-4 mr-2 text-gray-500" />
-                              {booking.User.name}
+                              {booking.CreatedBy?.name}
                               {booking.Participants.length > 0 && (
                                 <span className="ml-1 text-xs text-gray-600">
                                   (+{booking.Participants.length} pengurus)
@@ -441,7 +441,7 @@ export default function StudentInterviewPage() {
                       <span className="text-gray-500">Waktu:</span> {format(new Date(selectedSlot.startTime), "HH:mm")} - {format(new Date(selectedSlot.endTime), "HH:mm")}
                     </p>
                     <p className="text-sm">
-                      <span className="text-gray-500">Pengurus IOM:</span> {selectedSlot.User.name}
+                      <span className="text-gray-500">Pengurus IOM:</span> {selectedSlot.CreatedBy?.name}
                       {selectedSlot.Participants.length > 0 && (
                         <span className="ml-1 text-xs text-gray-600">
                           (+{selectedSlot.Participants.length} others)

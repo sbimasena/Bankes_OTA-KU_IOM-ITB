@@ -347,7 +347,7 @@ export default function StudentCalendarView({
                 </div>
                 
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Pengurus IOM: {selectedSlot.User.name}</p>
+                  <p className="text-sm font-medium">Pengurus IOM: {selectedSlot.CreatedBy?.name}</p>
                   {selectedSlot.Participants.length > 0 && (
                     <div className="flex flex-col gap-1">
                       <p className="text-sm">Participants:</p>
