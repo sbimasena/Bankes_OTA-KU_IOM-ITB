@@ -168,6 +168,24 @@ export async function POST(request: Request) {
       );
     }
 
+    const period = await prisma.period.findUnique({
+      where: { id: Number(period_id) },
+    });
+
+    if (!period) {
+      return NextResponse.json(
+        { success: false, error: "Periode tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    if (!period.isOpen) {
+      return NextResponse.json(
+        { success: false, error: "Periode pendaftaran sudah ditutup" },
+        { status: 403 }
+      );
+    }
+
     const newStatus = await prisma.bankesStatus.create({
       data: {
         userId,
