@@ -13,9 +13,9 @@ interface Period {
 }
 
 interface Student {
-  user_id: number;
+  userId: number;
   text: string;
-  student: {
+  Student: {
     nim: string;
     User: {
       name: string;
@@ -123,8 +123,8 @@ export default function Form() {
     const term = searchTerm.toLowerCase();
     const filtered = students.filter(
       (student) =>
-        student.student.User.name.toLowerCase().includes(term) ||
-        student.student.nim.toLowerCase().includes(term)
+        student.Student.User.name.toLowerCase().includes(term) ||
+        student.Student.nim.toLowerCase().includes(term)
     );
     setFilteredStudents(filtered);
     setCurrentPage(1);
@@ -239,7 +239,7 @@ export default function Form() {
         },
         body: JSON.stringify({
           period_id: selectedPeriod?.id,
-          nim: selectedStudent?.student.nim,
+          nim: selectedStudent?.Student.nim,
           formData: body,
         }),
       })
@@ -445,18 +445,18 @@ export default function Form() {
                                     <td className="px-2 py-4 text-sm text-gray-900">
                                       <div className="line-clamp-2 overflow-hidden">
                                         {isSelected ? (
-                                          <span className="text-white">{student.student.nim}</span>
+                                          <span className="text-white">{student.Student.nim}</span>
                                         ) : (
-                                          student.student.nim
+                                          student.Student.nim
                                         )}
                                       </div>
                                     </td>
                                     <td className="px-2 py-4 text-sm text-gray-900">
                                       <div className="line-clamp-2 overflow-hidden">
                                         {isSelected ? (
-                                          <span className="text-white">{student.student.User.name}</span>
+                                          <span className="text-white">{student.Student.User.name}</span>
                                         ) : (
-                                          student.student.User.name
+                                          student.Student.User.name
                                         )}
                                       </div>
                                     </td>
