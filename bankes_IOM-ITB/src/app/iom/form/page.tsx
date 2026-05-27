@@ -123,9 +123,8 @@ export default function Form() {
     const term = searchTerm.toLowerCase();
     const filtered = students.filter(
       (student) =>
-        student.Student &&
-        (student.Student.User.name.toLowerCase().includes(term) ||
-        student.Student.nim.toLowerCase().includes(term))
+        student.Student?.User?.name?.toLowerCase().includes(term) ||
+        student.Student?.nim?.toLowerCase().includes(term)
     );
     setFilteredStudents(filtered);
     setCurrentPage(1);
