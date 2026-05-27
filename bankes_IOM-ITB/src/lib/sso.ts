@@ -108,6 +108,41 @@ export function localRoleToKeycloak(localRole: string): string {
 }
 
 /**
+ * Hapus akun user dari Keycloak
+ * Dipanggil saat admin delete user agar tidak ada ghost account di Keycloak
+ *
+ * @param keycloakUserId - UUID user di Keycloak (oid)
+ */
+export async function deleteSsoAccount({
+  keycloakUserId,
+}: {
+  keycloakUserId: string;
+}): Promise<void> {
+  const ssoApiUrl = process.env.SSO_API_URL;
+  const registerApiKey = process.env.REGISTER_API_KEY;
+
+  if (!ssoApiUrl || !registerApiKey) {
+    throw new Error(
+      "SSO_API_URL or REGISTER_API_KEY environment variables are not set"
+    );
+  }
+
+  const res = await fetch(`${ssoApiUrl}/auth/users/${keycloakUserId}`, {
+    method: "DELETE",
+    headers: {
+      "X-Api-Key": registerApiKey,
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      err.message ?? `SSO delete failed with status ${res.status}`
+    );
+  }
+}
+
+/**
  * Update role user yang sudah ada di Keycloak
  * Dipanggil saat admin approve dan assign role ke user
  *

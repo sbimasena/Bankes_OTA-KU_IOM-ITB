@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/authOptions';
 import { prisma } from '@/lib/prisma';
+import { deleteSsoAccount } from '@/lib/sso';
 
 /**
  * @swagger
@@ -145,6 +146,25 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
   }
 
   try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { oid: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
+    }
+
+    // Hapus dari Keycloak dulu agar tidak ada ghost account yang blokir re-registrasi
+    if (user.oid) {
+      try {
+        await deleteSsoAccount({ keycloakUserId: user.oid });
+      } catch (ssoError) {
+        console.error("Failed to delete Keycloak account:", ssoError);
+        // Lanjut hapus dari DB meskipun SSO gagal, log untuk manual cleanup
+      }
+    }
+
     await prisma.user.delete({
       where: { id: userId },
     });
