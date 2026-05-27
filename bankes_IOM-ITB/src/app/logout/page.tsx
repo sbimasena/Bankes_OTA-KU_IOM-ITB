@@ -4,15 +4,18 @@ import { useEffect } from "react";
 
 export default function LogoutPage() {
   useEffect(() => {
-    signOut({ redirect: false }).then(async () => {
-      try {
-        const res = await fetch("/api/auth/federated-logout");
-        const { logoutUrl } = await res.json();
+    // Fetch the Keycloak logout URL first while the NextAuth token is still active,
+    // then sign out of NextAuth, then redirect to Keycloak to end the SSO session.
+    fetch("/api/auth/federated-logout")
+      .then((res) => res.json())
+      .then(async ({ logoutUrl }) => {
+        await signOut({ redirect: false });
         window.location.href = logoutUrl;
-      } catch {
+      })
+      .catch(async () => {
+        await signOut({ redirect: false });
         window.location.href = "/";
-      }
-    });
+      });
   }, []);
 
   return (
