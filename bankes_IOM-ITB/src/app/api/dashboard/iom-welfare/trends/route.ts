@@ -59,17 +59,23 @@ export async function GET(request: Request) {
           periodId: currentPeriod.id,
         },
         select: {
-          createdAt: true,
+          MahasiswaProfile: {
+            select: {
+              createdAt: true,
+            },
+          },
         },
         orderBy: {
-          createdAt: "asc",
+          MahasiswaProfile: {
+            createdAt: "asc",
+          },
         },
       });
 
       // Group by week
       const registrationByWeek: Record<string, number> = {};
       registrationData.forEach((item) => {
-        const date = new Date(item.createdAt);
+        const date = new Date(item.MahasiswaProfile.createdAt);
         // Get week number
         const weekStart = new Date(date);
         weekStart.setDate(weekStart.getDate() - weekStart.getDay());
