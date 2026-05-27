@@ -27,7 +27,7 @@ interface Status {
 }
 
 export interface Student {
-  student_id: number;
+  student_id: string;
   period_id: number;
   passDitmawa: boolean;
   passIOM: boolean;
@@ -206,8 +206,8 @@ export default function Upload() {
     setIsUpdating(true);
     try {
       const studentsToUpdate = students.map((student) => ({
-        student_id: student.student_id,
-        period_id: selectedPeriod?.period_id || 0,
+        userId: student.student_id,
+        periodId: selectedPeriod?.period_id || 0,
         Statuses: [{ passDitmawa: student.passDitmawa, passIOM: student.passIOM }],
       }));
 
