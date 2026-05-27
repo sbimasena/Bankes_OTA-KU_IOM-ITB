@@ -14,7 +14,7 @@ export interface Period {
 }
 
 interface File {
-  file_id: number;
+  id: string;
   fileUrl: string;
   fileName: string;
   type: string;
@@ -26,16 +26,15 @@ interface Status {
 }
 
 interface Student {
-  student_id: number;
-  period_id: number;
-  Student: {
+  userId: string;
+  periodId: number;
+  MahasiswaProfile: {
     nim: string;
     User: {
-      user_id: number;
-      name: string;
+      id: string;
+      name: string | null;
     };
-    Files: File[];
-    Statuses: Status[];
+    StudentFiles: File[];
   };
 }
 
@@ -52,8 +51,8 @@ export default function Upload() {
   const indexOfLastStudent = currentPage * itemsPerPage;
   const indexOfFirstStudent = indexOfLastStudent - itemsPerPage;
   const filteredStudents = students.filter((student) =>
-    student.Student.nim.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.Student.User.name.toLowerCase().includes(searchTerm.toLowerCase())
+    student.MahasiswaProfile.nim.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (student.MahasiswaProfile.User.name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
   );
   
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
@@ -177,11 +176,11 @@ export default function Upload() {
                     </thead>
                     <tbody className="bg-white divide-y">
                       {currentStudents.map((st) => (
-                        <tr key={st.student_id}>
-                          <td className="px-6 py-4">{st.Student.nim}</td>
-                          <td className="px-6 py-4">{st.Student.User.name}</td>
+                        <tr key={st.userId}>
+                          <td className="px-6 py-4">{st.MahasiswaProfile.nim}</td>
+                          <td className="px-6 py-4">{st.MahasiswaProfile.User.name ?? "-"}</td>
                           {fileTypes.map(({ key }) => {
-                            const file = st.Student.Files.find((f) => f.type === key);
+                            const file = st.MahasiswaProfile.StudentFiles.find((f) => f.type === key);
                             return (
                               <td key={key} className="px-6 py-4">
                                 {file ? (
