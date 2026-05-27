@@ -7,7 +7,8 @@ export async function GET(req: NextRequest) {
   const keycloakIssuer = process.env.KEYCLOAK_ISSUER!;
 
   if (token?.idToken) {
-    const logoutUrl = `${keycloakIssuer}/protocol/openid-connect/logout?id_token_hint=${token.idToken}`;
+    const redirectUri = encodeURIComponent(`${nextAuthUrl}/login`);
+    const logoutUrl = `${keycloakIssuer}/protocol/openid-connect/logout?id_token_hint=${token.idToken}&post_logout_redirect_uri=${redirectUri}`;
     return NextResponse.json({ logoutUrl });
   }
 
