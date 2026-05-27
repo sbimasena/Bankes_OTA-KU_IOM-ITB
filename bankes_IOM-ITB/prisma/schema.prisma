@@ -398,12 +398,13 @@ model Period {
 }
 
 model BankesStatus {
-  userId        String  @db.Uuid
+  userId        String   @db.Uuid
   periodId      Int
   passDitmawa   Boolean
   passIOM       Boolean
   passInterview Boolean
   amount        Int?
+  createdAt     DateTime @default(now())
 
   MahasiswaProfile MahasiswaProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
   Period           Period           @relation(fields: [periodId], references: [id], onDelete: Cascade)
