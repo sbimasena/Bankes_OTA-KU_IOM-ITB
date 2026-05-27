@@ -156,12 +156,13 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
     }
 
     // Hapus dari Keycloak dulu agar tidak ada ghost account yang blokir re-registrasi
+    let ssoWarning: string | undefined;
     if (user.oid) {
       try {
         await deleteSsoAccount({ keycloakUserId: user.oid });
       } catch (ssoError) {
         console.error("Failed to delete Keycloak account:", ssoError);
-        // Lanjut hapus dari DB meskipun SSO gagal, log untuk manual cleanup
+        ssoWarning = `Akun berhasil dihapus dari database, tapi gagal dihapus dari Keycloak (oid: ${user.oid}). Hapus manual di Keycloak Admin Console.`;
       }
     }
 
@@ -169,7 +170,10 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
       where: { id: userId },
     });
 
-    return NextResponse.json({ message: "User deleted successfully" });
+    return NextResponse.json({
+      message: "User deleted successfully",
+      ...(ssoWarning && { warning: ssoWarning }),
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
