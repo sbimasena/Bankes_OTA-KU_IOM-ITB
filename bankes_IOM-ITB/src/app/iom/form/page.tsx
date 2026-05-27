@@ -20,7 +20,7 @@ interface Student {
     User: {
       name: string;
     };
-  };
+  } | null;
 }
 
 export default function Form() {
@@ -123,8 +123,9 @@ export default function Form() {
     const term = searchTerm.toLowerCase();
     const filtered = students.filter(
       (student) =>
-        student.Student.User.name.toLowerCase().includes(term) ||
-        student.Student.nim.toLowerCase().includes(term)
+        student.Student &&
+        (student.Student.User.name.toLowerCase().includes(term) ||
+        student.Student.nim.toLowerCase().includes(term))
     );
     setFilteredStudents(filtered);
     setCurrentPage(1);
