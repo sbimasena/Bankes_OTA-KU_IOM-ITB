@@ -459,6 +459,53 @@ export default function WeeklyCalendarView() {
     return result;
   }, [filteredSlots, weekDays, timeSlots]);
 
+  // Compute column assignment for overlapping slots, per day
+  const slotLayoutByDay = useMemo(() => {
+    const layoutMap = new Map<string, Map<number, { column: number; totalColumns: number }>>();
+
+    weekDays.forEach(day => {
+      const dayStr = format(day, 'yyyy-MM-dd');
+      const daySlots = filteredSlots.filter(slot =>
+        format(new Date(slot.startTime), 'yyyy-MM-dd') === dayStr
+      );
+
+      const sorted = [...daySlots].sort((a, b) =>
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      );
+
+      // Greedy column assignment: place each slot in the first column it fits
+      const colEnds: number[] = [];
+      const slotColumn = new Map<number, number>();
+
+      for (const slot of sorted) {
+        const start = new Date(slot.startTime).getTime();
+        const end = new Date(slot.endTime).getTime();
+        let col = colEnds.findIndex(colEnd => colEnd <= start);
+        if (col === -1) col = colEnds.length;
+        colEnds[col] = end;
+        slotColumn.set(slot.id, col);
+      }
+
+      // For each slot, total columns = highest column index among all overlapping slots + 1
+      const slotLayout = new Map<number, { column: number; totalColumns: number }>();
+      for (const slot of sorted) {
+        const start = new Date(slot.startTime).getTime();
+        const end = new Date(slot.endTime).getTime();
+        const overlapping = sorted.filter(other => {
+          const os = new Date(other.startTime).getTime();
+          const oe = new Date(other.endTime).getTime();
+          return os < end && oe > start;
+        });
+        const totalColumns = Math.max(...overlapping.map(s => (slotColumn.get(s.id) ?? 0) + 1));
+        slotLayout.set(slot.id, { column: slotColumn.get(slot.id) ?? 0, totalColumns });
+      }
+
+      layoutMap.set(dayStr, slotLayout);
+    });
+
+    return layoutMap;
+  }, [filteredSlots, weekDays]);
+
   const showSlotDetails = (slot: InterviewSlot) => {
     setSelectedSlot(slot);
     setIsDetailsDialogOpen(true);
@@ -482,14 +529,15 @@ export default function WeeklyCalendarView() {
           </div>
           
           <div className="flex items-center gap-4">
-            <Select 
-              value={selectedStaffId || ''} 
-              onValueChange={setSelectedStaffId}
+            <Select
+              value={selectedStaffId ?? 'all'}
+              onValueChange={(val) => setSelectedStaffId(val === 'all' ? null : val)}
             >
               <SelectTrigger className="w-[240px]">
-                <SelectValue placeholder="Pilih Pengurus IOM" />
+                <SelectValue placeholder="Pilih Pewawancara" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">Semua Pewawancara</SelectItem>
                 {session?.user?.id && (
                   <SelectItem value={session.user.id as string}>Anda</SelectItem>
                 )}
@@ -571,31 +619,37 @@ export default function WeeklyCalendarView() {
                         const isOwner = slot.createdById === session?.user?.id;
                         const isParticipant = slot.Participants.some((p: { userId: string; }) => p.userId === session?.user?.id);
                         const hasStudent = !!slot.studentId;
-                        
+
                         // Calculate exact duration in minutes
                         const durationMinutes = (slotEndTime.getTime() - slotStartTime.getTime()) / (60 * 1000);
-                        const heightInPixels = Math.max((durationMinutes / 60) * 80, 40); // Minimum height of 40px for visibility
-                        
+                        const heightInPixels = Math.max((durationMinutes / 60) * 80, 40);
+
+                        const layout = slotLayoutByDay.get(dayStr)?.get(slot.id) ?? { column: 0, totalColumns: 1 };
+                        const widthPct = 100 / layout.totalColumns;
+                        const leftPct = layout.column * widthPct;
+
                         return (
-                          <div 
+                          <div
                             key={slot.id}
                             onClick={() => showSlotDetails(slot)}
-                            className={`mb-1 p-1 rounded text-xs cursor-pointer hover:opacity-100 absolute left-1 right-1 z-10 ${
+                            className={`mb-1 p-1 rounded text-xs cursor-pointer hover:opacity-100 absolute z-10 ${
                               hasStudent ? (
-                                isOwner ? 'bg-blue-600 text-white' : 
-                                isParticipant ? 'bg-green-600 text-white' : 
+                                isOwner ? 'bg-blue-600 text-white' :
+                                isParticipant ? 'bg-green-600 text-white' :
                                 'bg-var text-white'
                               ) : (
-                                isOwner ? 'bg-blue-200 text-blue-800' : 
-                                isParticipant ? 'bg-green-200 text-green-800' : 
+                                isOwner ? 'bg-blue-200 text-blue-800' :
+                                isParticipant ? 'bg-green-200 text-green-800' :
                                 'bg-gray-200 text-gray-800'
                               )
                             }`}
-                            style={{ 
+                            style={{
                               top: `${slot.minuteOffset || 0}px`,
                               height: `${heightInPixels}px`,
+                              width: `calc(${widthPct}% - 4px)`,
+                              left: `calc(${leftPct}% + 2px)`,
                               pointerEvents: 'auto',
-                              opacity: 0.6  // Add this line
+                              opacity: 0.6,
                             }}
                           >
                             <div className="flex items-center justify-between">

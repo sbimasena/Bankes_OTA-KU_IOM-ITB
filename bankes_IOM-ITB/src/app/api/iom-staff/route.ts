@@ -55,15 +55,16 @@ export async function GET() {
     try {
       const session = await getServerSession(authOptions);
   
-      if (!session?.user?.id || (session.user.role !== "Pengurus_IOM" && session.user.role !== "Mahasiswa")) {
+      const allowedRoles = ["Pengurus_IOM", "Pewawancara", "Mahasiswa"];
+      if (!session?.user?.id || !allowedRoles.includes(session.user.role)) {
         return NextResponse.json(
           { success: false, error: "Unauthorized" },
           { status: 401 }
         );
       }
-  
+
       const iomStaff = await prisma.user.findMany({
-        where: { role: "Pengurus_IOM" },
+        where: { role: { in: ["Pengurus_IOM", "Pewawancara"] } },
         select: {
           id: true,
           name: true,
