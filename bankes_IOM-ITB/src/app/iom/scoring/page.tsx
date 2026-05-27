@@ -6,11 +6,11 @@ import ScoringQuestionDialog from "./components/ScoringQuestionsDialog";
 import { Toaster, toast } from "sonner";
 
 interface Period {
-  id: number;
+  period_id: number;
   period: string;
-  startDate: Date;
-  endDate: Date;
-  isCurrent: boolean;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
 }
 
 interface Status {
@@ -161,19 +161,19 @@ export default function Scoring() {
         ]);
 
         if (fetchedPeriods) {
-          const currentPeriod = fetchedPeriods.find((period) => period.isCurrent);
+          const currentPeriod = fetchedPeriods.find((period) => period.is_current);
           setSelectedPeriod(currentPeriod || null);
           if (currentPeriod) {
-            const fetchedStudents = await fetchStudentsByPeriod(currentPeriod.id);
+            const fetchedStudents = await fetchStudentsByPeriod(currentPeriod.period_id);
             if (fetchedStudents && fetchedStudents.length > 0) {
               const defaultStudent = fetchedStudents[0];
               setCurrentStudent(defaultStudent.userId);
-              
+
               setQuestions(fetchedQuestions);
-              
+
               const [defaultStudentScoreMatrix, statusResponse] = await Promise.all([
                 fetchScoreMatrix(defaultStudent),
-                fetch(`/api/status/${defaultStudent.userId}/${currentPeriod.id}`),
+                fetch(`/api/status/${defaultStudent.userId}/${currentPeriod.period_id}`),
               ]);
 
               setScoreMatrix(defaultStudentScoreMatrix);
@@ -213,9 +213,13 @@ export default function Scoring() {
     try {
       setLoading(true);
       const selectedId = event.target.value;
-      const selected = periods.find((period) => period.id === parseInt(selectedId, 10));
+      const selected = periods.find((period) => period.period_id === parseInt(selectedId, 10));
       setSelectedPeriod(selected || null);
-      fetchStudentsByPeriod(Number(selected?.id));
+      if (selected?.period_id) {
+        fetchStudentsByPeriod(selected.period_id);
+      } else {
+        setStudents([]);
+      }
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -231,7 +235,7 @@ export default function Scoring() {
     try {
       const [scoreMatrixResponse, statusResponse] = await Promise.all([
         fetchScoreMatrix(student),
-        fetch(`/api/status/${studentId}/${selectedPeriod?.id}`),
+        fetch(`/api/status/${studentId}/${selectedPeriod?.period_id}`),
       ]);
 
       setScoreMatrix(scoreMatrixResponse);
@@ -280,7 +284,7 @@ export default function Scoring() {
 
         const newEntry: ScoreMatrixEntry = {
           userId: currentStudent,
-          periodId: selectedPeriod.id,
+          periodId: selectedPeriod.period_id,
           questionId,
           scoreCategory:
             field === "scoreCategory"
@@ -327,7 +331,7 @@ export default function Scoring() {
         },
         body: JSON.stringify([{
           userId: currentStudent,
-          periodId: selectedPeriod.id,
+          periodId: selectedPeriod.period_id,
           Statuses: [{
             passDitmawa: true,
             passIOM: true,
@@ -388,13 +392,13 @@ export default function Scoring() {
                       </label>
                       <select
                         className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-slate-700 font-medium"
-                        value={selectedPeriod?.id || ""}
+                        value={selectedPeriod?.period_id || ""}
                         onChange={handlePeriodChange}
                       >
                         <option value="">Pilih Periode</option>
                         {periods.map((period) => (
-                          <option key={period.id} value={period.id}>
-                            {period.period} {period.isCurrent ? "(Aktif)" : ""}
+                          <option key={period.period_id} value={period.period_id}>
+                            {period.period} {period.is_current ? "(Aktif)" : ""}
                           </option>
                         ))}
                       </select>
