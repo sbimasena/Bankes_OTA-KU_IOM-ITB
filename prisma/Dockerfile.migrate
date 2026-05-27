@@ -7,4 +7,4 @@ COPY schema.prisma ./
 
 RUN npm ci --quiet
 
-CMD ["sh", "-c", "npx prisma db push --skip-generate && echo 'Schema ready'"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && echo 'Schema ready'"]
