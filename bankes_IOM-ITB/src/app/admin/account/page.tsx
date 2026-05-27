@@ -186,6 +186,7 @@ export default function AccountPage() {
             >
               <option value="all">Semua Role</option>
               <option value="Mahasiswa">Mahasiswa</option>
+              <option value="OrangTuaAsuh">Orang Tua Asuh</option>
               <option value="Pengurus_IOM">Pengurus IOM</option>
               <option value="Pewawancara">Pewawancara</option>
             </select>
@@ -205,8 +206,8 @@ export default function AccountPage() {
                     <td className="px-4 py-2 text-left">{user.name}</td>
                     <td className="px-4 py-2 text-left">{user.email}</td>
                     <td className="px-4 py-2 text-center">
-                      {user.role === "Mahasiswa"
-                        ? <span>{user.role}</span>
+                      {user.role === "Mahasiswa" || user.role === "OrangTuaAsuh"
+                        ? <span>{user.role === "OrangTuaAsuh" ? "Orang Tua Asuh" : user.role}</span>
                         : <select
                             value={roleMap[user.id.toString()]}
                             onChange={e => handleRoleChange(user.id.toString(), e.target.value)}
@@ -223,7 +224,7 @@ export default function AccountPage() {
                         onClick={() => confirmAction("delete", user.id.toString(), user.name)}
                       >Hapus</button>
                       {/* Only show Update button when role is changed */}
-                      {user.role !== "Mahasiswa" && roleMap[user.id.toString()] !== user.role && (
+                      {user.role !== "Mahasiswa" && user.role !== "OrangTuaAsuh" && roleMap[user.id.toString()] !== user.role && (
                         <button
                           className="bg-green-500 text-white px-3 py-1 rounded cursor-pointer hover:opacity-90"
                           onClick={() => confirmAction("update", user.id.toString(), user.name)}

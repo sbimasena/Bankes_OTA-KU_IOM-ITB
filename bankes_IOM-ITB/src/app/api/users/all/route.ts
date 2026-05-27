@@ -25,11 +25,6 @@ export async function GET() {
   try {
     // 2. Fetch all users with the specified roles
     const users = await prisma.user.findMany({
-      where: {
-        role: {
-          in: ["Mahasiswa", "Pewawancara", "Pengurus_IOM"],
-        },
-      },
       select: {
         id: true,
         name: true,
