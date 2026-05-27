@@ -14,9 +14,9 @@ interface Period {
 
 interface ReportStudent {
   amount: number;
-  Student: {
+  MahasiswaProfile: {
     nim: string;
-    student_id: number;
+    userId: string;
     faculty: string;
     major: string;
     User?: {
@@ -83,10 +83,10 @@ export default function ReportPage() {
     if (!students.length) return;
     const XLSX = await import("xlsx");
     const data = students.map((item) => ({
-      NIM: item.Student.nim,
-      Nama: item.Student.User?.name || "-",
-      Fakultas: item.Student.faculty,
-      Jurusan: item.Student.major,
+      NIM: item.MahasiswaProfile.nim,
+      Nama: item.MahasiswaProfile.User?.name || "-",
+      Fakultas: item.MahasiswaProfile.faculty ?? "-",
+      Jurusan: item.MahasiswaProfile.major?.replace(/_/g, " ") ?? "-",
       "Nominal Bantuan": item.amount,
     }));
     const ws = XLSX.utils.json_to_sheet(data);
@@ -252,32 +252,32 @@ export default function ReportPage() {
                         </tr>
                       ) : (
                         students.map((item, index) => (
-                          <tr 
-                            key={item.Student.student_id} 
+                          <tr
+                            key={item.MahasiswaProfile.userId}
                             className={`hover:bg-slate-50/50 transition-colors duration-150 ${
                               index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'
                             }`}
                           >
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-mono text-slate-900 bg-slate-100 px-2 py-1 rounded">
-                                {item.Student.nim}
+                                {item.MahasiswaProfile.nim}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-slate-900">
-                                {item.Student.User?.name || (
+                                {item.MahasiswaProfile.User?.name || (
                                   <span className="text-slate-400 italic">Nama tidak tersedia</span>
                                 )}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-slate-700">
-                                {item.Student.faculty}
+                                {item.MahasiswaProfile.faculty ?? "-"}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-slate-700">
-                                {item.Student.major}
+                                {item.MahasiswaProfile.major?.replace(/_/g, " ") ?? "-"}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
