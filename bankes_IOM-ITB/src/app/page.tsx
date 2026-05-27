@@ -22,7 +22,7 @@ export default function Home() {
         Pengurus_IOM: "/iom/home",
         Guest: "/guest",
         Pewawancara: "/interviewer/interview",
-        OrangTuaAsuh: "/guest",
+        OrangTuaAsuh: "/ota/",
         Bankes: "/admin/dashboard"
       };
 

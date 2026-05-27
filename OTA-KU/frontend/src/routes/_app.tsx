@@ -4,7 +4,7 @@ import { SidebarProvider } from "@/context/sidebar";
 import { useSidebar } from "@/context/sidebar-context";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -49,6 +49,21 @@ function SidebarLayout({ children }: { children: React.ReactNode }) {
 }
 
 function AppLayout() {
+  const redirected = useRef(false);
+
+  useEffect(() => {
+    if (redirected.current) return;
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((session) => {
+        if (session?.user?.role === "Pewawancara") {
+          redirected.current = true;
+          window.location.href = "/";
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <SessionProvider>
       <SidebarProvider>

@@ -10,6 +10,11 @@ export default withAuth(
     // Extract the user's role from the token
     const userRole = token?.role;
 
+    // OrangTuaAsuh can only access the OTA-KU app
+    if (userRole === "OrangTuaAsuh") {
+      return NextResponse.redirect(new URL("/ota/", nextUrl));
+    }
+
     // Define role-based route restrictions
     if (nextUrl.pathname.startsWith("/student") && userRole !== "Mahasiswa" ) {
       return NextResponse.redirect(new URL("/", nextUrl));
@@ -24,6 +29,10 @@ export default withAuth(
     }
 
     if (nextUrl.pathname.startsWith("/guest") && userRole !== "Guest") {
+      return NextResponse.redirect(new URL("/", nextUrl));
+    }
+
+    if (nextUrl.pathname.startsWith("/interviewer") && userRole !== "Pewawancara") {
       return NextResponse.redirect(new URL("/", nextUrl));
     }
 
@@ -42,5 +51,5 @@ export default withAuth(
 
 // Protected routes
 export const config = {
-  matcher: ["/student/:path*", "/iom/:path*", "/admin/:path*", "/guest/:path*"],
+  matcher: ["/student/:path*", "/iom/:path*", "/admin/:path*", "/guest/:path*", "/interviewer/:path*"],
 };
