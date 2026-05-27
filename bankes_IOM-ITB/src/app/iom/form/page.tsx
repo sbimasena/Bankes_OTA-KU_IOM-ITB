@@ -306,7 +306,7 @@ export default function Form() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          period_id: selectedPeriod?.id ,
+          period_id: selectedPeriod?.period_id,
           user_id: student.userId
         }),
       });
