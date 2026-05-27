@@ -204,22 +204,22 @@ export async function POST(request: Request) {
           return { success: false, error: `Student with ID ${userId} not found` };
         }
 
-        const uploadedFiles = await prisma.studentFile.findMany({
-          where: { userId },
-        });
-
-        const uploadedFileTypes = new Set(uploadedFiles.map((file) => file.type));
-        const requiredFileTypes = new Set(Object.values(StudentFileType));
-
-        const allFilesUploaded = [...requiredFileTypes].every((type) =>
-          uploadedFileTypes.has(type as StudentFileType)
-        );
-
-        if (!allFilesUploaded) {
-          return NextResponse.json({
-            success: false,
-            error: `Cannot update passIOM: All required files are not uploaded for student ID ${userId}`,
+        const wantsPassIOM = Statuses[0].passIOM === true;
+        if (wantsPassIOM) {
+          const uploadedFiles = await prisma.studentFile.findMany({
+            where: { userId },
           });
+          const uploadedFileTypes = new Set(uploadedFiles.map((file) => file.type));
+          const requiredFileTypes = new Set(Object.values(StudentFileType));
+          const allFilesUploaded = [...requiredFileTypes].every((type) =>
+            uploadedFileTypes.has(type as StudentFileType)
+          );
+          if (!allFilesUploaded) {
+            return {
+              success: false,
+              error: `Cannot set passIOM: belum semua berkas diupload untuk mahasiswa ID ${userId}`,
+            };
+          }
         }
 
         const updatedStatus = await prisma.bankesStatus.update({
