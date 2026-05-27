@@ -97,9 +97,14 @@ export default function PeriodPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newPeriod),
       });
-      const createdPeriod: Period = await response.json();
 
-      // Add the new period and sort the list
+      if (!response.ok) {
+        const err = await response.json();
+        alert(err.message || "Gagal membuat periode.");
+        return;
+      }
+
+      const createdPeriod: Period = await response.json();
       const updatedPeriods = [...periods, createdPeriod].sort((a, b) =>
         new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
       );
@@ -107,6 +112,28 @@ export default function PeriodPage() {
       setNewPeriod({ period: "", start_date: "", end_date: "" });
     } catch (error) {
       console.error("Error creating period:", error);
+      alert("Terjadi kesalahan saat membuat periode.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deletePeriod = async (id: number) => {
+    if (!confirm("Hapus periode ini? Tindakan ini tidak dapat dibatalkan.")) return;
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/periods/${id}`, { method: "DELETE" });
+
+      if (!response.ok) {
+        const err = await response.json();
+        alert(err.message || "Gagal menghapus periode.");
+        return;
+      }
+
+      setPeriods(periods.filter((p) => p.period_id !== id));
+    } catch (error) {
+      console.error("Error deleting period:", error);
+      alert("Terjadi kesalahan saat menghapus periode.");
     } finally {
       setLoading(false);
     }
@@ -142,6 +169,7 @@ export default function PeriodPage() {
                         <th className="border p-2">Berakhir</th>
                         <th className="border p-2">Periode Sekarang</th>
                         <th className="border p-2">Status Pendaftaran</th>
+                        <th className="border p-2">Hapus</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -179,6 +207,19 @@ export default function PeriodPage() {
                                 } bg-[#003793] text-white px-2 py-1 rounded-md hover:bg-[#b5c3e1]`}
                               >
                                 {p.is_open ? "Tutup Pendaftaran" : "Buka Pendaftaran"}
+                              </button>
+                            )}
+                          </td>
+                          <td className="border p-2">
+                            {!p.is_current && !p.is_open && (
+                              <button
+                                onClick={() => deletePeriod(p.period_id)}
+                                disabled={loading}
+                                className={`${
+                                  loading ? "opacity-50 cursor-not-allowed" : ""
+                                } bg-red-600 text-white px-2 py-1 rounded-md hover:bg-red-400`}
+                              >
+                                Hapus
                               </button>
                             )}
                           </td>
