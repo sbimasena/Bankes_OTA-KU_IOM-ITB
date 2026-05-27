@@ -328,10 +328,11 @@ export default function Scoring() {
         body: JSON.stringify([{
           userId: currentStudent,
           periodId: selectedPeriod.id,
-          Statuses: [{ 
-            passDitmawa: true, 
+          Statuses: [{
+            passDitmawa: true,
             passIOM: true,
-            amount: parseInt(aidAmount) || 0 
+            passInterview: true,
+            amount: parseInt(aidAmount) || 0
           }],
         }]),
       });

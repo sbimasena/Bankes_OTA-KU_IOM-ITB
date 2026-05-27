@@ -108,7 +108,18 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, exists: !!existingRecord });
+    if (!existingRecord) {
+      return NextResponse.json({ success: true, exists: false });
+    }
+
+    return NextResponse.json({
+      success: true,
+      exists: true,
+      passDitmawa: existingRecord.passDitmawa,
+      passIOM: existingRecord.passIOM,
+      passInterview: existingRecord.passInterview,
+      amount: existingRecord.amount,
+    });
   } catch (error) {
     console.error("Error checking registration status:", error);
     return NextResponse.json(

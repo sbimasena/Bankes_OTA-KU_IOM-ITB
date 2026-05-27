@@ -10,6 +10,7 @@ interface StudentUpdate {
   Statuses: {
     passDitmawa: boolean;
     passIOM: boolean;
+    passInterview?: boolean;
     amount?: number;
   }[];
 }
@@ -226,6 +227,7 @@ export async function POST(request: Request) {
           data: {
             passDitmawa: Statuses[0].passDitmawa,
             passIOM: Statuses[0].passIOM,
+            ...(Statuses[0].passInterview !== undefined && { passInterview: Statuses[0].passInterview }),
             amount: Statuses[0].amount !== undefined ? Statuses[0].amount : null,
           },
         });

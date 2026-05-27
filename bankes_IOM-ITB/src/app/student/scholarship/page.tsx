@@ -18,6 +18,61 @@ interface Period {
   is_open: boolean;
   isOpen?: boolean;
   is_registered?: boolean;
+  passDitmawa?: boolean;
+  passIOM?: boolean;
+  passInterview?: boolean;
+  amount?: number | null;
+}
+
+function ScholarshipStatusBadge({ period }: { period: Period }) {
+  if (period.passInterview) {
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <span className="w-full sm:w-auto inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium text-emerald-700 bg-emerald-100 whitespace-nowrap">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-1.5">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.06 0l4-5.5z" clipRule="evenodd" />
+          </svg>
+          Lolos Interview
+        </span>
+        {period.amount ? (
+          <span className="text-xs text-emerald-600 font-medium">
+            Bantuan: Rp{period.amount.toLocaleString("id-ID")}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (period.passIOM) {
+    return (
+      <span className="w-full sm:w-auto inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium text-blue-700 bg-blue-100 whitespace-nowrap">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-1.5">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.06 0l4-5.5z" clipRule="evenodd" />
+        </svg>
+        Lolos Verifikasi IOM
+      </span>
+    );
+  }
+
+  if (period.passDitmawa) {
+    return (
+      <span className="w-full sm:w-auto inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium text-purple-700 bg-purple-100 whitespace-nowrap">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-1.5">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.06 0l4-5.5z" clipRule="evenodd" />
+        </svg>
+        Lolos Ditmawa
+      </span>
+    );
+  }
+
+  return (
+    <span className="w-full sm:w-auto inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium text-amber-700 bg-amber-100 whitespace-nowrap">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-1.5">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+      </svg>
+      Menunggu Verifikasi
+    </span>
+  );
 }
 
 const formatDate = (dateString: string): string => {
@@ -72,7 +127,14 @@ export default function Upload() {
           }
 
           const result = await response.json();
-          return { ...period, is_registered: result.exists };
+          return {
+            ...period,
+            is_registered: result.exists,
+            passDitmawa: result.passDitmawa ?? false,
+            passIOM: result.passIOM ?? false,
+            passInterview: result.passInterview ?? false,
+            amount: result.amount ?? null,
+          };
         })
       );
 
@@ -153,12 +215,7 @@ export default function Upload() {
                       </div>
                       <div className="flex-shrink-0 w-full sm:w-auto mt-3 sm:mt-0">
                         {p.is_registered ? (
-                          <span className="w-full sm:w-auto inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium text-emerald-700 bg-emerald-100 whitespace-nowrap">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-1.5">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.06 0l4-5.5z" clipRule="evenodd" />
-                            </svg>
-                            Anda Telah Mendaftar
-                          </span>
+                          <ScholarshipStatusBadge period={p} />
                         ) : p.is_open ? (
                           <button
                             className="w-full sm:w-auto flex items-center justify-center bg-[#003793] hover:bg-[#002a70] text-white font-semibold py-2 px-5 rounded-md shadow-sm hover:shadow transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#003793] focus:ring-opacity-50 text-sm"
