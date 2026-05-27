@@ -32,7 +32,9 @@ services:
       retries: 10
     restart: unless-stopped
     networks:
-      - iom-ota-network
+      iom-ota-network:
+        aliases:
+          - iom-ota-db
 
   # ── MinIO Object Storage ─────────────────────────────────────────────────────
   minio:
@@ -158,7 +160,7 @@ services:
       - "${OTA_BACKEND_PORT:-13000}:3000"
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@iom-ota-postgres-prod:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@iom-ota-db:5432/${POSTGRES_DB}
       BACKEND_PORT: "3000"
       JWT_SECRET: ${JWT_SECRET}
       ALLOWED_ORIGINS: ${OTA_ALLOWED_ORIGINS}
