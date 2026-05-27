@@ -206,6 +206,17 @@ services:
         condition: service_healthy
     networks:
       - iom-ota-network
+      - coolify
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.routers.ota-backend.rule=Host(`bankes.iom-itb.id`) && PathPrefix(`/ota-api`)"
+      - "traefik.http.routers.ota-backend.entrypoints=websecure"
+      - "traefik.http.routers.ota-backend.tls=true"
+      - "traefik.http.routers.ota-backend.priority=10"
+      - "traefik.http.middlewares.ota-api-strip.stripprefix.prefixes=/ota-api"
+      - "traefik.http.routers.ota-backend.middlewares=ota-api-strip@docker"
+      - "traefik.http.services.ota-backend.loadbalancer.server.port=3000"
     restart: unless-stopped
 
   # ── OTA-KU Frontend ──────────────────────────────────────────────────────────
