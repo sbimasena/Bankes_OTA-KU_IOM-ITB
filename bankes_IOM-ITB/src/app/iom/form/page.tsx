@@ -430,7 +430,7 @@ export default function Form() {
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                              {students.map((student, index) => {
+                              {filteredStudents.map((student, index) => {
                                 const isSelected = student.userId === selectedStudent?.userId;
 
                                 return (
@@ -446,18 +446,18 @@ export default function Form() {
                                     <td className="px-2 py-4 text-sm text-gray-900">
                                       <div className="line-clamp-2 overflow-hidden">
                                         {isSelected ? (
-                                          <span className="text-white">{student.Student.nim}</span>
+                                          <span className="text-white">{student.Student?.nim}</span>
                                         ) : (
-                                          student.Student.nim
+                                          student.Student?.nim
                                         )}
                                       </div>
                                     </td>
                                     <td className="px-2 py-4 text-sm text-gray-900">
                                       <div className="line-clamp-2 overflow-hidden">
                                         {isSelected ? (
-                                          <span className="text-white">{student.Student.User.name}</span>
+                                          <span className="text-white">{student.Student?.User.name}</span>
                                         ) : (
-                                          student.Student.User.name
+                                          student.Student?.User.name
                                         )}
                                       </div>
                                     </td>
