@@ -483,9 +483,9 @@ authProtectedRouter.openapi(verifRoute, async (c) => {
 authProtectedRouter.openapi(logoutRoute, async (c) => {
   deleteCookie(c, "ota-ku.access-cookie");
 
-  // Redirect to the Bankes clear-and-logout endpoint (same domain) so it also
-  // clears the NextAuth session cookie before proceeding to Keycloak logout.
-  const logoutUrl = `/api/auth/clear-and-logout`;
+  // Redirect to the Bankes /logout page (same domain) so it also clears
+  // the NextAuth session via signOut() before proceeding to Keycloak logout.
+  const logoutUrl = `/logout`;
 
   return c.json(
     {
