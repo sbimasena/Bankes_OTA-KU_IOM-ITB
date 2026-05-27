@@ -300,8 +300,8 @@ export default function Scoring() {
   };
   
   const [aidAmount, setAidAmount] = useState<string>("0");
+  const [passedInterview, setPassedInterview] = useState<boolean>(true);
 
-  // Update the handleSubmit function to include the amount field:
   const handleSubmit = async () => {
     if (!currentStudent || !selectedPeriod) {
       alert("Pilih mahasiswa dan periode terlebih dahulu.");
@@ -309,12 +309,9 @@ export default function Scoring() {
     }
 
     try {
-      // First save the score matrix
       const scoreRes = await fetch("/api/score-matrix/update", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(scoreMatrix),
       });
 
@@ -323,20 +320,17 @@ export default function Scoring() {
         throw new Error(errorData.message || "Gagal menyimpan penilaian");
       }
 
-      // Then update the student's status including the aid amount
       const statusRes = await fetch("/api/status/update-status", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify([{
           userId: currentStudent,
           periodId: selectedPeriod.period_id,
           Statuses: [{
             passDitmawa: true,
-            passIOM: true,
-            passInterview: true,
-            amount: parseInt(aidAmount) || 0
+            passIOM: passedInterview,
+            passInterview: passedInterview,
+            amount: passedInterview ? (parseInt(aidAmount) || 0) : 0,
           }],
         }]),
       });
@@ -345,7 +339,7 @@ export default function Scoring() {
         throw new Error("Gagal memperbarui status mahasiswa");
       }
 
-      toast.success("Penilaian dan jumlah bantuan berhasil disimpan!");
+      toast.success(passedInterview ? "Mahasiswa dinyatakan lulus!" : "Mahasiswa dinyatakan ditolak.");
     } catch (error) {
       console.error("Error submitting scores:", error);
       toast.error("Terjadi kesalahan saat menyimpan penilaian.");
@@ -624,8 +618,41 @@ export default function Scoring() {
                               </div>
                             </div>
                             
-                            {/* Aid Amount Section */}
+                            {/* Pass/Reject Toggle */}
                             <div className="px-6 py-5 border-t border-slate-200 bg-slate-50">
+                              <h3 className="text-lg font-bold text-slate-800 mb-4">Keputusan Interview</h3>
+                              <div className="grid grid-cols-2 gap-3">
+                                <label className={`flex items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${passedInterview ? "border-green-500 bg-green-50" : "border-slate-200 hover:border-slate-300"}`}>
+                                  <input
+                                    type="radio"
+                                    name="interviewResult"
+                                    checked={passedInterview}
+                                    onChange={() => setPassedInterview(true)}
+                                    className="sr-only"
+                                  />
+                                  <svg className={`w-5 h-5 mr-2 ${passedInterview ? "text-green-600" : "text-slate-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                  <span className={`font-semibold ${passedInterview ? "text-green-700" : "text-slate-600"}`}>Lulus</span>
+                                </label>
+                                <label className={`flex items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${!passedInterview ? "border-red-500 bg-red-50" : "border-slate-200 hover:border-slate-300"}`}>
+                                  <input
+                                    type="radio"
+                                    name="interviewResult"
+                                    checked={!passedInterview}
+                                    onChange={() => setPassedInterview(false)}
+                                    className="sr-only"
+                                  />
+                                  <svg className={`w-5 h-5 mr-2 ${!passedInterview ? "text-red-600" : "text-slate-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                  <span className={`font-semibold ${!passedInterview ? "text-red-700" : "text-slate-600"}`}>Tolak</span>
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Aid Amount Section */}
+                            <div className={`px-6 py-5 border-t border-slate-200 bg-slate-50 ${!passedInterview ? "opacity-50 pointer-events-none" : ""}`}>
                               <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
                                 <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
@@ -651,12 +678,19 @@ export default function Scoring() {
                             <div className="px-6 py-5 border-t border-slate-200">
                               <button
                                 onClick={handleSubmit}
-                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-2"
+                                className={`w-full text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-2 ${
+                                  passedInterview
+                                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                                    : "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
+                                }`}
                               >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  {passedInterview
+                                    ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  }
                                 </svg>
-                                <span>Simpan Penilaian</span>
+                                <span>{passedInterview ? "Simpan & Luluskan" : "Simpan & Tolak"}</span>
                               </button>
                             </div>
                           </>
