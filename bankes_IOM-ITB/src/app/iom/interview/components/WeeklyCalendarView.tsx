@@ -151,8 +151,8 @@ export default function WeeklyCalendarView() {
       
       if (editingSlotId) {
         // Just update the single slot as before
-        const combinedStartTime = `${date}T${startTime}:00`;
-        const combinedEndTime = `${date}T${endTime}:00`;
+        const combinedStartTime = new Date(`${date}T${startTime}`).toISOString();
+        const combinedEndTime = new Date(`${date}T${endTime}`).toISOString();
         
         const response = await fetch(`/api/slots/${editingSlotId}`, {
           method: "PUT",
