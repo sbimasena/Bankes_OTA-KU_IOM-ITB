@@ -424,9 +424,17 @@ listProtectedRouter.openapi(listAllAccountRoute, async (c) => {
   try {
     const offset = (pageNumber - 1) * LIST_PAGE_DETAIL_SIZE;
 
+    const typeToRole: Record<string, unknown> = {
+      mahasiswa: "Mahasiswa",
+      ota: "OrangTuaAsuh",
+      admin: "Admin",
+      bankes: "Bankes",
+      pengurus: { in: ["Pengurus_IOM", "Pewawancara", "Guest"] },
+    };
+
     const where: Record<string, unknown> = {};
     if (status) where.verificationStatus = status;
-    if (type) where.role = type;
+    if (type) where.role = typeToRole[type] ?? type;
     if (applicationStatus) where.applicationStatus = applicationStatus;
     if (q) {
       where.OR = [
