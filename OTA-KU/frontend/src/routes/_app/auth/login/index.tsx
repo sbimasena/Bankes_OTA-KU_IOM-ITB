@@ -16,6 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, createFileRoute, redirect } from "@tanstack/react-router";
 import { useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -47,6 +48,13 @@ function getKeycloakLoginUrl(): string {
 
 function RouteComponent() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("sso") === "keycloak") {
+      window.location.href = getKeycloakLoginUrl();
+    }
+  }, []);
   const loginCallbackMutation = useMutation({
     mutationFn: (data: UserLoginFormValues) =>
       api.auth.login({ formData: data }),
