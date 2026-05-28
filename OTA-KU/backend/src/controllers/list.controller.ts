@@ -51,7 +51,7 @@ listProtectedRouter.openapi(listMahasiswaOtaRoute, async (c) => {
 
     const where: Record<string, unknown> = {
       mahasiswaStatus: "inactive",
-      User: { applicationStatus: "accepted" },
+      User: { applicationStatus: { not: "unregistered" } },
     };
     if (major) where.major = major as Jurusan;
     if (faculty) where.faculty = faculty as Fakultas;
