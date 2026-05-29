@@ -27,7 +27,6 @@ import {
 import type { StudentFileType } from "@prisma/client";
 import type { Fakultas, Jurusan } from "../lib/nim.js";
 import { createAuthRouter, createRouter } from "./router-factory.js";
-import { deleteFromSSO } from "../lib/sso.js";
 
 export const profileRouter = createRouter();
 export const profileProtectedRouter = createAuthRouter();
@@ -953,25 +952,6 @@ profileProtectedRouter.openapi(deleteAccountRoute, async (c) => {
   const { id } = c.req.param();
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { id },
-      select: { oid: true },
-    });
-
-    if (!user) {
-      return c.json({ success: false, message: "User not found" }, 404);
-    }
-
-    let ssoWarning: string | undefined;
-    if (user.oid) {
-      try {
-        await deleteFromSSO({ keycloakUserId: user.oid });
-      } catch (ssoError) {
-        console.error("Failed to delete Keycloak account:", ssoError);
-        ssoWarning = `Akun berhasil dihapus dari database, tapi gagal dihapus dari Keycloak (oid: ${user.oid}). Hapus manual di Keycloak Admin Console.`;
-      }
-    }
-
     await prisma.user.delete({ where: { id } });
 
     return c.json(
@@ -979,7 +959,6 @@ profileProtectedRouter.openapi(deleteAccountRoute, async (c) => {
         success: true,
         message: "Successfully deleted an account",
         body: { id: id },
-        ...(ssoWarning && { warning: ssoWarning }),
       },
       200,
     );
