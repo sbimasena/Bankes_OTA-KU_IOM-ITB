@@ -1,0 +1,343 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1: OTA-KU Backend — Vitest unit/API tests
+  #   Covers: TC-AUTH, TC-ACCESS-05/07, TC-UPLOAD, TC-OTA, TC-DONASI, TC-PAYMENT,
+  #           TC-WA, TC-TESTI (semua test di OTA-KU/backend/tests/)
+  # ─────────────────────────────────────────────────────────────────────────────
+  ota-backend-test:
+    name: "OTA-KU: Backend Unit Tests"
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: iom_ota_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iom_ota_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports: ["9000:9000"]
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: OTA-KU/backend
+
+    env:
+      # ── Database ─────────────────────────────────────────────────────────────
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/iom_ota_test
+      # ── App ──────────────────────────────────────────────────────────────────
+      NODE_ENV: test
+      BACKEND_PORT: "3000"
+      ALLOWED_ORIGINS: '["http://localhost:5173"]'
+      VITE_PUBLIC_URL: http://localhost:5173
+      JWT_SECRET: ci-only-jwt-secret-must-be-32-chars!!
+      COOKIE_SECURE: "false"
+      # ── MinIO (matches service container above) ───────────────────────────────
+      MINIO_ENDPOINT: localhost
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET_NAME: documents-bucket
+      MINIO_PUBLIC_HOST: localhost
+      MINIO_PUBLIC_PORT: "9000"
+      # ── Cloudinary (mocked in tests via vi.spyOn) ─────────────────────────────
+      CLOUDINARY_CLOUD_NAME: ci-test-cloud
+      CLOUDINARY_API_KEY: "123456789012345"
+      CLOUDINARY_API_SECRET: ci-test-cloudinary-secret-value
+      # ── Email (tidak dikirim saat test) ───────────────────────────────────────
+      EMAIL: ci-noreply@example.com
+      EMAIL_FROM: "CI Test <ci-noreply@example.com>"
+      EMAIL_PASSWORD: ci-dummy-email-password
+      TEST_EMAIL: ci-noreply@example.com
+      # ── VAPID Web Push (tidak dipakai saat test) ──────────────────────────────
+      VAPID_MAILTO: ci-noreply@example.com
+      VAPID_PUBLIC_KEY: BLBx9DKclAGBxGN_SiNRIkFtLKfXW9qlJUvYpIuAm2kX0MnvZ4cFpQ8J7eRtYwHsDaNbCuOiVhGlKmPxEj3sf
+      VAPID_PRIVATE_KEY: m_eLkSZC0LjhMcpU8PMhE04F4aJB_e0G2w0RJJg_Q3I
+      # ── Payment (diset ke none, tidak diproses) ───────────────────────────────
+      PAYMENT_PROVIDER: none
+      MIDTRANS_SERVER_KEY: ""
+      MIDTRANS_CLIENT_KEY: ""
+      MIDTRANS_MERCHANT_ID: ""
+      MIDTRANS_IS_PRODUCTION: "false"
+      # ── Keycloak SSO (hanya URL-nya yang divalidasi, tidak dipanggil saat test)
+      KEYCLOAK_CLIENT_ID: ci-keycloak-client-id
+      KEYCLOAK_CLIENT_SECRET: ci-keycloak-client-secret
+      KEYCLOAK_ISSUER_URL: http://localhost:8080/realms/iom
+      KEYCLOAK_JWKS_URI: http://localhost:8080/realms/iom/protocol/openid-connect/certs
+      KEYCLOAK_REDIRECT_URI: http://localhost:5173/integrations/keycloak/callback
+      SSO_API_URL: http://localhost:8080
+      REGISTER_API_KEY: ci-register-api-key-for-testing
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: OTA-KU/backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create MinIO bucket
+        # mc diunduh sebagai binary — tidak perlu Docker
+        run: |
+          curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc -o mc
+          chmod +x mc
+          ./mc alias set myminio http://localhost:9000 minioadmin minioadmin
+          ./mc mb --ignore-existing myminio/documents-bucket
+        continue-on-error: true
+
+      - name: Run Drizzle migrations
+        run: npx drizzle-kit migrate
+
+      - name: Run tests
+        run: npm test
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ota-backend-coverage
+          path: OTA-KU/backend/coverage/
+          if-no-files-found: ignore
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2: OTA-KU Frontend — Cypress component tests
+  #   Covers: rendering semua komponen UI (tidak butuh backend)
+  # ─────────────────────────────────────────────────────────────────────────────
+  ota-frontend-component:
+    name: "OTA-KU: Frontend Component Tests"
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: OTA-KU/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: OTA-KU/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Cypress component tests
+        run: npx cypress run --component
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-component-screenshots
+          path: OTA-KU/frontend/cypress/screenshots/
+          if-no-files-found: ignore
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 3: OTA-KU — Cypress E2E tests (full stack)
+  #   Covers: TC-AUTH-01..12, TC-SCHOLAR, TC-UPLOAD, TC-INTERVIEW, TC-OTA,
+  #           TC-DONASI, TC-TESTI (semua flow dari browser)
+  #   Dijalankan hanya di push ke main atau semua PR.
+  # ─────────────────────────────────────────────────────────────────────────────
+  ota-e2e:
+    name: "OTA-KU: E2E Tests"
+    runs-on: ubuntu-latest
+    needs: [ota-backend-test, ota-frontend-component]
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: iom_ota_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iom_ota_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports: ["9000:9000"]
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Create MinIO bucket
+        run: |
+          curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc -o mc
+          chmod +x mc
+          ./mc alias set myminio http://localhost:9000 minioadmin minioadmin
+          ./mc mb --ignore-existing myminio/documents-bucket
+        continue-on-error: true
+
+      # ── Backend ──────────────────────────────────────────────────────────────
+      - name: Install backend dependencies
+        working-directory: OTA-KU/backend
+        run: npm ci
+
+      - name: Run Drizzle migrations
+        working-directory: OTA-KU/backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/iom_ota_test
+        run: npx drizzle-kit migrate
+
+      - name: Start backend
+        working-directory: OTA-KU/backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/iom_ota_test
+          NODE_ENV: test
+          BACKEND_PORT: "3000"
+          ALLOWED_ORIGINS: '["http://localhost:5173"]'
+          VITE_PUBLIC_URL: http://localhost:5173
+          JWT_SECRET: ci-only-jwt-secret-must-be-32-chars!!
+          COOKIE_SECURE: "false"
+          MINIO_ENDPOINT: localhost
+          MINIO_PORT: "9000"
+          MINIO_USE_SSL: "false"
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
+          MINIO_BUCKET_NAME: documents-bucket
+          MINIO_PUBLIC_HOST: localhost
+          MINIO_PUBLIC_PORT: "9000"
+          CLOUDINARY_CLOUD_NAME: ci-test-cloud
+          CLOUDINARY_API_KEY: "123456789012345"
+          CLOUDINARY_API_SECRET: ci-test-cloudinary-secret-value
+          EMAIL: ci-noreply@example.com
+          EMAIL_FROM: "CI Test <ci-noreply@example.com>"
+          EMAIL_PASSWORD: ci-dummy-email-password
+          TEST_EMAIL: ci-noreply@example.com
+          VAPID_MAILTO: ci-noreply@example.com
+          VAPID_PUBLIC_KEY: BLBx9DKclAGBxGN_SiNRIkFtLKfXW9qlJUvYpIuAm2kX0MnvZ4cFpQ8J7eRtYwHsDaNbCuOiVhGlKmPxEj3sf
+          VAPID_PRIVATE_KEY: m_eLkSZC0LjhMcpU8PMhE04F4aJB_e0G2w0RJJg_Q3I
+          PAYMENT_PROVIDER: none
+          MIDTRANS_SERVER_KEY: ""
+          MIDTRANS_CLIENT_KEY: ""
+          MIDTRANS_MERCHANT_ID: ""
+          MIDTRANS_IS_PRODUCTION: "false"
+          KEYCLOAK_CLIENT_ID: ci-keycloak-client-id
+          KEYCLOAK_CLIENT_SECRET: ci-keycloak-client-secret
+          KEYCLOAK_ISSUER_URL: http://localhost:8080/realms/iom
+          KEYCLOAK_JWKS_URI: http://localhost:8080/realms/iom/protocol/openid-connect/certs
+          KEYCLOAK_REDIRECT_URI: http://localhost:5173/integrations/keycloak/callback
+          SSO_API_URL: http://localhost:8080
+          REGISTER_API_KEY: ci-register-api-key-for-testing
+        run: npm run dev &
+
+      - name: Wait for backend to be ready
+        run: |
+          timeout 30 bash -c \
+            'until curl -sf http://localhost:3000/api/auth/verify 2>/dev/null | grep -q "Unauthorized"; do sleep 1; done' \
+          || echo "Backend health check timed out — continuing anyway"
+
+      # ── Frontend ─────────────────────────────────────────────────────────────
+      - name: Install frontend dependencies
+        working-directory: OTA-KU/frontend
+        run: npm ci
+
+      - name: Start frontend dev server
+        working-directory: OTA-KU/frontend
+        env:
+          VITE_API_URL: http://localhost:3000
+          VITE_APP_URL: http://localhost:5173
+          VITE_KEYCLOAK_CLIENT_ID: ci-keycloak-client-id
+          VITE_KEYCLOAK_REDIRECT_URI: http://localhost:5173/integrations/keycloak/callback
+          VITE_VAPID_PUBLIC_KEY: BLBx9DKclAGBxGN_SiNRIkFtLKfXW9qlJUvYpIuAm2kX0MnvZ4cFpQ8J7eRtYwHsDaNbCuOiVhGlKmPxEj3sf
+          VITE_BANKES_URL: http://localhost:3031
+        run: npm run dev &
+
+      - name: Wait for frontend to be ready
+        run: |
+          timeout 60 bash -c \
+            'until curl -sf http://localhost:5173 > /dev/null; do sleep 2; done' \
+          || echo "Frontend health check timed out — continuing anyway"
+
+      # ── Cypress E2E ──────────────────────────────────────────────────────────
+      - name: Run Cypress E2E tests
+        working-directory: OTA-KU/frontend
+        run: npx cypress run --e2e
+
+      - name: Upload E2E artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-e2e-artifacts
+          path: |
+            OTA-KU/frontend/cypress/screenshots/
+            OTA-KU/frontend/cypress/videos/
+          if-no-files-found: ignore
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 4: Bankes IOM-ITB — Type check + lint
+  #   Build penuh tidak dijalankan karena butuh DB koneksi dari Next.js.
+  #   Tambahkan job `bankes-test` setelah jest/vitest ditambahkan ke package.json.
+  # ─────────────────────────────────────────────────────────────────────────────
+  bankes-build:
+    name: "Bankes: Type Check & Lint"
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: bankes_IOM-ITB
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: bankes_IOM-ITB/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
