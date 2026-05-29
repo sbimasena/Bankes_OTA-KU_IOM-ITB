@@ -100,14 +100,18 @@ jobs:
         run: npx prisma generate
 
       - name: Run Drizzle migrations
+        # Creates Drizzle-managed tables: account, account_*_detail, connection, transaction,
+        # otp, temporary_password, push_subscription (with snake_case column names)
         run: npx drizzle-kit migrate
 
-      - name: Create Prisma-specific tables
-        # Drizzle manages: account, connection, transaction, otp, temporary_password, push_subscription
-        # Prisma needs:    users, mahasiswa_profile, ota_profile, admin_profile, student_file, etc.
-        # Running prisma db push BEFORE drizzle-kit migrate conflicts on shared table names,
-        # so we run drizzle first and then create only Prisma-unique tables via SQL.
-        run: psql "$DATABASE_URL" -f prisma/prisma-tables.sql
+      - name: Sync Prisma schema
+        # auth.controller.ts uses prisma.user / prisma.temporaryPassword → need Prisma schema.
+        # Runs AFTER drizzle-kit migrate so Drizzle tables exist.
+        # --accept-data-loss: on a fresh CI DB (all tables empty) Prisma restructures the
+        # conflicting tables (connection, otp, temporary_password, push_subscription, transaction)
+        # from Drizzle's snake_case columns to Prisma's camelCase columns, and creates the
+        # Prisma-exclusive tables (users, mahasiswa_profile, ota_profile, etc.).
+        run: npx prisma db push --accept-data-loss --skip-generate
 
       - name: Run tests
         run: npm test
@@ -222,11 +226,11 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/iom_ota_test
         run: npx drizzle-kit migrate
 
-      - name: Create Prisma-specific tables
+      - name: Sync Prisma schema
         working-directory: OTA-KU/backend
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/iom_ota_test
-        run: psql "$DATABASE_URL" -f prisma/prisma-tables.sql
+        run: npx prisma db push --accept-data-loss --skip-generate
 
       - name: Start backend
         working-directory: OTA-KU/backend

@@ -16,8 +16,13 @@ import {
 } from "../src/db/schema.js";
 import { otpDatas, testUsers } from "./constants/user.js";
 
-// auth.controller.ts menggunakan Prisma untuk login (prisma.user.findFirst),
-// sehingga test users harus ada di tabel 'users' (Prisma) selain tabel 'account' (Drizzle).
+// auth.controller.ts uses Prisma for login (prisma.user.findFirst, prisma.temporaryPassword…).
+// After `prisma db push --accept-data-loss` the conflicting tables (otp, temporary_password,
+// push_subscription, connection, transaction) use Prisma's camelCase column names, so Drizzle
+// SELECT queries on those tables would fail.  We therefore only backup/restore the four tables
+// that are exclusive to Drizzle (account, account_*_detail).  The conflicting tables are cleared
+// with plain DELETE (no column references) which works regardless of schema.
+
 type PrismaRole = "Mahasiswa" | "OrangTuaAsuh" | "Admin" | "Bankes" | "Pengurus_IOM" | "Guest" | "Pewawancara";
 const typeToRole = (type: string): PrismaRole => {
   const map: Record<string, PrismaRole> = {
@@ -35,41 +40,36 @@ let originalData: {
   mahasiswaDetails: any[];
   otaDetails: any[];
   adminDetails: any[];
-  connections: any[];
-  transactions: any[];
-  otps: any[];
-  temporaryPasswords: any[];
-  pushSubscriptions: any[];
 };
 
 beforeAll(async () => {
   console.log("Backup all data before each tests...");
+  // Only backup Drizzle-exclusive tables — Prisma-managed tables (otp, temporary_password,
+  // push_subscription, connection, transaction) use Prisma camelCase columns after db push,
+  // so Drizzle SELECT on them would fail with "column does not exist".
   originalData = {
     accounts: await db.select().from(accountTable),
     mahasiswaDetails: await db.select().from(accountMahasiswaDetailTable),
     otaDetails: await db.select().from(accountOtaDetailTable),
-    adminDetails: await db
-      .select()
-      .from(accountAdminDetailTable),
-    connections: await db.select().from(connectionTable),
-    transactions: await db.select().from(transactionTable),
-    otps: await db.select().from(otpTable),
-    temporaryPasswords: await db.select().from(temporaryPasswordTable),
-    pushSubscriptions: await db.select().from(pushSubscriptionTable),
+    adminDetails: await db.select().from(accountAdminDetailTable),
   };
 
+  // Clear all tables.
+  // DELETE (no WHERE) works regardless of column-name schema, so we use Drizzle's delete
+  // helpers for the conflicting tables — they generate "DELETE FROM <table>" with no column refs.
   await db.transaction(async (tx) => {
-    // Clear all tables
     await tx.delete(connectionTable);
+    await tx.delete(transactionTable);
+    await tx.delete(temporaryPasswordTable);
+    await tx.delete(otpTable);
+    await tx.delete(pushSubscriptionTable);
     await tx.delete(accountAdminDetailTable);
     await tx.delete(accountOtaDetailTable);
     await tx.delete(accountMahasiswaDetailTable);
     await tx.delete(accountTable);
-    await tx.delete(transactionTable);
-    await tx.delete(otpTable);
-    await tx.delete(temporaryPasswordTable);
-    await tx.delete(pushSubscriptionTable);
   });
+  // Prisma-exclusive tables — use prisma to clear (cascades handle children)
+  await prisma.user.deleteMany();
 
   console.log("Seeding database before each tests...");
   const hashedUsers = await Promise.all(
@@ -78,10 +78,11 @@ beforeAll(async () => {
       password: await hash(user.password, 10),
     })),
   );
-  await db.insert(accountTable).values(hashedUsers).onConflictDoNothing();
-  await db.insert(otpTable).values(otpDatas).onConflictDoNothing();
 
-  // Seed Prisma 'users' table — auth.controller.ts uses prisma.user.findFirst() for login
+  // Seed Drizzle's "account" table (used by Drizzle-based test helpers)
+  await db.insert(accountTable).values(hashedUsers).onConflictDoNothing();
+
+  // Seed Prisma's "users" table (used by auth.controller.ts via prisma.user.findFirst)
   for (const user of hashedUsers) {
     await prisma.user.upsert({
       where: { id: user.id },
@@ -104,30 +105,40 @@ beforeAll(async () => {
       },
     });
   }
+
+  // Seed Prisma's "otp" table (Prisma owns this table after db push; uses userId not account_id)
+  for (const otp of otpDatas) {
+    await prisma.oTP.upsert({
+      where: { userId_code: { userId: otp.accountId, code: otp.code } },
+      create: { userId: otp.accountId, code: otp.code, expiredAt: otp.expiredAt },
+      update: { expiredAt: otp.expiredAt },
+    });
+  }
 });
 
 afterAll(async () => {
   console.log("Cleaning up database after each tests...");
 
-  // Bersihkan Prisma 'users' table — OTP & TemporaryPassword ikut terhapus karena onDelete: Cascade
+  // Remove Prisma test data (cascade deletes mahasiswaProfile, otaProfile, otp, etc.)
   const testIds = testUsers.map((u) => u.id);
   await prisma.user.deleteMany({ where: { id: { in: testIds } } });
-  // Bersihkan users yang mungkin dibuat oleh register test
+  // Clean up users that may have been created by register tests
   const registerEmails = ["user4@test.com", "user7@test.com"];
   await prisma.user.deleteMany({ where: { email: { in: registerEmails } } });
+
   await db.transaction(async (tx) => {
-    // Clear all tables
+    // Clear all Drizzle-managed tables
     await tx.delete(connectionTable);
+    await tx.delete(transactionTable);
+    await tx.delete(temporaryPasswordTable);
+    await tx.delete(otpTable);
+    await tx.delete(pushSubscriptionTable);
     await tx.delete(accountAdminDetailTable);
     await tx.delete(accountOtaDetailTable);
     await tx.delete(accountMahasiswaDetailTable);
     await tx.delete(accountTable);
-    await tx.delete(transactionTable);
-    await tx.delete(otpTable);
-    await tx.delete(temporaryPasswordTable);
-    await tx.delete(pushSubscriptionTable);
 
-    // Reinsert original data
+    // Restore original Drizzle-exclusive data
     if (originalData.accounts.length > 0) {
       await tx.insert(accountTable).values(originalData.accounts);
     }
@@ -143,25 +154,6 @@ afterAll(async () => {
       await tx
         .insert(accountAdminDetailTable)
         .values(originalData.adminDetails);
-    }
-    if (originalData.connections.length > 0) {
-      await tx.insert(connectionTable).values(originalData.connections);
-    }
-    if (originalData.transactions.length > 0) {
-      await tx.insert(transactionTable).values(originalData.transactions);
-    }
-    if (originalData.otps.length > 0) {
-      await tx.insert(otpTable).values(originalData.otps);
-    }
-    if (originalData.temporaryPasswords.length > 0) {
-      await tx
-        .insert(temporaryPasswordTable)
-        .values(originalData.temporaryPasswords);
-    }
-    if (originalData.pushSubscriptions.length > 0) {
-      await tx
-        .insert(pushSubscriptionTable)
-        .values(originalData.pushSubscriptions);
     }
   });
 
