@@ -5,7 +5,8 @@ import { describe, expect, test, vi } from "vitest";
 
 import app from "../src/app.js";
 import { db } from "../src/db/drizzle.js";
-import cloudinary from "../src/lib/cloudinary.js";
+import { minioClient } from "../src/lib/file-upload-minio.js";
+import { prisma } from "../src/db/prisma.js";
 import { testUsers } from "./constants/user.js";
 import { createTestRequest } from "./test-utils.js";
 
@@ -66,30 +67,7 @@ describe("Pendaftaran Mahasiswa", () => {
     const headers = formData.getHeaders();
     headers["Authorization"] = `Bearer ${token}`;
 
-    vi.spyOn(cloudinary.uploader, "upload").mockResolvedValue({
-      public_id: "sample",
-      version: 1,
-      signature: "sample_signature",
-      width: 100,
-      height: 100,
-      format: "pdf",
-      resource_type: "raw",
-      created_at: new Date().toISOString(),
-      tags: [],
-      bytes: 12345,
-      type: "upload",
-      etag: "sample_etag",
-      placeholder: false,
-      url: "http://res.cloudinary.com/sample.pdf",
-      secure_url: "https://cloudinary.com/sample.pdf",
-      access_mode: "public",
-      original_filename: "sample",
-      pages: 1,
-      moderation: [],
-      access_control: [],
-      context: {},
-      metadata: {},
-    });
+    vi.spyOn(minioClient, "putObject").mockResolvedValue({ etag: "mock-etag", versionId: null });
 
     const res = await app.request(
       createTestRequest("/api/profile/mahasiswa", {
@@ -105,7 +83,7 @@ describe("Pendaftaran Mahasiswa", () => {
     expect(body.message).toBe("Berhasil mendaftar.");
     expect(body.body.name).toBe("John Doe");
     expect(body.body.nim).toBe("13599008");
-    expect(body.body.file).toBe("https://cloudinary.com/sample.pdf");
+    expect(body.body.file).toContain("documents-bucket");
   });
 
   test("POST 400 /api/profile/mahasiswa", async () => {
@@ -227,7 +205,7 @@ describe("Pendaftaran Mahasiswa", () => {
   });
 
   test("POST 500 /api/profile/mahasiswa (Database Error)", async () => {
-    vi.spyOn(db, "transaction").mockImplementationOnce(() => {
+    vi.spyOn(prisma, "$transaction").mockImplementationOnce(() => {
       throw new Error("Database connection failed");
     });
 
@@ -286,30 +264,7 @@ describe("Pendaftaran Mahasiswa", () => {
     const headers = formData.getHeaders();
     headers["Authorization"] = `Bearer ${token}`;
 
-    vi.spyOn(cloudinary.uploader, "upload").mockResolvedValue({
-      public_id: "sample",
-      version: 1,
-      signature: "sample_signature",
-      width: 100,
-      height: 100,
-      format: "pdf",
-      resource_type: "raw",
-      created_at: new Date().toISOString(),
-      tags: [],
-      bytes: 12345,
-      type: "upload",
-      etag: "sample_etag",
-      placeholder: false,
-      url: "http://res.cloudinary.com/sample.pdf",
-      secure_url: "https://cloudinary.com/sample.pdf",
-      access_mode: "public",
-      original_filename: "sample",
-      pages: 1,
-      moderation: [],
-      access_control: [],
-      context: {},
-      metadata: {},
-    });
+    vi.spyOn(minioClient, "putObject").mockResolvedValue({ etag: "mock-etag", versionId: null });
 
     const res = await app.request(
       createTestRequest("/api/profile/mahasiswa", {
