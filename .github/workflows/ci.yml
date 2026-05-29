@@ -96,8 +96,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate Prisma client
+        run: npx prisma generate
+
       - name: Run Drizzle migrations
         run: npx drizzle-kit migrate
+
+      - name: Create Prisma-specific tables
+        # Drizzle manages: account, connection, transaction, otp, temporary_password, push_subscription
+        # Prisma needs:    users, mahasiswa_profile, ota_profile, admin_profile, student_file, etc.
+        # Running prisma db push BEFORE drizzle-kit migrate conflicts on shared table names,
+        # so we run drizzle first and then create only Prisma-unique tables via SQL.
+        run: psql "$DATABASE_URL" -f prisma/prisma-tables.sql
 
       - name: Run tests
         run: npm test
@@ -202,11 +212,21 @@ jobs:
         working-directory: OTA-KU/backend
         run: npm ci
 
+      - name: Generate Prisma client
+        working-directory: OTA-KU/backend
+        run: npx prisma generate
+
       - name: Run Drizzle migrations
         working-directory: OTA-KU/backend
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/iom_ota_test
         run: npx drizzle-kit migrate
+
+      - name: Create Prisma-specific tables
+        working-directory: OTA-KU/backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/iom_ota_test
+        run: psql "$DATABASE_URL" -f prisma/prisma-tables.sql
 
       - name: Start backend
         working-directory: OTA-KU/backend

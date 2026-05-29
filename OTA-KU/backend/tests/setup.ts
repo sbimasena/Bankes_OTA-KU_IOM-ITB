@@ -2,6 +2,7 @@ import { hash } from "bcrypt";
 import { afterAll, beforeAll } from "vitest";
 
 import { db } from "../src/db/drizzle.js";
+import { prisma } from "../src/db/prisma.js";
 import {
   accountAdminDetailTable,
   accountMahasiswaDetailTable,
@@ -14,6 +15,20 @@ import {
   transactionTable,
 } from "../src/db/schema.js";
 import { otpDatas, testUsers } from "./constants/user.js";
+
+// auth.controller.ts menggunakan Prisma untuk login (prisma.user.findFirst),
+// sehingga test users harus ada di tabel 'users' (Prisma) selain tabel 'account' (Drizzle).
+type PrismaRole = "Mahasiswa" | "OrangTuaAsuh" | "Admin" | "Bankes" | "Pengurus_IOM" | "Guest" | "Pewawancara";
+const typeToRole = (type: string): PrismaRole => {
+  const map: Record<string, PrismaRole> = {
+    mahasiswa: "Mahasiswa",
+    ota: "OrangTuaAsuh",
+    admin: "Admin",
+    bankes: "Bankes",
+    pengurus: "Pengurus_IOM",
+  };
+  return map[type] ?? "Guest";
+};
 
 let originalData: {
   accounts: any[];
@@ -65,10 +80,41 @@ beforeAll(async () => {
   );
   await db.insert(accountTable).values(hashedUsers).onConflictDoNothing();
   await db.insert(otpTable).values(otpDatas).onConflictDoNothing();
+
+  // Seed Prisma 'users' table — auth.controller.ts uses prisma.user.findFirst() for login
+  for (const user of hashedUsers) {
+    await prisma.user.upsert({
+      where: { id: user.id },
+      create: {
+        id: user.id,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        password: user.password,
+        role: typeToRole(user.type),
+        provider: user.provider as "credentials" | "azure" | "keycloak",
+        verificationStatus: user.status as "verified" | "unverified",
+      },
+      update: {
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        password: user.password,
+        role: typeToRole(user.type),
+        provider: user.provider as "credentials" | "azure" | "keycloak",
+        verificationStatus: user.status as "verified" | "unverified",
+      },
+    });
+  }
 });
 
 afterAll(async () => {
   console.log("Cleaning up database after each tests...");
+
+  // Bersihkan Prisma 'users' table — OTP & TemporaryPassword ikut terhapus karena onDelete: Cascade
+  const testIds = testUsers.map((u) => u.id);
+  await prisma.user.deleteMany({ where: { id: { in: testIds } } });
+  // Bersihkan users yang mungkin dibuat oleh register test
+  const registerEmails = ["user4@test.com", "user7@test.com"];
+  await prisma.user.deleteMany({ where: { email: { in: registerEmails } } });
   await db.transaction(async (tx) => {
     // Clear all tables
     await tx.delete(connectionTable);
