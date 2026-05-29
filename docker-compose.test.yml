@@ -124,8 +124,8 @@ services:
       EMAIL_PASSWORD: ci-dummy-email-password
       TEST_EMAIL: ci-noreply@example.com
       VAPID_MAILTO: ci-noreply@example.com
-      VAPID_PUBLIC_KEY: BLBx9DKclAGBxGN_SiNRIkFtLKfXW9qlJUvYpIuAm2kX0MnvZ4cFpQ8J7eRtYwHsDaNbCuOiVhGlKmPxEj3sf
-      VAPID_PRIVATE_KEY: m_eLkSZC0LjhMcpU8PMhE04F4aJB_e0G2w0RJJg_Q3I
+      VAPID_PUBLIC_KEY: BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U
+      VAPID_PRIVATE_KEY: a5hoXHBqq6E_cFfkHJOBXa6vZVPp3kM-DaGLCQoXpLg
       PAYMENT_PROVIDER: none
       MIDTRANS_SERVER_KEY: ""
       MIDTRANS_CLIENT_KEY: ""
