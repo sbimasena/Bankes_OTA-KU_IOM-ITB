@@ -3,9 +3,18 @@ import { describe, expect, test, vi } from "vitest";
 
 import app from "../src/app.js";
 import { db } from "../src/db/drizzle.js";
+import { prisma } from "../src/db/prisma.js";
 import { accountTable } from "../src/db/schema.js";
 import { otpDatas, testRegisterUsers, testUsers } from "./constants/user.js";
 import { createTestRequest } from "./test-utils.js";
+
+vi.mock("../src/lib/sso.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/lib/sso.js")>();
+  return {
+    ...actual,
+    registerInSSO: vi.fn().mockResolvedValue({ userId: "mock-sso-user-id" }),
+  };
+});
 
 describe("Login", () => {
   test("POST 200 /api/auth/login", async () => {
@@ -44,7 +53,7 @@ describe("Login", () => {
       "Password minimal 8 karakter",
     );
     expect(body.errors.fieldErrors.identifier[0]).toBe(
-      "Format email tidak valid",
+      "Harus berupa email atau nomor telepon",
     );
   });
 
@@ -85,7 +94,7 @@ describe("Login", () => {
   });
 
   test("POST 500 /api/auth/login (Database Error)", async () => {
-    vi.spyOn(db, "select").mockImplementationOnce(() => {
+    vi.spyOn(prisma.user, "findFirst").mockImplementationOnce(() => {
       throw new Error("Database connection failed");
     });
 
@@ -126,7 +135,7 @@ describe("Register", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.message).toBe("User registered successfully");
+    expect(body.message).toBe("User registered. Please verify your OTP.");
   });
 
   test("POST 400 (Invalid email for mahasiswa) /api/auth/register", async () => {
@@ -174,7 +183,7 @@ describe("Register", () => {
   });
 
   test("POST 500 /api/auth/register (Database Error)", async () => {
-    vi.spyOn(db, "transaction").mockImplementationOnce(() => {
+    vi.spyOn(prisma, "$transaction").mockImplementationOnce(() => {
       throw new Error("Database connection failed");
     });
 
@@ -440,7 +449,7 @@ describe("OTP", () => {
   });
 
   test("POST 500 /api/auth/otp (Database Error)", async () => {
-    vi.spyOn(db, "transaction").mockImplementationOnce(() => {
+    vi.spyOn(prisma, "$transaction").mockImplementationOnce(() => {
       throw new Error("Database connection failed");
     });
 

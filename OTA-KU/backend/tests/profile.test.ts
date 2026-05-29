@@ -5,10 +5,17 @@ import { describe, expect, test, vi } from "vitest";
 
 import app from "../src/app.js";
 import { db } from "../src/db/drizzle.js";
-import { minioClient } from "../src/lib/file-upload-minio.js";
 import { prisma } from "../src/db/prisma.js";
 import { testUsers } from "./constants/user.js";
 import { createTestRequest } from "./test-utils.js";
+
+vi.mock("../src/lib/file-upload-minio.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/lib/file-upload-minio.js")>();
+  return {
+    ...actual,
+    upsertStudentFile: vi.fn().mockResolvedValue("http://localhost:9000/documents-bucket/mock-file.pdf"),
+  };
+});
 
 describe("Pendaftaran Mahasiswa", () => {
   test("POST 200 /api/profile/mahasiswa", async () => {
@@ -66,8 +73,6 @@ describe("Pendaftaran Mahasiswa", () => {
 
     const headers = formData.getHeaders();
     headers["Authorization"] = `Bearer ${token}`;
-
-    vi.spyOn(minioClient, "putObject").mockResolvedValue({ etag: "mock-etag", versionId: null });
 
     const res = await app.request(
       createTestRequest("/api/profile/mahasiswa", {
@@ -130,7 +135,7 @@ describe("Pendaftaran Mahasiswa", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.errors.fieldErrors.phoneNumber[0]).toBe(
-      "Nomor telepon harus diisi",
+      "Nomor telepon harus berupa string",
     );
   });
 
@@ -263,8 +268,6 @@ describe("Pendaftaran Mahasiswa", () => {
 
     const headers = formData.getHeaders();
     headers["Authorization"] = `Bearer ${token}`;
-
-    vi.spyOn(minioClient, "putObject").mockResolvedValue({ etag: "mock-etag", versionId: null });
 
     const res = await app.request(
       createTestRequest("/api/profile/mahasiswa", {

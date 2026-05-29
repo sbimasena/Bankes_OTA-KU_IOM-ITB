@@ -316,7 +316,36 @@ jobs:
           if-no-files-found: ignore
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Job 4: Bankes IOM-ITB — Lint only
+  # Job 4: Bankes IOM-ITB — Unit tests (Vitest, no DB — prisma fully mocked)
+  #   Covers: GET /api/periods (200, 200 empty, 500)
+  #           POST /api/users/login (400 no email, 400 no pw, 400 wrong pw,
+  #                                  400 user not found, 200, 500)
+  # ─────────────────────────────────────────────────────────────────────────────
+  bankes-test:
+    name: "Bankes: Unit Tests"
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: bankes_IOM-ITB
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: bankes_IOM-ITB/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run unit tests
+        run: npm test
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 5: Bankes IOM-ITB — Lint only
   #   tsc --noEmit sengaja dinonaktifkan karena ada type errors pre-existing di:
   #   account/page.tsx, dashboard/page.tsx, authOptions.ts, dll.
   #   Aktifkan kembali setelah semua TS errors di src/ diperbaiki.
@@ -339,7 +368,7 @@ jobs:
           cache-dependency-path: bankes_IOM-ITB/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Lint
         run: npm run lint
