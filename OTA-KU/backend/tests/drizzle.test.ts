@@ -66,7 +66,7 @@ describe("Database Seeding", () => {
     const mahasiswaDetails = await db
       .select()
       .from(accountMahasiswaDetailTable);
-    expect(mahasiswaDetails.length).toBe(18);
+    expect(mahasiswaDetails.length).toBe(19);
 
     // Verify connections
     const connections = await db
@@ -90,12 +90,12 @@ describe("Database Reset", () => {
 
     // 3. Verify all tables were reset properly
     const accounts = await db.select().from(accountTable);
-    expect(accounts.length).toBe(38); // admin + 2 bankes + 2 pengurus + 18 mahasiswa + 15 ota
+    expect(accounts.length).toBe(39); // admin + 2 bankes + 2 pengurus + 19 mahasiswa + 15 ota
 
     const mahasiswaDetails = await db
       .select()
       .from(accountMahasiswaDetailTable);
-    expect(mahasiswaDetails.length).toBe(18);
+    expect(mahasiswaDetails.length).toBe(19);
 
     const otaDetails = await db.select().from(accountOtaDetailTable);
     expect(otaDetails.length).toBe(15);

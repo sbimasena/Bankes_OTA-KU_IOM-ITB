@@ -65,8 +65,10 @@ jobs:
       TEST_EMAIL: ci-noreply@example.com
       # ── VAPID Web Push (tidak dipakai saat test) ──────────────────────────────
       VAPID_MAILTO: ci-noreply@example.com
-      VAPID_PUBLIC_KEY: BLBx9DKclAGBxGN_SiNRIkFtLKfXW9qlJUvYpIuAm2kX0MnvZ4cFpQ8J7eRtYwHsDaNbCuOiVhGlKmPxEj3sf
-      VAPID_PRIVATE_KEY: m_eLkSZC0LjhMcpU8PMhE04F4aJB_e0G2w0RJJg_Q3I
+      # Pasangan VAPID test yang valid (87 char pubkey = 65 bytes, 43 char privkey = 32 bytes)
+      # Tidak perlu sama dengan production — hanya harus berupa EC P-256 key pair yang valid
+      VAPID_PUBLIC_KEY: BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U
+      VAPID_PRIVATE_KEY: a5hoXHBqq6E_cFfkHJOBXa6vZVPp3kM-DaGLCQoXpLg
       # ── Payment (diset ke none, tidak diproses) ───────────────────────────────
       PAYMENT_PROVIDER: none
       MIDTRANS_SERVER_KEY: ""
