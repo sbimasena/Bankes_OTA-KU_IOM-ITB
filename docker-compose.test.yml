@@ -1,0 +1,161 @@
+# =============================================================================
+# docker-compose.test.yml — infrastruktur untuk E2E test lokal
+#
+# Menjalankan: PostgreSQL (test DB) + MinIO + migrasi Drizzle + OTA-KU backend
+# Frontend dan Cypress dijalankan di luar Docker (npm run dev + cypress run).
+#
+# Cara pakai:
+#   docker compose -f docker-compose.test.yml up -d --wait
+#   cd OTA-KU/frontend && npm run dev &
+#   npx cypress run --e2e
+#   docker compose -f docker-compose.test.yml down -v
+# =============================================================================
+
+services:
+
+  # ── Test PostgreSQL (tidak ada volume — DB fresh setiap kali) ────────────────
+  postgres-test:
+    image: postgres:17-alpine
+    container_name: iom-ota-postgres-test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: iom_ota_test
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d iom_ota_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - test-network
+
+  # ── Test MinIO (tidak ada volume) ────────────────────────────────────────────
+  minio-test:
+    image: bitnami/minio:latest
+    container_name: iom-ota-minio-test
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  # ── Buat bucket MinIO ────────────────────────────────────────────────────────
+  minio-init-test:
+    image: bitnami/minio-client:latest
+    container_name: iom-ota-minio-init-test
+    depends_on:
+      minio-test:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set myminio http://minio-test:9000 minioadmin minioadmin;
+        mc mb --ignore-existing myminio/documents-bucket;
+        echo '✅ Test MinIO bucket ready';
+      "
+    restart: "no"
+    networks:
+      - test-network
+
+  # ── Drizzle migration (OTA-KU schema) ────────────────────────────────────────
+  migrate-test:
+    image: node:22-alpine
+    container_name: iom-ota-migrate-test
+    working_dir: /app
+    volumes:
+      - ./OTA-KU/backend:/app
+      - migrate-test-node-modules:/app/node_modules
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres-test:5432/iom_ota_test
+    command: >
+      sh -c "
+        npm install --quiet &&
+        echo '📦 Dependencies installed' &&
+        npx drizzle-kit migrate &&
+        echo '🗄️  Drizzle migrations applied'
+      "
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - test-network
+
+  # ── OTA-KU Backend (development mode, hot-reload) ────────────────────────────
+  ota-backend-test:
+    build:
+      context: ./OTA-KU/backend
+      dockerfile: Dockerfile.dev
+    container_name: iom-ota-backend-test
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./OTA-KU/backend:/app:delegated
+      - ota-backend-test-node-modules:/app/node_modules
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@postgres-test:5432/iom_ota_test
+      BACKEND_PORT: "3000"
+      ALLOWED_ORIGINS: '["http://localhost:5173"]'
+      VITE_PUBLIC_URL: http://localhost:5173
+      JWT_SECRET: ci-only-jwt-secret-must-be-32-chars!!
+      COOKIE_SECURE: "false"
+      MINIO_ENDPOINT: minio-test
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET_NAME: documents-bucket
+      MINIO_PUBLIC_HOST: localhost
+      MINIO_PUBLIC_PORT: "9000"
+      CLOUDINARY_CLOUD_NAME: ci-test-cloud
+      CLOUDINARY_API_KEY: "123456789012345"
+      CLOUDINARY_API_SECRET: ci-test-cloudinary-secret-value
+      EMAIL: ci-noreply@example.com
+      EMAIL_FROM: "CI Test <ci-noreply@example.com>"
+      EMAIL_PASSWORD: ci-dummy-email-password
+      TEST_EMAIL: ci-noreply@example.com
+      VAPID_MAILTO: ci-noreply@example.com
+      VAPID_PUBLIC_KEY: BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U
+      VAPID_PRIVATE_KEY: a5hoXHBqq6E_cFfkHJOBXa6vZVPp3kM-DaGLCQoXpLg
+      PAYMENT_PROVIDER: none
+      MIDTRANS_SERVER_KEY: ""
+      MIDTRANS_CLIENT_KEY: ""
+      MIDTRANS_MERCHANT_ID: ""
+      MIDTRANS_IS_PRODUCTION: "false"
+      KEYCLOAK_CLIENT_ID: ci-keycloak-client-id
+      KEYCLOAK_CLIENT_SECRET: ci-keycloak-client-secret
+      KEYCLOAK_ISSUER_URL: http://localhost:8080/realms/iom
+      KEYCLOAK_JWKS_URI: http://localhost:8080/realms/iom/protocol/openid-connect/certs
+      KEYCLOAK_REDIRECT_URI: http://localhost:5173/integrations/keycloak/callback
+      SSO_API_URL: http://localhost:8080
+      REGISTER_API_KEY: ci-register-api-key-for-testing
+    depends_on:
+      migrate-test:
+        condition: service_completed_successfully
+      minio-init-test:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/api/auth/verify"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - test-network
+
+volumes:
+  migrate-test-node-modules:
+  ota-backend-test-node-modules:
+
+networks:
+  test-network:
+    driver: bridge
