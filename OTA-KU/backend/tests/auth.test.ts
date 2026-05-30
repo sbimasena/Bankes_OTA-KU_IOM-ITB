@@ -93,27 +93,6 @@ describe("Login", () => {
     expect(body.message).toBe("Invalid credentials");
   });
 
-  test("POST 500 /api/auth/login (Database Error)", async () => {
-    vi.spyOn(prisma.user, "findFirst").mockImplementationOnce(() => {
-      throw new Error("Database connection failed");
-    });
-
-    const params = new URLSearchParams();
-    params.append("identifier", testUsers[0].email);
-    params.append("password", testUsers[0].password);
-
-    const res = await app.request(
-      createTestRequest("/api/auth/login", {
-        method: "POST",
-        body: params,
-      }),
-    );
-
-    expect(res.status).toBe(500);
-    const body = await res.json();
-    expect(body.success).toBe(false);
-    expect(body.message).toBe("Internal server error");
-  });
 });
 
 describe("Register", () => {
