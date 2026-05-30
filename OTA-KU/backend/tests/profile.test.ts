@@ -4,7 +4,6 @@ import { join } from "path";
 import { describe, expect, test, vi } from "vitest";
 
 import app from "../src/app.js";
-import { db } from "../src/db/drizzle.js";
 import { prisma } from "../src/db/prisma.js";
 import { testUsers } from "./constants/user.js";
 import { createTestRequest } from "./test-utils.js";
@@ -431,7 +430,7 @@ describe("Pendaftaran Orang Tua Asuh", () => {
   });
 
   test("POST 500 /api/profile/orang-tua (Database Error)", async () => {
-    vi.spyOn(db, "insert").mockImplementationOnce(() => {
+    vi.spyOn(prisma, "$transaction").mockImplementationOnce(() => {
       throw new Error("Database connection failed");
     });
 
