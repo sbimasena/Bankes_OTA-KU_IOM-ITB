@@ -80,6 +80,14 @@ connectProtectedRouter.openapi(connectOtaMahasiswaRoute, async (c) => {
         throw new Error("KAPASITAS_PENUH");
       }
 
+      const existingAccepted = await tx.connection.findFirst({
+        where: { mahasiswaId, connectionStatus: "accepted" },
+      });
+
+      if (existingAccepted) {
+        throw new Error("MAHASISWA_SUDAH_PUNYA_OTA");
+      }
+
       // Update mahasiswa status to active
       await tx.mahasiswaProfile.update({
         where: { userId: mahasiswaId },
@@ -112,6 +120,16 @@ connectProtectedRouter.openapi(connectOtaMahasiswaRoute, async (c) => {
         {
           success: false,
           message: "Kapasitas orang tua asuh sudah penuh.",
+          error: {},
+        },
+        400,
+      );
+    }
+    if (error instanceof Error && error.message === "MAHASISWA_SUDAH_PUNYA_OTA") {
+      return c.json(
+        {
+          success: false,
+          message: "Mahasiswa sudah memiliki orang tua asuh aktif.",
           error: {},
         },
         400,
@@ -173,6 +191,14 @@ connectProtectedRouter.openapi(connectOtaMahasiswaByAdminRoute, async (c) => {
 
       if (activeCount >= otaProfile.maxCapacity) {
         throw new Error("KAPASITAS_PENUH");
+      }
+
+      const existingAccepted = await tx.connection.findFirst({
+        where: { mahasiswaId, connectionStatus: "accepted" },
+      });
+
+      if (existingAccepted) {
+        throw new Error("MAHASISWA_SUDAH_PUNYA_OTA");
       }
 
       // Update mahasiswa status to active
@@ -370,6 +396,16 @@ connectProtectedRouter.openapi(connectOtaMahasiswaByAdminRoute, async (c) => {
         400,
       );
     }
+    if (error instanceof Error && error.message === "MAHASISWA_SUDAH_PUNYA_OTA") {
+      return c.json(
+        {
+          success: false,
+          message: "Mahasiswa sudah memiliki orang tua asuh aktif.",
+          error: {},
+        },
+        400,
+      );
+    }
     console.error(error);
     return c.json(
       {
@@ -405,6 +441,18 @@ connectProtectedRouter.openapi(verifyConnectionAccRoute, async (c) => {
 
   try {
     await prisma.$transaction(async (tx) => {
+      const existingAccepted = await tx.connection.findFirst({
+        where: {
+          mahasiswaId,
+          connectionStatus: "accepted",
+          NOT: { otaId },
+        },
+      });
+
+      if (existingAccepted) {
+        throw new Error("MAHASISWA_SUDAH_PUNYA_OTA");
+      }
+
       await tx.connection.updateMany({
         where: {
           mahasiswaId,
@@ -616,6 +664,16 @@ connectProtectedRouter.openapi(verifyConnectionAccRoute, async (c) => {
       200,
     );
   } catch (error) {
+    if (error instanceof Error && error.message === "MAHASISWA_SUDAH_PUNYA_OTA") {
+      return c.json(
+        {
+          success: false,
+          message: "Mahasiswa sudah memiliki orang tua asuh aktif.",
+          error: {},
+        },
+        400,
+      );
+    }
     console.error(error);
     return c.json(
       {
