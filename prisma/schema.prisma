@@ -648,7 +648,7 @@ model GroupTransaction {
   id                String            @id @default(uuid()) @db.Uuid
   mahasiswaId       String            @db.Uuid
   groupId           String            @db.Uuid
-  groupConnectionId String            @db.Uuid
+  groupConnectionId String?           @db.Uuid
   bill              Int
   paidFor           Int               @default(0)
   dueDate           DateTime
@@ -659,7 +659,7 @@ model GroupTransaction {
 
   Mahasiswa       MahasiswaProfile         @relation(fields: [mahasiswaId], references: [userId], onDelete: Cascade)
   Group           OtaGroup                 @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  GroupConnection GroupConnection          @relation(fields: [groupConnectionId], references: [id], onDelete: Cascade)
+  GroupConnection GroupConnection?         @relation(fields: [groupConnectionId], references: [id], onDelete: SetNull)
   MemberPayments  GroupMemberTransaction[]
 
   @@map("group_transaction")

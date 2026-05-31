@@ -1717,11 +1717,14 @@ groupProtectedRouter.openapi(deleteGroupConnectionRoute, async (c) => {
         where: { groupConnectionId: id },
       });
 
+      // Detach paid transactions so history is preserved, delete unpaid ones
+      await tx.groupTransaction.updateMany({
+        where: { groupConnectionId: id, transactionStatus: "paid" },
+        data: { groupConnectionId: null },
+      });
+
       await tx.groupTransaction.deleteMany({
-        where: { 
-          groupConnectionId: id,
-          transactionStatus: "unpaid"
-        },
+        where: { groupConnectionId: id },
       });
 
       await tx.groupConnection.delete({ where: { id } });
