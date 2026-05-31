@@ -3,9 +3,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import React from 'react';
 import { useSession } from 'next-auth/react';
-import { User, LayoutDashboard } from "lucide-react"
+import { User, LayoutDashboard, ExternalLink } from "lucide-react"
 import PushNotification from "../PushNotification";
 import NotificationBell from '@/components/ui/notificationBell';
+
+const OTA_URL = process.env.NEXT_PUBLIC_OTA_URL ?? "http://localhost:5173";
 
 const Navbar: React.FC = () => {
 	const { data: session } = useSession();
@@ -22,7 +24,17 @@ const Navbar: React.FC = () => {
 						<h2 className="text-xs sm:text-base text-main hidden sm:block">Institut Teknologi Bandung</h2>
 					</div>
 			</Link>
-			<div className="shrink-0 ml-2">
+			<div className="shrink-0 ml-2 flex items-center gap-2">
+				{session?.user?.role && session.user.role !== "Pewawancara" && (
+					<a
+						href={`${OTA_URL}/auth/login?sso=keycloak`}
+						className="hidden sm:flex items-center gap-1.5 py-2 px-3 rounded-full border border-main text-main hover:bg-main hover:text-white text-sm transition-colors"
+						title="Ke OTA-KU"
+					>
+						<ExternalLink className="h-3.5 w-3.5" />
+						<span>Ke OTA-KU</span>
+					</a>
+				)}
 				{session?.user?.role === "Mahasiswa"
 				? <Link prefetch={true} href="/student/profile" className="py-2 px-3 sm:px-5 rounded-full bg-var hover:bg-var/90 text-white flex items-center text-sm sm:text-base"><User className="h-4 w-4 sm:h-fit mr-1 sm:mr-2" /><span>Profil</span></Link>
 				: session?.user?.role === "Pengurus_IOM"

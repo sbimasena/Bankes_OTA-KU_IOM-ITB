@@ -27,6 +27,8 @@ export default function NavBar() {
 
   const isLoggedIn = !!session;
   const isMahasiswa = session?.type === "mahasiswa";
+  const isOTA = session?.type === "ota";
+  const bankesUrl = import.meta.env.VITE_BANKES_URL ?? "http://localhost:3031";
 
   // Query to check if user needs to renew (mahasiswa within 30 days of due date)
   const { data: profileData } = useQuery({
@@ -221,6 +223,20 @@ export default function NavBar() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-8">
+            {isLoggedIn && !isOTA && (
+              <a
+                href={`${bankesUrl}/api/auth/signin/keycloak`}
+                className="hidden sm:flex items-center gap-1.5 rounded-full border border-primary px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary hover:text-white"
+                title="Ke Bankes IOM-ITB"
+              >
+                <img
+                  src={`${import.meta.env.BASE_URL}icon/Type=list-icon.svg`}
+                  alt=""
+                  className="h-3.5 w-3.5 opacity-70"
+                />
+                Ke Bankes
+              </a>
+            )}
             {!isLoggedIn && (
               <Link className="w-fit" to="/auth/login">
                 <Button size="sm" variant={"outline"} className="w-[70px] sm:w-[90px] sm:size-lg">
