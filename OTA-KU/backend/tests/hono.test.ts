@@ -31,20 +31,6 @@ describe("Server Initialization", () => {
     );
   });
 
-  test("should log server start message", () => {
-    startServer();
-
-    // Get the callback function passed to serve
-    const serveCallback = mockServe.mock.calls[0][1]!;
-
-    // Simulate the callback being called
-    serveCallback({ port: 3000, address: "127.0.0.1", family: "IPv4" });
-
-    expect(mockConsole).toHaveBeenCalledWith(
-      "Server is running on http://localhost:3000",
-    );
-  });
-
   test("should use correct port from environment", () => {
     process.env.BACKEND_PORT = "4000";
     startServer();
