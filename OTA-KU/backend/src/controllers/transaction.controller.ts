@@ -59,10 +59,10 @@ transactionProtectedRouter.openapi(listTransactionOTARoute, async (c) => {
         ? { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) }
         : undefined;
 
-    const [transactions, allTransactions, groupMemberTxs, allGroupMemberTxs] = await Promise.all([
+    const [transactions, allTransactions, groupMemberTxs, allGroupMemberTxs, connections] = await Promise.all([
       prisma.transaction.findMany({
         where: { otaId: user.id, ...(dueDateFilter ? { dueDate: dueDateFilter } : {}) },
-        include: { MahasiswaProfile: true, Connection: { select: { periodStatus: true } } },
+        include: { MahasiswaProfile: true },
       }),
       prisma.transaction.findMany({
         where: { otaId: user.id },
@@ -83,7 +83,13 @@ transactionProtectedRouter.openapi(listTransactionOTARoute, async (c) => {
         where: { otaId: user.id },
         include: { GroupTransaction: { select: { dueDate: true } } },
       }),
+      prisma.connection.findMany({
+        where: { otaId: user.id },
+        select: { mahasiswaId: true, periodStatus: true },
+      }),
     ]);
+
+    const connectionPeriodMap = new Map(connections.map((c) => [c.mahasiswaId, c.periodStatus]));
 
     const allYears = [
       ...allTransactions.map((t) => t.dueDate.getFullYear()),
@@ -106,7 +112,7 @@ transactionProtectedRouter.openapi(listTransactionOTARoute, async (c) => {
         receipt: t.transactionReceipt ?? "",
         rejection_note: t.rejectionNote ?? "",
         paid_for: t.paidFor ?? 0,
-        period_status: (t.Connection?.periodStatus ?? "ended") as "active" | "ended",
+        period_status: (connectionPeriodMap.get(t.mahasiswaId) ?? "ended") as "active" | "ended",
       })),
       ...groupMemberTxs.map((t) => ({
         id: t.id,
