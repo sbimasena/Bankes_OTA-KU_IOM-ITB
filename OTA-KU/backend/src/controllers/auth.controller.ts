@@ -495,7 +495,8 @@ authProtectedRouter.openapi(logoutRoute, async (c) => {
 
   // Redirect to the Bankes /logout page (same domain) so it also clears
   // the NextAuth session via signOut() before proceeding to Keycloak logout.
-  const logoutUrl = `/logout`;
+  // Pass from=ota so Keycloak redirects back to OTA login, not Bankes login.
+  const logoutUrl = `/logout?from=ota`;
 
   return c.json(
     {
