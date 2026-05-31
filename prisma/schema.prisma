@@ -433,7 +433,6 @@ model Connection {
 
   MahasiswaProfile MahasiswaProfile @relation("MahasiswaConnections", fields: [mahasiswaId], references: [userId], onDelete: Cascade)
   OtaProfile       OtaProfile       @relation("OtaConnections", fields: [otaId], references: [userId], onDelete: Cascade)
-  Transactions     Transaction[]
 
   @@id([mahasiswaId, otaId])
   @@map("connection")
@@ -458,7 +457,6 @@ model Transaction {
 
   MahasiswaProfile MahasiswaProfile @relation("MahasiswaTransactions", fields: [mahasiswaId], references: [userId], onDelete: Cascade)
   OtaProfile       OtaProfile       @relation("OtaTransactions", fields: [otaId], references: [userId], onDelete: Cascade)
-  Connection       Connection       @relation(fields: [mahasiswaId, otaId], references: [mahasiswaId, otaId])
 
   @@map("transaction")
 }
