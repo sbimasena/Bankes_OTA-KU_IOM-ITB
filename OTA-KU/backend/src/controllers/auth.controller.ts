@@ -1,5 +1,5 @@
 import { compare, hash } from "bcrypt";
-import { deleteCookie, setCookie } from "hono/cookie";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { decode, sign } from "hono/jwt";
 import nodemailer from "nodemailer";
 import { sendWhatsApp } from "../lib/whatsapp.js";
@@ -360,6 +360,7 @@ authRouter.openapi(oauthRoute, async (c) => {
 
   const tokens = await tokenRes.json();
   const accessToken = tokens.access_token as string;
+  const idToken = tokens.id_token as string | undefined;
 
   // Decode and validate the Keycloak token
   let payload: any;
@@ -467,6 +468,16 @@ setCookie(c, "ota-ku.access-cookie", localToken, {
       path: "/",
     });
 
+    if (idToken) {
+      setCookie(c, "ota-ku.id-token", idToken, {
+        httpOnly: true,
+        secure: env.COOKIE_SECURE,
+        sameSite: "strict",
+        maxAge: 60 * 60 * 24,
+        path: "/",
+      });
+    }
+
     return c.json(
       { success: true, message: "Login successful", body: { token: localToken } },
       200,
@@ -491,12 +502,14 @@ authProtectedRouter.openapi(verifRoute, async (c) => {
 });
 
 authProtectedRouter.openapi(logoutRoute, async (c) => {
+  const idToken = getCookie(c, "ota-ku.id-token");
   deleteCookie(c, "ota-ku.access-cookie");
+  deleteCookie(c, "ota-ku.id-token");
 
-  // Redirect to the Bankes /logout page (same domain) so it also clears
-  // the NextAuth session via signOut() before proceeding to Keycloak logout.
-  // Pass from=ota so Keycloak redirects back to OTA login, not Bankes login.
-  const logoutUrl = `/logout?from=ota`;
+  const postLogoutRedirect = encodeURIComponent(`${env.VITE_PUBLIC_URL}/auth/login`);
+  const logoutUrl = idToken
+    ? `${env.KEYCLOAK_ISSUER_URL}/protocol/openid-connect/logout?id_token_hint=${idToken}&post_logout_redirect_uri=${postLogoutRedirect}`
+    : `${env.VITE_PUBLIC_URL}/auth/login`;
 
   return c.json(
     {
