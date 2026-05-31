@@ -149,6 +149,15 @@ services:
         condition: service_healthy
     networks:
       - iom-ota-network
+      - coolify
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.routers.bankes.rule=Host(`bankes.iom-itb.id`)"
+      - "traefik.http.routers.bankes.entrypoints=websecure"
+      - "traefik.http.routers.bankes.tls=true"
+      - "traefik.http.routers.bankes.priority=1"
+      - "traefik.http.services.bankes.loadbalancer.server.port=3031"
     restart: unless-stopped
 
   # ── OTA-KU Backend ───────────────────────────────────────────────────────────
@@ -242,6 +251,15 @@ services:
       - ota-backend
     networks:
       - iom-ota-network
+      - coolify
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.routers.ota-frontend.rule=Host(`bankes.iom-itb.id`) && PathPrefix(`/ota`)"
+      - "traefik.http.routers.ota-frontend.entrypoints=websecure"
+      - "traefik.http.routers.ota-frontend.tls=true"
+      - "traefik.http.routers.ota-frontend.priority=5"
+      - "traefik.http.services.ota-frontend.loadbalancer.server.port=3000"
     restart: unless-stopped
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
