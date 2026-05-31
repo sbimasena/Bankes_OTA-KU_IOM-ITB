@@ -1,4 +1,5 @@
 import { api, queryClient } from "@/api/client";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -71,7 +72,7 @@ function DetailDialogMahasiswa({
     onError: (error, _variables, context) => {
       toast.dismiss(context);
       toast.warning("Gagal mengubah status", {
-        description: error.message,
+        description: getApiErrorMessage(error, "Terjadi kesalahan"),
       });
     },
     onMutate: () => {

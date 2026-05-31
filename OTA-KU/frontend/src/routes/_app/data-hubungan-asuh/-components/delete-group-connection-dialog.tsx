@@ -1,5 +1,6 @@
 import { queryClient } from "@/api/client";
 import { groupService } from "@/api/groupService";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type { PendingConnection } from "@/types/group";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,7 +44,7 @@ function DeleteGroupConnectionDialog({
     onError: (error, _variables, context) => {
       toast.dismiss(context);
       toast.warning("Gagal memutus hubungan grup", {
-        description: error.message,
+        description: getApiErrorMessage(error, "Terjadi kesalahan"),
       });
     },
     onMutate: () => {

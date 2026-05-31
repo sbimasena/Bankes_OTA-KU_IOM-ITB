@@ -1,4 +1,5 @@
 import { api } from "@/api/client";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { ListTerminateForAdmin } from "@/api/generated";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,7 +48,7 @@ export default function TerminasiModal({
     onError: (error, _variables, context) => {
       toast.dismiss(context);
       toast.warning("Gagal memproses permintaan terminasi", {
-        description: error.message,
+        description: getApiErrorMessage(error, "Terjadi kesalahan"),
       });
     },
     onMutate: () => {
@@ -79,7 +80,7 @@ export default function TerminasiModal({
     onError: (error, _variables, context) => {
       toast.dismiss(context);
       toast.warning("Gagal memproses permintaan terminasi", {
-        description: error.message,
+        description: getApiErrorMessage(error, "Terjadi kesalahan"),
       });
     },
     onMutate: () => {

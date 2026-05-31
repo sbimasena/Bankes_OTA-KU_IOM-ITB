@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AutoPairSuggestion, GroupDetail } from "@/types/group";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { getApiErrorMessage } from "@/lib/api-error";
 import {
   BookUser,
   Check,
@@ -331,7 +332,7 @@ function AdminGroupManagement() {
       queryClient.invalidateQueries({ queryKey: ["adminAllGroups"] });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Gagal mengaktifkan grup");
+      toast.error(getApiErrorMessage(error, "Gagal mengaktifkan grup"));
     },
   });
 
@@ -342,7 +343,7 @@ function AdminGroupManagement() {
       queryClient.invalidateQueries({ queryKey: ["adminPendingConnections"] });
       queryClient.invalidateQueries({ queryKey: ["adminAllGroups"] });
     },
-    onError: () => toast.error("Gagal menyetujui koneksi"),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, "Gagal menyetujui koneksi")),
   });
 
   const rejectConnectionMutation = useMutation({
@@ -351,7 +352,7 @@ function AdminGroupManagement() {
       toast.success("Koneksi ditolak");
       queryClient.invalidateQueries({ queryKey: ["adminPendingConnections"] });
     },
-    onError: () => toast.error("Gagal menolak koneksi"),
+    onError: (error: any) => toast.error(getApiErrorMessage(error, "Gagal menolak koneksi")),
   });
 
   const confirmAutoPairMutation = useMutation({
@@ -364,7 +365,7 @@ function AdminGroupManagement() {
       queryClient.invalidateQueries({ queryKey: ["adminPendingConnections"] });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Gagal memasangkan mahasiswa");
+      toast.error(getApiErrorMessage(error, "Gagal memasangkan mahasiswa"));
       setAutoPairSuggestion(null);
     },
   });
@@ -377,7 +378,7 @@ function AdminGroupManagement() {
       queryClient.invalidateQueries({ queryKey: ["adminAllGroups"] });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Gagal menghapus grup");
+      toast.error(getApiErrorMessage(error, "Gagal menghapus grup"));
       setDeleteTarget(null);
     },
   });
@@ -389,9 +390,7 @@ function AdminGroupManagement() {
       const suggestion = await groupService.autoPairPreview(groupId);
       setAutoPairSuggestion(suggestion);
     } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message ?? err?.message ?? "Tidak ada mahasiswa yang tersedia",
-      );
+      toast.error(getApiErrorMessage(err, "Tidak ada mahasiswa yang tersedia"));
     } finally {
       setLoadingAutoPairGroupId(null);
     }

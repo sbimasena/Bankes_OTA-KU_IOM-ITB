@@ -1,4 +1,5 @@
 import { api } from "@/api/client";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -46,7 +47,7 @@ export default function ChangePasswordForm({
     onError: (error, _variables, context) => {
       toast.dismiss(context);
       toast.warning("Gagal mengubah kata sandi", {
-        description: error.message,
+        description: getApiErrorMessage(error, "Terjadi kesalahan"),
       });
     },
     onMutate: () => {

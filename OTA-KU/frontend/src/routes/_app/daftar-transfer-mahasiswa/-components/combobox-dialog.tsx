@@ -1,4 +1,5 @@
 import { api, queryClient } from "@/api/client";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { TransactionListAdminData } from "@/api/generated";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,7 +67,7 @@ function ComboboxDialog({ row }: ComboboxDialogProps) {
     onError: (error, _variables, context) => {
       toast.dismiss(context);
       toast.warning("Gagal mengubah status transfer", {
-        description: error.message,
+        description: getApiErrorMessage(error, "Terjadi kesalahan"),
       });
     },
     onMutate: () => {

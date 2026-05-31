@@ -1,4 +1,5 @@
 import { api, queryClient } from "@/api/client";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { ConnectionListAllResponse } from "@/api/generated";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +47,7 @@ function DeleteConnectionDialog({
     onError: (error, _variables, context) => {
       toast.dismiss(context);
       toast.warning("Gagal menghapus hubungan asuh", {
-        description: error.message,
+        description: getApiErrorMessage(error, "Terjadi kesalahan"),
       });
     },
     onMutate: () => {

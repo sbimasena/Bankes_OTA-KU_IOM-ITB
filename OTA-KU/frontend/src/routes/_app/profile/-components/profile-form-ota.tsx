@@ -1,4 +1,5 @@
 import { api } from "@/api/client";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { UserSchema } from "@/api/generated";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -148,7 +149,7 @@ const ProfileFormOTA: React.FC<ProfileFormProps> = ({ session }) => {
     onError: (error, _variables, context) => {
       toast.dismiss(context);
       toast.warning("Gagal memperbarui profil", {
-        description: error.message,
+        description: getApiErrorMessage(error, "Terjadi kesalahan"),
       });
     },
     onMutate: () => {

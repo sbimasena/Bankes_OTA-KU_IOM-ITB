@@ -1,4 +1,5 @@
 import { api } from "@/api/client";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { groupService } from "@/api/groupService";
 import type { MahasiswaListElement } from "@/api/generated/models/MahasiswaListElement";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +75,7 @@ function GroupDetailPage() {
       setMahasiswaSearch("");
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Gagal mengusulkan mahasiswa");
+      toast.error(getApiErrorMessage(error, "Gagal mengusulkan mahasiswa"));
     },
   });
 
@@ -87,7 +88,7 @@ function GroupDetailPage() {
       setInviteEmailOrId("");
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Gagal mengirim undangan");
+      toast.error(getApiErrorMessage(error, "Gagal mengirim undangan"));
     },
   });
 
@@ -118,7 +119,7 @@ function GroupDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["groupDetail", groupId] });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Gagal memperbarui status auto-pair");
+      toast.error(getApiErrorMessage(error, "Gagal memperbarui status auto-pair"));
     },
   });
 

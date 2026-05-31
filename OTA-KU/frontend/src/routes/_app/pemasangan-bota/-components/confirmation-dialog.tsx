@@ -1,4 +1,5 @@
 import { api, queryClient } from "@/api/client";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -48,7 +49,7 @@ function ConfirmationDialog({
     onError: (error, __, context) => {
       toast.dismiss(context); // Dismiss the loading toast
       toast.warning("Gagal memasangkan mahasiswa dengan OTA.", {
-        description: error.message,
+        description: getApiErrorMessage(error, "Terjadi kesalahan"),
       });
     },
     onMutate: () => {

@@ -1,4 +1,5 @@
 import { api, queryClient } from "@/api/client";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type { ConnectionListAllResponse } from "@/api/generated";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,7 +56,7 @@ function SetPeriodDialog({
     },
     onError: (error, _variables, context) => {
       toast.dismiss(context);
-      toast.warning("Gagal memperbarui periode", { description: error.message });
+      toast.warning("Gagal memperbarui periode", { description: getApiErrorMessage(error, "Terjadi kesalahan") });
     },
     onMutate: () =>
       toast.loading("Menyimpan periode...", { duration: Infinity }),

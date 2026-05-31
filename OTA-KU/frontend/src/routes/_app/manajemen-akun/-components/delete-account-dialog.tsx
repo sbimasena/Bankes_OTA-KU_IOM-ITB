@@ -1,4 +1,5 @@
 import { api, queryClient } from "@/api/client";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { AllAccountListElement } from "@/api/generated";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +43,7 @@ function DeleteAccountDialog({
     onError: (error, _variables, context) => {
       toast.dismiss(context);
       toast.warning("Gagal menghapus akun", {
-        description: error.message,
+        description: getApiErrorMessage(error, "Terjadi kesalahan"),
       });
     },
     onMutate: () => {

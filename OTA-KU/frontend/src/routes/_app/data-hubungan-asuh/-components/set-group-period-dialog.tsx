@@ -1,5 +1,6 @@
 import { queryClient } from "@/api/client";
 import { groupService } from "@/api/groupService";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type { PendingConnection } from "@/types/group";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,7 +54,7 @@ function SetGroupPeriodDialog({
     },
     onError: (error, _variables, context) => {
       toast.dismiss(context);
-      toast.warning("Gagal memperbarui periode", { description: error.message });
+      toast.warning("Gagal memperbarui periode", { description: getApiErrorMessage(error, "Terjadi kesalahan") });
     },
     onMutate: () =>
       toast.loading("Menyimpan periode...", { duration: Infinity }),

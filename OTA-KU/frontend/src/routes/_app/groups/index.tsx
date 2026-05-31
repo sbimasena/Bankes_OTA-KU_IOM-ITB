@@ -1,4 +1,5 @@
 import { groupService } from "@/api/groupService";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -95,7 +96,7 @@ function GroupsDashboard() {
       setCreateForm({ name: "", description: "", criteria: "", transferDate: "", pledgeAmount: "" });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Gagal membuat grup");
+      toast.error(getApiErrorMessage(error, "Gagal membuat grup"));
     },
   });
 
@@ -114,7 +115,7 @@ function GroupsDashboard() {
       setAcceptPledge("");
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Gagal merespons undangan");
+      toast.error(getApiErrorMessage(error, "Gagal merespons undangan"));
     },
   });
 
@@ -129,7 +130,7 @@ function GroupsDashboard() {
       setJoinPledge("");
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Gagal bergabung ke grup");
+      toast.error(getApiErrorMessage(error, "Gagal bergabung ke grup"));
     },
   });
 
