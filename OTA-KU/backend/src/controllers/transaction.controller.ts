@@ -106,7 +106,7 @@ transactionProtectedRouter.openapi(listTransactionOTARoute, async (c) => {
         receipt: t.transactionReceipt ?? "",
         rejection_note: t.rejectionNote ?? "",
         paid_for: t.paidFor ?? 0,
-        period_status: t.Connection.periodStatus as "active" | "ended",
+        period_status: (t.Connection?.periodStatus ?? "ended") as "active" | "ended",
       })),
       ...groupMemberTxs.map((t) => ({
         id: t.id,
@@ -122,7 +122,7 @@ transactionProtectedRouter.openapi(listTransactionOTARoute, async (c) => {
         receipt: t.transactionReceipt ?? "",
         rejection_note: t.rejectionNote ?? "",
         paid_for: 0,
-        period_status: t.GroupTransaction.GroupConnection.periodStatus as "active" | "ended",
+        period_status: (t.GroupTransaction.GroupConnection?.periodStatus ?? "ended") as "active" | "ended",
       })),
     ];
 
