@@ -156,7 +156,7 @@ connectProtectedRouter.openapi(connectOtaMahasiswaByAdminRoute, async (c) => {
       // Get OTA's max capacity
       const otaProfile = await tx.otaProfile.findFirst({
         where: { userId: otaId },
-        select: { maxCapacity: true, transferDate: true },
+        select: { maxCapacity: true, transferDate: true, funds: true },
       });
 
       if (!otaProfile) {
@@ -190,13 +190,15 @@ connectProtectedRouter.openapi(connectOtaMahasiswaByAdminRoute, async (c) => {
         },
       });
 
-      // Get bill
+      // Get bill — use mahasiswaProfile.bill if set, otherwise fall back to otaProfile.funds
       const maProfile = await tx.mahasiswaProfile.findFirst({
         where: { userId: mahasiswaId },
         select: { bill: true },
       });
 
-      const bill_mahasiswa = maProfile?.bill ?? 0;
+      const bill_mahasiswa = (maProfile?.bill && maProfile.bill > 0)
+        ? maProfile.bill
+        : (otaProfile.funds ?? 0);
       const transfer_date = otaProfile.transferDate;
       const dueDate = setDate(addMonths(new Date(), 1), transfer_date);
 
@@ -414,19 +416,21 @@ connectProtectedRouter.openapi(verifyConnectionAccRoute, async (c) => {
         data: { connectionStatus: "accepted" },
       });
 
-      // Get bill
+      // Get bill — use mahasiswaProfile.bill if set, otherwise fall back to otaProfile.funds
       const maProfile = await tx.mahasiswaProfile.findFirst({
         where: { userId: mahasiswaId },
         select: { bill: true },
       });
 
-      const bill_mahasiswa = maProfile?.bill ?? 0;
-
-      // Get transfer_date from OTA
+      // Get transfer_date and funds from OTA
       const otaProfile = await tx.otaProfile.findFirst({
         where: { userId: otaId },
-        select: { transferDate: true },
+        select: { transferDate: true, funds: true },
       });
+
+      const bill_mahasiswa = (maProfile?.bill && maProfile.bill > 0)
+        ? maProfile.bill
+        : (otaProfile?.funds ?? 0);
 
       const transfer_date = otaProfile?.transferDate ?? 1;
       const dueDate = setDate(addMonths(new Date(), 1), transfer_date);

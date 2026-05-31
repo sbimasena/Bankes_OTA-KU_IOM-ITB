@@ -49,18 +49,6 @@ export const Route = createFileRoute("/_app/daftar/terminasi-mahasiswa/")({
       throw redirect({ to: "/auth/otp-verification" });
     }
 
-    const applicationStatus = await api.status
-      .getApplicationStatus({ id: user.id })
-      .catch(() => null);
-
-    if (!applicationStatus) {
-      throw redirect({ to: "/auth/login" });
-    }
-
-    if (applicationStatus.body.status !== "accepted") {
-      throw redirect({ to: "/" });
-    }
-
     return { user };
   },
 });
