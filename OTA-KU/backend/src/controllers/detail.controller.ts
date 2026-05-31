@@ -241,34 +241,47 @@ detailProtectedRouter.openapi(getMahasiswaDetailForOTARoute, async (c) => {
       }),
     ]);
 
-    const profile = connection?.MahasiswaProfile ?? groupConnection?.Mahasiswa;
-    const mahasiswaUser = profile?.User;
+    let profile = connection?.MahasiswaProfile ?? groupConnection?.Mahasiswa;
+    let mahasiswaUser = profile?.User;
 
     if (!profile || !mahasiswaUser) {
-      return c.json(
-        {
-          success: false,
-          message: "Mahasiswa tidak ditemukan",
-          error: {
-            code: "NOT_FOUND",
-            message: "Mahasiswa dengan ID tersebut tidak ditemukan",
+      const mahasiswaData = await prisma.mahasiswaProfile.findFirst({
+        where: { userId: id },
+        include: { User: true },
+      });
+
+      if (!mahasiswaData || !mahasiswaData.User) {
+        return c.json(
+          {
+            success: false,
+            message: "Mahasiswa tidak ditemukan",
+            error: {
+              code: "NOT_FOUND",
+              message: "Mahasiswa dengan ID tersebut tidak ditemukan",
+            },
           },
-        },
-        404,
-      );
+          404,
+        );
+      }
+
+      profile = mahasiswaData;
+      mahasiswaUser = mahasiswaData.User;
     }
 
-    const testimonial = await prisma.testimonial.findFirst({
-      where: {
-        mahasiswaId: id,
-        ...(connection ? { otaId: user.id } : { groupId: groupConnection!.groupId }),
-      },
-      select: {
-        content: true,
-        imageUrls: true,
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+    let testimonial = null;
+    if (connection || groupConnection) {
+      testimonial = await prisma.testimonial.findFirst({
+        where: {
+          mahasiswaId: id,
+          ...(connection ? { otaId: user.id } : { groupId: groupConnection!.groupId }),
+        },
+        select: {
+          content: true,
+          imageUrls: true,
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+    }
 
     return c.json(
       {

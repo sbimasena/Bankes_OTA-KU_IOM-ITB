@@ -146,18 +146,15 @@ export const authOptions: NextAuthOptions = {
         const keycloakName = (profile as Record<string, unknown>).name as string | undefined;
 
         if (!user) {
-          // Genuinely new user or deleted user re-logging in.
-          // Mahasiswa yang tidak ada di DB harus daftar ulang dan dapat persetujuan admin.
-          // Hanya privileged role (Admin, Pengurus_IOM, dll) yang langsung di-approve via Keycloak.
-          const role = localRole === "Mahasiswa" ? "Guest" : localRole;
+          // Genuinely new user
           user = await prisma.user.create({
             data: {
               oid: ssoId,
               email: profile.email ?? "",
               name: keycloakName ?? null,
-              role: role as any,
+              role: localRole as any,
               provider: "keycloak" as any,
-              verificationStatus: (role === "Guest" ? "unverified" : "verified") as any,
+              verificationStatus: "verified" as any,
             },
           });
         } else if (!user.oid) {

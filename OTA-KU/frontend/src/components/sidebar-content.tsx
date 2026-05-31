@@ -2,7 +2,7 @@ import { UserSchema } from "@/api/generated";
 import SidebarMenuItem from "@/components/sidebar-menu-item";
 import SidebarUserInfo from "@/components/sidebar-user-info";
 import { cn } from "@/lib/utils";
-import { ExternalLink, X } from "lucide-react";
+import { X } from "lucide-react";
 
 interface MenuItem {
   id: string;
@@ -12,8 +12,6 @@ interface MenuItem {
   textColorClass?: string;
   bgColorClass?: string;
 }
-
-const bankesUrl = import.meta.env.VITE_BANKES_URL ?? "http://localhost:3031";
 
 const SidebarContent = ({
   isOpen,
@@ -57,18 +55,7 @@ const SidebarContent = ({
       <div className="h-[1.5px] w-full rounded-full bg-gray-300"></div>
     </div>
 
-    <div className="flex flex-col gap-3">
-      {userData?.type !== "ota" && (
-        <a
-          href={`${bankesUrl}/api/auth/signin/keycloak`}
-          className="flex items-center gap-3 rounded-lg border border-primary/30 px-3 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary hover:text-white"
-        >
-          <ExternalLink size={16} className="flex-shrink-0" />
-          <span>Pergi ke Bankes</span>
-        </a>
-      )}
-      <SidebarUserInfo userData={userData} />
-    </div>
+    <SidebarUserInfo userData={userData} />
   </div>
 );
 

@@ -3,18 +3,9 @@ import { describe, expect, test, vi } from "vitest";
 
 import app from "../src/app.js";
 import { db } from "../src/db/drizzle.js";
-import { prisma } from "../src/db/prisma.js";
 import { accountTable } from "../src/db/schema.js";
 import { otpDatas, testRegisterUsers, testUsers } from "./constants/user.js";
 import { createTestRequest } from "./test-utils.js";
-
-vi.mock("../src/lib/sso.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/lib/sso.js")>();
-  return {
-    ...actual,
-    registerInSSO: vi.fn().mockResolvedValue({ userId: "mock-sso-user-id" }),
-  };
-});
 
 describe("Login", () => {
   test("POST 200 /api/auth/login", async () => {
@@ -53,7 +44,7 @@ describe("Login", () => {
       "Password minimal 8 karakter",
     );
     expect(body.errors.fieldErrors.identifier[0]).toBe(
-      "Harus berupa email atau nomor telepon",
+      "Format email tidak valid",
     );
   });
 
@@ -93,6 +84,27 @@ describe("Login", () => {
     expect(body.message).toBe("Invalid credentials");
   });
 
+  test("POST 500 /api/auth/login (Database Error)", async () => {
+    vi.spyOn(db, "select").mockImplementationOnce(() => {
+      throw new Error("Database connection failed");
+    });
+
+    const params = new URLSearchParams();
+    params.append("identifier", testUsers[0].email);
+    params.append("password", testUsers[0].password);
+
+    const res = await app.request(
+      createTestRequest("/api/auth/login", {
+        method: "POST",
+        body: params,
+      }),
+    );
+
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.message).toBe("Internal server error");
+  });
 });
 
 describe("Register", () => {
@@ -114,7 +126,7 @@ describe("Register", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.message).toBe("User registered. Please verify your OTP.");
+    expect(body.message).toBe("User registered successfully");
   });
 
   test("POST 400 (Invalid email for mahasiswa) /api/auth/register", async () => {
@@ -162,7 +174,7 @@ describe("Register", () => {
   });
 
   test("POST 500 /api/auth/register (Database Error)", async () => {
-    vi.spyOn(prisma, "$transaction").mockImplementationOnce(() => {
+    vi.spyOn(db, "transaction").mockImplementationOnce(() => {
       throw new Error("Database connection failed");
     });
 
@@ -428,7 +440,7 @@ describe("OTP", () => {
   });
 
   test("POST 500 /api/auth/otp (Database Error)", async () => {
-    vi.spyOn(prisma, "$transaction").mockImplementationOnce(() => {
+    vi.spyOn(db, "transaction").mockImplementationOnce(() => {
       throw new Error("Database connection failed");
     });
 

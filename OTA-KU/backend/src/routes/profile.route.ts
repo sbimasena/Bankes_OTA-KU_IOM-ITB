@@ -28,15 +28,6 @@ export const pendaftaranMahasiswaRoute = createRoute({
   method: "post",
   path: "/mahasiswa",
   description: "Pendaftaran mahasiswa asuh.",
-  request: {
-    body: {
-      content: {
-        "multipart/form-data": {
-          schema: MahasiswaRegistrationFormSchema,
-        },
-      },
-    },
-  },
   responses: {
     200: {
       description: "Berhasil mendaftar.",
