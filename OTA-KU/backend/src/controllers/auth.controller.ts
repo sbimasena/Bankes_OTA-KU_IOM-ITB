@@ -392,8 +392,6 @@ authRouter.openapi(oauthRoute, async (c) => {
         });
       } else {
         // First-ever login — create local record
-        // Mahasiswa daftarkan diri via form biasa, bukan auto-verified via SSO
-        const isPrivilegedRole = localRole !== "Mahasiswa";
         accountData = await prisma.user.create({
           data: {
             email,
@@ -401,7 +399,7 @@ authRouter.openapi(oauthRoute, async (c) => {
             provider: "keycloak" as any,
             role: localRole as any,
             password: null,
-            verificationStatus: isPrivilegedRole ? "verified" : "unverified",
+            verificationStatus: "verified",
           },
         });
 
@@ -422,14 +420,6 @@ authRouter.openapi(oauthRoute, async (c) => {
           });
         }
       }
-    }
-
-    // Block rejected users from logging in
-    if (accountData.applicationStatus === "rejected") {
-      return c.json(
-        { success: false, message: "Akun anda telah ditolak oleh admin." },
-        403,
-      );
     }
 
     // Pengurus IOM registers via Bankes without a phone number, so they cannot

@@ -118,8 +118,6 @@ services:
       AZURE_AD_CLIENT_ID: ${AZURE_AD_CLIENT_ID:-}
       AZURE_AD_CLIENT_SECRET: ${AZURE_AD_CLIENT_SECRET:-}
       AZURE_AD_TENANT_ID: ${AZURE_AD_TENANT_ID:-}
-      # Cross-app navigation
-      NEXT_PUBLIC_OTA_URL: ${NEXT_PUBLIC_OTA_URL:-http://localhost:5173}
     # Regenerate Prisma client at startup so the node_modules volume never has a stale client.
     # Migration is handled by the separate `migrate` service.
     command: sh -c "npx prisma generate && npm run dev -- -p 3031"
@@ -174,7 +172,6 @@ services:
         VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-ota-ku-app}
         VITE_KEYCLOAK_REDIRECT_URI: ${VITE_KEYCLOAK_REDIRECT_URI:-http://localhost:5173/integrations/keycloak/callback}
         VITE_VAPID_PUBLIC_KEY: ${VITE_VAPID_PUBLIC_KEY:-}
-        VITE_BANKES_URL: ${VITE_BANKES_URL:-http://localhost:3031}
     container_name: iom-ota-frontend
     ports:
       - "5173:3000"

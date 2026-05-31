@@ -2,15 +2,13 @@
 
 import { signOut, useSession } from "next-auth/react";
 import type React from "react"
-import { User, FileUp, GraduationCap, Calendar, LogOut, Menu, X, ExternalLink } from "lucide-react"
+import { User, FileUp, GraduationCap, Calendar, LogOut, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { memo, useState } from "react";
 import Image from "next/image";
 import NotificationBell from '@/components/ui/notificationBell';
 import { useUser } from "@/app/contexts/UserContext";
-
-const OTA_URL = process.env.NEXT_PUBLIC_OTA_URL ?? "http://localhost:5173";
 
 type NavItem = {
   id: string
@@ -152,24 +150,8 @@ function SidebarMahasiswa({ activeTab }: SidebarMahasiswaProps) {
           ))}
         </div>
 
-        {/* Bottom actions */}
-        <div className="border-t p-4 space-y-1">
-          {/* Go to OTA-KU */}
-          <div className="relative group">
-            <a
-              href={`${OTA_URL}/auth/login?sso=keycloak`}
-              className="w-full flex items-center px-4 py-3 text-left transition-colors hover:bg-blue-50 text-blue-600 rounded"
-            >
-              <ExternalLink className="h-5 w-5 flex-shrink-0" />
-              {showFullContent && <span className="ml-3">Ke OTA-KU</span>}
-            </a>
-            {!showFullContent && (
-              <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-gray-800 text-white px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                Ke OTA-KU
-              </div>
-            )}
-          </div>
-          {/* Logout */}
+        {/* Logout */}
+        <div className="border-t p-4">
           <div className="relative group">
             <button
               onClick={async () => {

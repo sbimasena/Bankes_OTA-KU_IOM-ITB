@@ -4,17 +4,10 @@ import { join } from "path";
 import { describe, expect, test, vi } from "vitest";
 
 import app from "../src/app.js";
-import { prisma } from "../src/db/prisma.js";
+import { db } from "../src/db/drizzle.js";
+import cloudinary from "../src/lib/cloudinary.js";
 import { testUsers } from "./constants/user.js";
 import { createTestRequest } from "./test-utils.js";
-
-vi.mock("../src/lib/file-upload-minio.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/lib/file-upload-minio.js")>();
-  return {
-    ...actual,
-    upsertStudentFile: vi.fn().mockResolvedValue("http://localhost:9000/documents-bucket/mock-file.pdf"),
-  };
-});
 
 describe("Pendaftaran Mahasiswa", () => {
   test("POST 200 /api/profile/mahasiswa", async () => {
@@ -73,6 +66,31 @@ describe("Pendaftaran Mahasiswa", () => {
     const headers = formData.getHeaders();
     headers["Authorization"] = `Bearer ${token}`;
 
+    vi.spyOn(cloudinary.uploader, "upload").mockResolvedValue({
+      public_id: "sample",
+      version: 1,
+      signature: "sample_signature",
+      width: 100,
+      height: 100,
+      format: "pdf",
+      resource_type: "raw",
+      created_at: new Date().toISOString(),
+      tags: [],
+      bytes: 12345,
+      type: "upload",
+      etag: "sample_etag",
+      placeholder: false,
+      url: "http://res.cloudinary.com/sample.pdf",
+      secure_url: "https://cloudinary.com/sample.pdf",
+      access_mode: "public",
+      original_filename: "sample",
+      pages: 1,
+      moderation: [],
+      access_control: [],
+      context: {},
+      metadata: {},
+    });
+
     const res = await app.request(
       createTestRequest("/api/profile/mahasiswa", {
         method: "POST",
@@ -87,7 +105,7 @@ describe("Pendaftaran Mahasiswa", () => {
     expect(body.message).toBe("Berhasil mendaftar.");
     expect(body.body.name).toBe("John Doe");
     expect(body.body.nim).toBe("13599008");
-    expect(body.body.file).toContain("documents-bucket");
+    expect(body.body.file).toBe("https://cloudinary.com/sample.pdf");
   });
 
   test("POST 400 /api/profile/mahasiswa", async () => {
@@ -134,7 +152,7 @@ describe("Pendaftaran Mahasiswa", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.errors.fieldErrors.phoneNumber[0]).toBe(
-      "Nomor telepon harus berupa string",
+      "Nomor telepon harus diisi",
     );
   });
 
@@ -209,7 +227,7 @@ describe("Pendaftaran Mahasiswa", () => {
   });
 
   test("POST 500 /api/profile/mahasiswa (Database Error)", async () => {
-    vi.spyOn(prisma, "$transaction").mockImplementationOnce(() => {
+    vi.spyOn(db, "transaction").mockImplementationOnce(() => {
       throw new Error("Database connection failed");
     });
 
@@ -267,6 +285,31 @@ describe("Pendaftaran Mahasiswa", () => {
 
     const headers = formData.getHeaders();
     headers["Authorization"] = `Bearer ${token}`;
+
+    vi.spyOn(cloudinary.uploader, "upload").mockResolvedValue({
+      public_id: "sample",
+      version: 1,
+      signature: "sample_signature",
+      width: 100,
+      height: 100,
+      format: "pdf",
+      resource_type: "raw",
+      created_at: new Date().toISOString(),
+      tags: [],
+      bytes: 12345,
+      type: "upload",
+      etag: "sample_etag",
+      placeholder: false,
+      url: "http://res.cloudinary.com/sample.pdf",
+      secure_url: "https://cloudinary.com/sample.pdf",
+      access_mode: "public",
+      original_filename: "sample",
+      pages: 1,
+      moderation: [],
+      access_control: [],
+      context: {},
+      metadata: {},
+    });
 
     const res = await app.request(
       createTestRequest("/api/profile/mahasiswa", {
@@ -430,7 +473,7 @@ describe("Pendaftaran Orang Tua Asuh", () => {
   });
 
   test("POST 500 /api/profile/orang-tua (Database Error)", async () => {
-    vi.spyOn(prisma, "$transaction").mockImplementationOnce(() => {
+    vi.spyOn(db, "insert").mockImplementationOnce(() => {
       throw new Error("Database connection failed");
     });
 
