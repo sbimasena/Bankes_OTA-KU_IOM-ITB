@@ -274,8 +274,8 @@ function DeleteGroupModal({ groupName, onClose, onConfirm, isPending }: DeleteGr
             Hapus Grup
           </DialogTitle>
           <DialogDescription>
-            Tindakan ini tidak dapat dibatalkan. Semua data grup termasuk anggota, undangan, dan
-            proposal akan ikut terhapus.
+            Tindakan ini tidak dapat dibatalkan. Semua data grup termasuk anggota, undangan,
+            proposal, dan hubungan asuh dengan mahasiswa akan ikut terhapus.
           </DialogDescription>
         </DialogHeader>
         <div className="rounded-lg bg-muted/50 px-4 py-3">
@@ -684,8 +684,8 @@ function AdminGroupManagement() {
                                   variant="ghost"
                                   className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                                   onClick={() => setDeleteTarget({ id: group.id, name: group.name })}
-                                  disabled={deleteGroupMutation.isPending || group.activeConnectionCount > 0}
-                                  title={group.activeConnectionCount > 0 ? "Grup memiliki mahasiswa aktif" : "Hapus grup"}
+                                  disabled={deleteGroupMutation.isPending}
+                                  title="Hapus grup"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
