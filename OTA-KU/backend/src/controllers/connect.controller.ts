@@ -222,6 +222,10 @@ connectProtectedRouter.openapi(connectOtaMahasiswaByAdminRoute, async (c) => {
         select: { bill: true },
       });
 
+      if (maProfile?.bill && maProfile.bill > 0 && maProfile.bill > otaProfile.funds) {
+        throw new Error(`KEBUTUHAN_MELEBIHI_KEMAMPUAN:${maProfile.bill}:${otaProfile.funds}`);
+      }
+
       const bill_mahasiswa = (maProfile?.bill && maProfile.bill > 0)
         ? maProfile.bill
         : (otaProfile.funds ?? 0);
@@ -406,6 +410,17 @@ connectProtectedRouter.openapi(connectOtaMahasiswaByAdminRoute, async (c) => {
         400,
       );
     }
+    if (error instanceof Error && error.message.startsWith("KEBUTUHAN_MELEBIHI_KEMAMPUAN:")) {
+      const [, bill, funds] = error.message.split(":");
+      return c.json(
+        {
+          success: false,
+          message: `Kebutuhan mahasiswa (Rp ${Number(bill).toLocaleString("id-ID")}) melebihi kemampuan OTA (Rp ${Number(funds).toLocaleString("id-ID")}). Pilih OTA dengan kemampuan dana yang mencukupi.`,
+          error: {},
+        },
+        400,
+      );
+    }
     console.error(error);
     return c.json(
       {
@@ -475,6 +490,10 @@ connectProtectedRouter.openapi(verifyConnectionAccRoute, async (c) => {
         where: { userId: otaId },
         select: { transferDate: true, funds: true },
       });
+
+      if (maProfile?.bill && maProfile.bill > 0 && otaProfile?.funds != null && maProfile.bill > otaProfile.funds) {
+        throw new Error(`KEBUTUHAN_MELEBIHI_KEMAMPUAN:${maProfile.bill}:${otaProfile.funds}`);
+      }
 
       const bill_mahasiswa = (maProfile?.bill && maProfile.bill > 0)
         ? maProfile.bill
@@ -669,6 +688,17 @@ connectProtectedRouter.openapi(verifyConnectionAccRoute, async (c) => {
         {
           success: false,
           message: "Mahasiswa sudah memiliki orang tua asuh aktif.",
+          error: {},
+        },
+        400,
+      );
+    }
+    if (error instanceof Error && error.message.startsWith("KEBUTUHAN_MELEBIHI_KEMAMPUAN:")) {
+      const [, bill, funds] = error.message.split(":");
+      return c.json(
+        {
+          success: false,
+          message: `Kebutuhan mahasiswa (Rp ${Number(bill).toLocaleString("id-ID")}) melebihi kemampuan OTA (Rp ${Number(funds).toLocaleString("id-ID")}). Perbarui kemampuan OTA atau kebutuhan mahasiswa terlebih dahulu.`,
           error: {},
         },
         400,
